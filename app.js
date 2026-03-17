@@ -3,40 +3,41 @@
 const $ = id => document.getElementById(id)
 const STORAGE_KEY = 'visual-talk-config'
 
-const SYSTEM = `You are Visual Talk — an AI that expresses itself through generated UI, not chat.
+const SYSTEM = `You are Visual Talk — an AI that expresses itself by placing visual blocks on a free-form canvas.
 
-Your primary language is visual blocks. Text speech is secondary — use it sparingly, like a whisper.
+The screen is your canvas. You decide WHERE each block appears — like arranging items on a desk.
 
-When you respond, output two things:
+When you respond, output:
 
-1. **Speech** (optional): A brief, warm sentence. This appears as a floating bubble that fades away. Keep it under 20 words. Skip it if the visuals say enough.
+1. **Speech** (optional): A brief whisper (under 15 words). Appears as a floating bubble.
 
-2. **Visual blocks**: Your main expression. Use <!--vt:TYPE JSON--> annotations.
+2. **Visual blocks** with position: <!--vt:TYPE JSON-->
+
+Every block MUST include layout fields:
+- "x": horizontal position in % (0=left edge, 100=right edge)
+- "y": vertical position in % (0=top, 100=bottom)
+- "w": width in % (10-60)
 
 Available block types:
-- card: {"title":"","sub":"","image":"url","tags":[""],"items":[""],"progress":75,"footer":"","size":"full|half|third"}
-- metric: {"value":"42","label":"Growth","unit":"%","size":"third"}
-- steps: {"title":"","items":[{"time":"","title":"","detail":""}]}
-- columns: {"title":"","cols":[{"name":"A","items":["point"]}],"size":"full"}
-- callout: {"text":"quote or highlight","author":"","source":""}
-- code: {"code":"","language":"js"}
-- markdown: {"content":"# Rich text"}
-- media: {"url":"image-url","caption":""} or {"images":["url1","url2"]}
+- card: {"x":10,"y":10,"w":35,"title":"","sub":"","image":"url","tags":[],"items":[],"progress":75,"footer":""}
+- metric: {"x":50,"y":10,"w":15,"value":"42","label":"Score","unit":"%"}
+- steps: {"x":10,"y":40,"w":40,"title":"","items":[{"time":"","title":"","detail":""}]}
+- columns: {"x":10,"y":10,"w":50,"title":"","cols":[{"name":"A","items":["point"]}]}
+- callout: {"x":30,"y":50,"w":40,"text":"quote","author":"","source":""}
+- code: {"x":10,"y":60,"w":45,"code":"","language":"js"}
+- markdown: {"x":10,"y":10,"w":50,"content":"# Rich text"}
+- media: {"x":5,"y":5,"w":40,"url":"image-url","caption":""}
 
-Block sizing: "size" can be "full" (default, 100%), "half" (50%), or "third" (33%).
+Layout guidelines:
+- Spread blocks across the screen, don't stack vertically
+- Use the full width: left side (x:5-35), center (x:30-60), right (x:55-90)
+- 3 metrics in a row: x:10/x:40/x:70, w:20 each
+- Main content left + secondary right, or centered hero + details around it
+- Think like a magazine layout, not a list
+- Avoid overlapping blocks
 
-Format your response as:
-<!--vt:speech Your brief spoken words here-->
-<!--vt:card {"title":"Example",...}-->
-<!--vt:metric {"value":"99","label":"Score","size":"third"}-->
-
-Rules:
-- Lead with visuals, not words
-- Multiple blocks = richer expression
-- Use size to create layouts (3 metrics in a row = "third" each)
-- Speech is a whisper, not a paragraph
-- Never output plain text outside annotations — everything goes through vt: tags
-- If someone says "hi", don't write an essay — a warm visual greeting is enough`
+Format: <!--vt:speech Your whisper-->
+then blocks: <!--vt:card {"x":5,"y":5,"w":40,"title":"..."}-->`
 
 // ── Config ──
 function loadConfig() {
@@ -70,7 +71,7 @@ function getConfig() {
     apiKey: $('apiKey').value.trim(),
     baseUrl: $('baseUrl').value.trim() || undefined,
     model: $('model').value.trim() || undefined,
-    proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://proxy.link2web.site/proxy') : undefined,
+    proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
 }
 
@@ -95,8 +96,12 @@ function esc(s) {
 
 function renderBlock(type, data) {
   const el = document.createElement('div')
-  const size = data.size || 'full'
-  el.className = `v-block ${size}`
+  el.className = 'v-block'
+
+  // Position from AI
+  if (data.x != null) el.style.left = `${data.x}%`
+  if (data.y != null) el.style.top = `${data.y}%`
+  if (data.w) el.style.width = `${data.w}%`
 
   switch (type) {
     case 'card':
@@ -177,16 +182,14 @@ function parseResponse(text) {
 }
 
 function renderBlocks(blocks) {
-  const inner = $('canvasInner')
+  const canvas = $('canvas')
   $('greeting').classList.add('hidden')
 
   blocks.forEach(({ type, data }, i) => {
     const el = renderBlock(type, data)
-    el.style.animationDelay = `${i * 0.08}s`
-    inner.appendChild(el)
+    el.style.animationDelay = `${i * 0.1}s`
+    canvas.appendChild(el)
   })
-
-  setTimeout(() => $('canvas').scrollTop = $('canvas').scrollHeight, 100)
 }
 
 // ── LLM Call (streaming) ──
@@ -227,14 +230,22 @@ async function callLLM(prompt, onToken) {
     })
   }
 
-  // Proxy: forward via proxy URL with target in header
+  // Proxy: transparent proxy with config in headers
   let fetchUrl = targetUrl
+  const fetchHeaders = { ...headers }
   if (cfg.proxyUrl) {
-    fetchUrl = cfg.proxyUrl
-    headers['x-target-url'] = targetUrl
+    fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
+    // Proxy protocol: config via headers, body unchanged
+    fetchHeaders['x-provider'] = cfg.provider || 'openai'
+    fetchHeaders['x-base-url'] = cfg.baseUrl || (isAnthropic ? 'https://api.anthropic.com' : 'https://api.openai.com')
+    fetchHeaders['x-api-key'] = cfg.apiKey
+    // Remove direct auth headers — proxy handles it
+    delete fetchHeaders['Authorization']
+    delete fetchHeaders['x-api-key']
+    delete fetchHeaders['anthropic-version']
   }
 
-  const res = await fetch(fetchUrl, { method: 'POST', headers, body })
+  const res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body })
   if (!res.ok) {
     const errText = await res.text()
     throw new Error(`API ${res.status}: ${errText}`)

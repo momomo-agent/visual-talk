@@ -9,18 +9,10 @@ body {
 
 /* ── Canvas ── */
 .canvas {
-  flex: 1; position: relative; overflow-y: auto; overflow-x: hidden;
-  padding: 40px;
-  display: flex; flex-direction: column; align-items: center;
+  flex: 1; position: relative; overflow: auto;
 }
 .canvas::-webkit-scrollbar { width: 3px; }
 .canvas::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
-
-.canvas-inner {
-  max-width: 720px; width: 100%;
-  display: flex; flex-wrap: wrap; align-content: flex-start;
-  gap: 16px;
-}
 .canvas::-webkit-scrollbar { width: 3px; }
 .canvas::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
 
@@ -35,17 +27,17 @@ body {
 
 /* ── Visual blocks (AI-generated UI) ── */
 .v-block {
+  position: absolute;
   background: #111; border: 1px solid rgba(255,255,255,0.04);
   border-radius: 12px; padding: 20px;
-  animation: blockIn 0.4s cubic-bezier(.23,1,.32,1);
-  width: 100%;
+  animation: blockIn 0.5s cubic-bezier(.23,1,.32,1);
+  min-width: 200px; max-width: 480px;
+  transition: transform 0.3s, opacity 0.3s;
 }
-.v-block.half { width: calc(50% - 8px); }
-.v-block.third { width: calc(33.3% - 11px); }
 
 @keyframes blockIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* Block types */
