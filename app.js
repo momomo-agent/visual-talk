@@ -57,6 +57,9 @@ function loadConfig() {
     if (s.baseUrl) $('baseUrl').value = s.baseUrl
     if (s.model) $('model').value = s.model
     if (s.tavilyKey) $('tavilyKey').value = s.tavilyKey
+    $('ttsEnabled').checked = !!s.ttsEnabled
+    if (s.ttsBaseUrl) $('ttsBaseUrl').value = s.ttsBaseUrl
+    if (s.ttsApiKey) $('ttsApiKey').value = s.ttsApiKey
     if (s.proxyUrl) $('proxyUrl').value = s.proxyUrl
     $('proxyEnabled').checked = !!s.proxyEnabled
     $('proxyUrl').disabled = !s.proxyEnabled
@@ -70,6 +73,9 @@ function saveConfig() {
     baseUrl: $('baseUrl').value,
     model: $('model').value,
     tavilyKey: $('tavilyKey').value,
+    ttsEnabled: $('ttsEnabled').checked,
+    ttsBaseUrl: $('ttsBaseUrl').value,
+    ttsApiKey: $('ttsApiKey').value,
     proxyUrl: $('proxyUrl').value,
     proxyEnabled: $('proxyEnabled').checked,
   }))
@@ -83,6 +89,9 @@ function getConfig() {
     baseUrl: $('baseUrl').value.trim() || undefined,
     model: $('model').value.trim() || undefined,
     tavilyKey: $('tavilyKey').value.trim() || undefined,
+    ttsEnabled: $('ttsEnabled').checked,
+    ttsBaseUrl: $('ttsBaseUrl').value.trim() || undefined,
+    ttsApiKey: $('ttsApiKey').value.trim() || undefined,
     proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
 }
@@ -99,6 +108,48 @@ function showBubble(text) {
     bubble.className = 'bubble fading'
     setTimeout(() => { bubble.className = 'bubble' }, 500)
   }, 6000)
+  
+  // TTS
+  if (text) playTTS(text)
+}
+
+// ── TTS ──
+let currentAudio = null
+
+async function playTTS(text) {
+  const config = getConfig()
+  if (!config.ttsEnabled || !config.ttsApiKey) return
+  
+  // 停止之前的音频
+  if (currentAudio) {
+    currentAudio.pause()
+    currentAudio = null
+  }
+  
+  try {
+    const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
+    const res = await fetch(`${baseUrl}/v1/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.ttsApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'tts-1-hd',
+        voice: 'nova',
+        input: text,
+        speed: 0.75
+      })
+    })
+    
+    if (res.ok) {
+      const blob = await res.blob()
+      currentAudio = new Audio(URL.createObjectURL(blob))
+      currentAudio.play()
+    }
+  } catch (e) {
+    console.error('TTS error:', e)
+  }
 }
 
 // ── Thinking ──
