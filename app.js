@@ -41,12 +41,11 @@ Layout rules:
 - Create depth — don't put everything at z:0
 - Think holographic display, not flat webpage
 
-IMPORTANT for cards with images:
-- For movies/books/products, include "image" ONLY if you know the exact real URL
-- Do NOT guess or fabricate image URLs — if unsure, omit the "image" field entirely
-- Douban poster URLs (img9.doubanio.com) are reliable if you know the exact path
-- TMDB URLs require exact poster_path — do not guess random paths
-- It's better to show no image than a broken image`
+IMPORTANT about images:
+- Do NOT include "image" URLs in card data — you cannot verify if URLs exist
+- Leave the "image" field out entirely. The UI handles missing images gracefully.
+- This applies to ALL cards: movies, books, products, etc.
+- Never fabricate or guess image URLs from TMDB, Douban, or any other source`
 
 // ── Config ──
 function loadConfig() {
@@ -123,7 +122,7 @@ function renderBlock(type, data) {
   el.style.transform = `translateZ(0px) scale(1)`
   el.style.opacity = 1
   el.style.zIndex = 100
-  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1), opacity 0.6s, filter 0.6s, box-shadow 0.6s'
+  el.style.transition = 'transform 0.8s cubic-bezier(.16,1,.3,1), opacity 0.8s cubic-bezier(.16,1,.3,1), filter 0.8s, box-shadow 0.6s'
 
   // Entrance animation via opacity only (no transform conflict)
   el.style.opacity = 0
@@ -194,7 +193,7 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer">`).join('')}</div>
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
         body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="border-radius:0;margin:0"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
@@ -271,15 +270,17 @@ function renderBlocks(blocks) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
+    // Intra-response z offset: each block slightly behind the previous
+    const intraZ = -i * 30
+
     if (existing) {
       // Bring existing block to front
       existing.dataset.depth = depthLevel
-      existing.style.transform = 'scale(1)'
+      existing.style.transform = `translateZ(${intraZ}px) scale(1)`
       existing.style.opacity = 1
-      existing.style.zIndex = 100
+      existing.style.zIndex = 100 - i
       existing.style.filter = 'none'
       existing.classList.remove('receded')
-      // Update content if data changed
       const updated = renderBlock(type, data)
       if (existing.innerHTML !== updated.innerHTML) {
         existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
@@ -290,7 +291,10 @@ function renderBlocks(blocks) {
     const el = renderBlock(type, data)
     el.dataset.depth = depthLevel
     el.dataset.contentKey = contentKey
-    el.style.transitionDelay = `${i * 0.08}s`
+    el.dataset.intraZ = intraZ
+    el.style.transform = `translateZ(${intraZ}px) scale(1)`
+    el.style.zIndex = 100 - i
+    el.style.transitionDelay = `${i * 0.1}s`
     setupBlockInteraction(el)
     space.appendChild(el)
   })
