@@ -215,23 +215,23 @@ function parseResponse(text) {
 }
 
 let depthLevel = 0
+const selectedBlocks = new Set()
 
 function renderBlocks(blocks) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
-  // Push ALL existing blocks back one depth level
+  // Push existing non-selected blocks back one depth level
   depthLevel++
-  space.querySelectorAll('.v-block').forEach(old => {
+  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
     const d = depthLevel - parseInt(old.dataset.depth || '0')
-    const z = -d * 120
-    const s = Math.max(0.6, 1 - d * 0.08)
-    const o = Math.max(0.15, 1 - d * 0.25)
+    const z = -d * 80
+    const s = Math.max(0.75, 1 - d * 0.05)
+    const o = Math.max(0.4, 1 - d * 0.15)
     old.style.transform = `translateZ(${z}px) scale(${s})`
     old.style.opacity = o
     old.style.zIndex = Math.max(1, 100 - d * 10)
-    old.style.filter = d >= 2 ? 'blur(1px)' : 'none'
-    old.style.pointerEvents = 'none'
+    old.style.filter = d >= 3 ? 'blur(1px)' : 'none'
   })
 
   // Render new blocks at front (z=0)
@@ -239,9 +239,118 @@ function renderBlocks(blocks) {
     const el = renderBlock(type, data)
     el.dataset.depth = depthLevel
     el.style.transitionDelay = `${i * 0.08}s`
+    setupBlockInteraction(el)
     space.appendChild(el)
   })
 }
+
+// ── Block interaction: select, drag, hover ──
+function setupBlockInteraction(el) {
+  let isDragging = false, startX, startY, origLeft, origTop
+
+  // Click to select/deselect
+  el.addEventListener('click', e => {
+    if (isDragging) return
+    e.stopPropagation()
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      // Multi-select toggle
+      toggleSelect(el)
+    } else {
+      // Single select — clear others first
+      clearSelection()
+      toggleSelect(el)
+    }
+    updateSelectionContext()
+  })
+
+  // Drag to move
+  el.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'A' || e.target.tagName === 'INPUT') return
+    isDragging = false
+    startX = e.clientX
+    startY = e.clientY
+    const rect = el.getBoundingClientRect()
+    const canvas = el.parentElement.getBoundingClientRect()
+    origLeft = ((rect.left - canvas.left) / canvas.width) * 100
+    origTop = ((rect.top - canvas.top) / canvas.height) * 100
+
+    const onMove = e2 => {
+      const dx = e2.clientX - startX
+      const dy = e2.clientY - startY
+      if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+        isDragging = true
+        el.style.cursor = 'grabbing'
+      }
+      if (isDragging) {
+        const canvas = el.parentElement.getBoundingClientRect()
+        el.style.left = `${origLeft + (dx / canvas.width) * 100}%`
+        el.style.top = `${origTop + (dy / canvas.height) * 100}%`
+      }
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      el.style.cursor = ''
+      setTimeout(() => { isDragging = false }, 10)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
+}
+
+function toggleSelect(el) {
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected')
+    selectedBlocks.delete(el)
+    // Return to depth-based position
+    const d = depthLevel - parseInt(el.dataset.depth || '0')
+    const z = -d * 80
+    const s = Math.max(0.75, 1 - d * 0.05)
+    const o = Math.max(0.4, 1 - d * 0.15)
+    el.style.transform = `translateZ(${z}px) scale(${s})`
+    el.style.opacity = o
+    el.style.zIndex = Math.max(1, 100 - d * 10)
+  } else {
+    el.classList.add('selected')
+    selectedBlocks.add(el)
+    // Float forward
+    el.style.transform = 'translateZ(60px) scale(1.03)'
+    el.style.opacity = 1
+    el.style.zIndex = 200
+    el.style.filter = 'none'
+  }
+}
+
+function clearSelection() {
+  selectedBlocks.forEach(el => {
+    el.classList.remove('selected')
+    const d = depthLevel - parseInt(el.dataset.depth || '0')
+    const z = -d * 80
+    const s = Math.max(0.75, 1 - d * 0.05)
+    const o = Math.max(0.4, 1 - d * 0.15)
+    el.style.transform = `translateZ(${z}px) scale(${s})`
+    el.style.opacity = o
+    el.style.zIndex = Math.max(1, 100 - d * 10)
+  })
+  selectedBlocks.clear()
+}
+
+function updateSelectionContext() {
+  // Collect text from selected blocks for conversation context
+  const texts = []
+  selectedBlocks.forEach(el => {
+    texts.push(el.innerText.slice(0, 200))
+  })
+  // Store for next prompt
+  window._selectedContext = texts.length ? texts.join('\n---\n') : null
+}
+
+// Click canvas background to deselect all
+document.addEventListener('click', e => {
+  if (e.target.closest('.v-block') || e.target.closest('.input-bar') || e.target.closest('.config-overlay') || e.target.closest('.gear-btn')) return
+  clearSelection()
+  updateSelectionContext()
+})
 
 // ── LLM Call (streaming) ──
 let history = []
@@ -374,10 +483,16 @@ async function send() {
   btn.disabled = true
   showThinking()
 
+  // If blocks are selected, prepend context
+  const selCtx = window._selectedContext
+  const fullPrompt = selCtx
+    ? `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${text}`
+    : text
+
   let lastBlockCount = 0
 
   try {
-    const reply = await callLLM(text, (partial) => {
+    const reply = await callLLM(fullPrompt, (partial) => {
       hideThinking()
       // Stream speech bubble
       const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)

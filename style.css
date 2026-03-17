@@ -65,9 +65,14 @@ body {
 .v-block:hover {
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   border-color: rgba(196,168,130,0.15);
+  cursor: grab;
+}
+.v-block.selected {
+  border-color: rgba(196,168,130,0.3);
+  box-shadow: 0 0 0 1px rgba(196,168,130,0.15), 0 8px 40px rgba(0,0,0,0.5);
 }
 .v-block.receded {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* Window title bar */
