@@ -352,10 +352,9 @@ function setupBlockInteraction(el) {
     isDragging = false
     startX = e.clientX
     startY = e.clientY
-    const rect = el.getBoundingClientRect()
-    const canvas = el.parentElement.getBoundingClientRect()
-    origLeft = ((rect.left - canvas.left) / canvas.width) * 100
-    origTop = ((rect.top - canvas.top) / canvas.height) * 100
+    // Read current % position directly from style (avoids 3D transform distortion)
+    origLeft = parseFloat(el.style.left) || 0
+    origTop = parseFloat(el.style.top) || 0
 
     const onMove = e2 => {
       const dx = e2.clientX - startX
@@ -364,9 +363,10 @@ function setupBlockInteraction(el) {
         isDragging = true
       }
       if (isDragging) {
-        const canvas = el.parentElement.getBoundingClientRect()
-        el.style.left = `${origLeft + (dx / canvas.width) * 100}%`
-        el.style.top = `${origTop + (dy / canvas.height) * 100}%`
+        const cw = el.parentElement.offsetWidth
+        const ch = el.parentElement.offsetHeight
+        el.style.left = `${origLeft + (dx / cw) * 100}%`
+        el.style.top = `${origTop + (dy / ch) * 100}%`
       }
     }
     const onUp = () => {
