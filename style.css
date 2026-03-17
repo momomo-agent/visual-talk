@@ -62,10 +62,15 @@ body {
   overflow: hidden;
   user-select: none; -webkit-user-select: none;
 }
+.v-block, .v-block * {
+  cursor: grab !important;
+}
+.v-block:active, .v-block:active * {
+  cursor: grabbing !important;
+}
 .v-block:hover {
   box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   border-color: rgba(255,255,255,0.6);
-  cursor: grab;
 }
 .v-block.selected {
   border-color: rgba(196,168,130,0.5);

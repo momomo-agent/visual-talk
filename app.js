@@ -314,7 +314,6 @@ function setupBlockInteraction(el) {
       const dy = e2.clientY - startY
       if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
         isDragging = true
-        el.style.cursor = 'grabbing'
       }
       if (isDragging) {
         const canvas = el.parentElement.getBoundingClientRect()
@@ -325,7 +324,6 @@ function setupBlockInteraction(el) {
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
-      el.style.cursor = ''
       setTimeout(() => { isDragging = false }, 10)
     }
     document.addEventListener('mousemove', onMove)
