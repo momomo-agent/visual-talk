@@ -39,7 +39,13 @@ Layout rules:
 - Metrics: spread horizontally, medium z
 - Quotes/context: offset to side, low z (far)
 - Create depth — don't put everything at z:0
-- Think holographic display, not flat webpage`
+- Think holographic display, not flat webpage
+
+IMPORTANT for cards with images:
+- For movies/books/products, ALWAYS include "image" with a real poster/cover URL
+- Use TMDB image URLs like https://image.tmdb.org/t/p/w500/POSTER_PATH.jpg
+- Or Douban poster URLs — every card about a visual work MUST have an image
+- Multiple recommendation cards should ALL have images, not just the first one`
 
 // ── Config ──
 function loadConfig() {
@@ -104,18 +110,20 @@ function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
 
-  // 3D positioning
-  const z = data.z || 0
+  // Position
   if (data.x != null) el.style.left = `${data.x}%`
   if (data.y != null) el.style.top = `${data.y}%`
   if (data.w) el.style.width = `${data.w}%`
   
-  // Z-axis: depth + scale + opacity
-  const scale = 1 + z * 0.002
-  const opacity = Math.max(0.4, Math.min(1, 0.8 + z * 0.003))
-  el.style.transform = `translateZ(${z}px) scale(${scale})`
-  el.style.opacity = opacity
-  el.style.zIndex = Math.round(50 + z)
+  // New blocks always at z=0 (front), will be pushed back later
+  el.style.transform = `translateZ(0px) scale(1)`
+  el.style.opacity = 1
+  el.style.zIndex = 100
+  el.style.transition = 'transform 0.8s cubic-bezier(.23,1,.32,1), opacity 0.8s'
+
+  // Entrance animation via opacity only (no transform conflict)
+  el.style.opacity = 0
+  requestAnimationFrame(() => { el.style.opacity = 1 })
 
   // Window title bar label
   const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
@@ -206,21 +214,31 @@ function parseResponse(text) {
   return { speech: speech ? speech[1].trim() : null, blocks }
 }
 
+let depthLevel = 0
+
 function renderBlocks(blocks) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
-  // Push old blocks back (recede into distance)
-  space.querySelectorAll('.v-block:not(.receded)').forEach(old => {
-    old.classList.add('receded')
-    const curZ = parseFloat(old.dataset.z || 0)
-    old.style.transform = `translateZ(${curZ - 200}px) scale(0.7)`
+  // Push ALL existing blocks back one depth level
+  depthLevel++
+  space.querySelectorAll('.v-block').forEach(old => {
+    const d = depthLevel - parseInt(old.dataset.depth || '0')
+    const z = -d * 120
+    const s = Math.max(0.6, 1 - d * 0.08)
+    const o = Math.max(0.15, 1 - d * 0.25)
+    old.style.transform = `translateZ(${z}px) scale(${s})`
+    old.style.opacity = o
+    old.style.zIndex = Math.max(1, 100 - d * 10)
+    old.style.filter = d >= 2 ? 'blur(1px)' : 'none'
+    old.style.pointerEvents = 'none'
   })
 
+  // Render new blocks at front (z=0)
   blocks.forEach(({ type, data }, i) => {
     const el = renderBlock(type, data)
-    el.style.animationDelay = `${i * 0.12}s`
-    el.dataset.z = data.z || 0
+    el.dataset.depth = depthLevel
+    el.style.transitionDelay = `${i * 0.08}s`
     space.appendChild(el)
   })
 }
