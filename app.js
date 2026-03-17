@@ -118,6 +118,20 @@ function showBubble(text, speak = false) {
 
 // ── TTS ──
 let currentAudio = null
+let audioUnlocked = false
+
+// Unlock audio on first user gesture (required by browser autoplay policy)
+function unlockAudio() {
+  if (audioUnlocked) return
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const buf = ctx.createBuffer(1, 1, 22050)
+  const src = ctx.createBufferSource()
+  src.buffer = buf
+  src.connect(ctx.destination)
+  src.start(0)
+  audioUnlocked = true
+  console.log('[TTS] audio unlocked')
+}
 
 async function playTTS(text) {
   const config = getConfig()
@@ -611,6 +625,7 @@ async function send() {
   const text = input.value.trim()
   if (!text) return
 
+  unlockAudio()
   input.value = ''
   showThinking()
   currentRoundDepth = -1 // Allow push on next renderBlocks
