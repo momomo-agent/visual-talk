@@ -263,11 +263,14 @@ function renderBlock(type, data) {
   }
 
   el.innerHTML = bar + body
-  // Images: hidden by default, show onload, remove on error
+  // Images: show on successful load, remove on error
   el.querySelectorAll('img').forEach(img => {
-    img.style.display = 'none'
-    img.onload = () => { img.style.display = 'block' }
-    img.onerror = () => img.remove()
+    if (img.complete && img.naturalWidth > 0) {
+      img.style.display = 'block'
+    } else if (img.complete) {
+      img.remove()
+    }
+    // For images still loading, inline onload/onerror handles it
   })
   return el
 }
