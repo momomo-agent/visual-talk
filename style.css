@@ -172,15 +172,6 @@ body {
   background: rgba(28,24,18,0.85);
 }
 .input-bar input::placeholder { color: rgba(196,168,130,0.2); }
-.send-btn {
-  width: 42px; height: 42px; border-radius: 50%;
-  background: rgba(196,168,130,0.12); border: 1px solid rgba(196,168,130,0.1);
-  color: #c4a882; font-size: 15px; font-weight: 600; cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-}
-.send-btn:hover { background: rgba(196,168,130,0.22); }
-.send-btn:disabled { opacity: 0.15; cursor: not-allowed; }
 
 /* ── Config ── */
 .gear-btn {

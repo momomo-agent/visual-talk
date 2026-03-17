@@ -498,12 +498,11 @@ async function callLLM(prompt, onToken) {
 // ── Send ──
 async function send() {
   const input = $('input')
-  const btn = $('sendBtn')
   const text = input.value.trim()
   if (!text) return
 
   input.value = ''
-  btn.disabled = true
+  input.disabled = true
   showThinking()
   currentRoundDepth = -1 // Allow push on next renderBlocks
 
@@ -548,7 +547,7 @@ async function send() {
     showBubble(`Error: ${err.message}`)
     console.error(err)
   } finally {
-    btn.disabled = false
+    input.disabled = false
     input.focus()
   }
 }
@@ -574,7 +573,6 @@ $('input').addEventListener('keydown', e => {
     send()
   }
 })
-$('sendBtn').addEventListener('click', send)
 
 // ── 3D parallax: mouse moves shift perspective ──
 document.addEventListener('mousemove', e => {
