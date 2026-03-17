@@ -55,6 +55,7 @@ function loadConfig() {
     if (s.apiKey) $('apiKey').value = s.apiKey
     if (s.baseUrl) $('baseUrl').value = s.baseUrl
     if (s.model) $('model').value = s.model
+    if (s.tavilyKey) $('tavilyKey').value = s.tavilyKey
     if (s.proxyUrl) $('proxyUrl').value = s.proxyUrl
     $('proxyEnabled').checked = !!s.proxyEnabled
     $('proxyUrl').disabled = !s.proxyEnabled
@@ -67,6 +68,7 @@ function saveConfig() {
     apiKey: $('apiKey').value,
     baseUrl: $('baseUrl').value,
     model: $('model').value,
+    tavilyKey: $('tavilyKey').value,
     proxyUrl: $('proxyUrl').value,
     proxyEnabled: $('proxyEnabled').checked,
   }))
@@ -79,6 +81,7 @@ function getConfig() {
     apiKey: $('apiKey').value.trim(),
     baseUrl: $('baseUrl').value.trim() || undefined,
     model: $('model').value.trim() || undefined,
+    tavilyKey: $('tavilyKey').value.trim() || undefined,
     proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
 }
@@ -230,6 +233,9 @@ function pushOldBlocks() {
     if (d <= 0) return
     applyDepth(old, d)
   })
+  
+  // 额外后退：让旧内容离得更远
+  space.style.transform = `translateZ(-${depthLevel * 30}px)`
 }
 
 function applyDepth(el, d) {
@@ -239,7 +245,9 @@ function applyDepth(el, d) {
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 100 - d * 10)
-  el.style.filter = d >= 3 ? 'blur(1px)' : 'none'
+  el.style.filter = d >= 2 ? `blur(${(d-1)*0.5}px)` : 'none'
+  // 保持交互能力
+  el.style.pointerEvents = 'auto'
 }
 
 function renderBlocks(blocks) {
