@@ -57,6 +57,7 @@ function loadConfig() {
     if (s.baseUrl) $('baseUrl').value = s.baseUrl
     if (s.model) $('model').value = s.model
     if (s.tavilyKey) $('tavilyKey').value = s.tavilyKey
+    $('showToolCalls').checked = !!s.showToolCalls
     $('ttsEnabled').checked = !!s.ttsEnabled
     if (s.ttsBaseUrl) $('ttsBaseUrl').value = s.ttsBaseUrl
     if (s.ttsApiKey) $('ttsApiKey').value = s.ttsApiKey
@@ -73,6 +74,7 @@ function saveConfig() {
     baseUrl: $('baseUrl').value,
     model: $('model').value,
     tavilyKey: $('tavilyKey').value,
+    showToolCalls: $('showToolCalls').checked,
     ttsEnabled: $('ttsEnabled').checked,
     ttsBaseUrl: $('ttsBaseUrl').value,
     ttsApiKey: $('ttsApiKey').value,
@@ -89,6 +91,7 @@ function getConfig() {
     baseUrl: $('baseUrl').value.trim() || undefined,
     model: $('model').value.trim() || undefined,
     tavilyKey: $('tavilyKey').value.trim() || undefined,
+    showToolCalls: $('showToolCalls').checked,
     ttsEnabled: $('ttsEnabled').checked,
     ttsBaseUrl: $('ttsBaseUrl').value.trim() || undefined,
     ttsApiKey: $('ttsApiKey').value.trim() || undefined,
@@ -570,7 +573,7 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
       const name = isAnthropic ? tc.name : tc.function.name
       const args = isAnthropic ? tc.input : JSON.parse(tc.function.arguments || '{}')
 
-      showBubble(`🔍 searching: ${args.query || name}...`)
+      if (cfg.showToolCalls) showBubble(`🔍 searching: ${args.query || name}...`)
       const result = await executeTool(name, args, cfg.tavilyKey)
 
       if (isAnthropic) {
@@ -727,7 +730,7 @@ function updateMicButton() {
 loadConfig()
 updateMicButton()
 
-document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#ttsEnabled,#ttsBaseUrl,#ttsApiKey,#proxyUrl,#proxyEnabled').forEach(el => {
+document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#showToolCalls,#ttsEnabled,#ttsBaseUrl,#ttsApiKey,#proxyUrl,#proxyEnabled').forEach(el => {
   el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', () => {
     saveConfig()
     updateMicButton()
