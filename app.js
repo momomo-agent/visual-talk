@@ -118,11 +118,11 @@ function renderBlock(type, data) {
   if (data.y != null) el.style.top = `${data.y}%`
   if (data.w) el.style.width = `${data.w}%`
   
-  // New blocks always at z=0 (front), will be pushed back later
-  el.style.transform = `translateZ(0px) scale(1)`
+  // New blocks always at front
+  el.style.transform = `scale(1)`
   el.style.opacity = 1
   el.style.zIndex = 100
-  el.style.transition = 'transform 0.8s cubic-bezier(.23,1,.32,1), opacity 0.8s'
+  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1), opacity 0.6s, filter 0.6s'
 
   // Entrance animation via opacity only (no transform conflict)
   el.style.opacity = 0
@@ -236,14 +236,13 @@ function pushOldBlocks() {
 }
 
 function applyDepth(el, d) {
-  const z = -d * 120
-  const s = Math.max(0.7, 1 - d * 0.06)
-  const o = Math.max(0.35, 1 - d * 0.18)
-  el.style.transform = `translateZ(${z}px) scale(${s})`
+  // Use scale + opacity to simulate depth (no translateZ — it blocks click events)
+  const s = Math.max(0.65, 1 - d * 0.08)
+  const o = Math.max(0.2, 1 - d * 0.25)
+  el.style.transform = `scale(${s})`
   el.style.opacity = o
-  el.style.zIndex = Math.max(1, 100 - d * 10)
-  el.style.filter = d >= 2 ? `blur(${(d-1)*0.5}px)` : 'none'
-  // 保持交互能力
+  el.style.zIndex = Math.max(1, 100 - d * 20)
+  el.style.filter = d >= 2 ? `blur(${Math.min(d - 1, 3)}px)` : 'none'
   el.style.pointerEvents = 'auto'
 }
 
@@ -254,10 +253,35 @@ function renderBlocks(blocks) {
   // Push old blocks back (once per send round)
   pushOldBlocks()
 
-  // Render new blocks at front (z=0)
+  // Render new blocks — reuse existing if content matches
   blocks.forEach(({ type, data }, i) => {
+    const contentKey = JSON.stringify({ type, title: data.title, value: data.value, text: data.text, code: data.code })
+
+    // Check for existing block with same content
+    let existing = null
+    space.querySelectorAll('.v-block').forEach(old => {
+      if (old.dataset.contentKey === contentKey) existing = old
+    })
+
+    if (existing) {
+      // Bring existing block to front
+      existing.dataset.depth = depthLevel
+      existing.style.transform = 'scale(1)'
+      existing.style.opacity = 1
+      existing.style.zIndex = 100
+      existing.style.filter = 'none'
+      existing.classList.remove('receded')
+      // Update content if data changed
+      const updated = renderBlock(type, data)
+      if (existing.innerHTML !== updated.innerHTML) {
+        existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
+      }
+      return
+    }
+
     const el = renderBlock(type, data)
     el.dataset.depth = depthLevel
+    el.dataset.contentKey = contentKey
     el.style.transitionDelay = `${i * 0.08}s`
     setupBlockInteraction(el)
     space.appendChild(el)
@@ -272,7 +296,7 @@ function setupBlockInteraction(el) {
   el.addEventListener('mouseenter', () => {
     if (el.classList.contains('selected') || isDragging) return
     el._preHover = { transform: el.style.transform, opacity: el.style.opacity, zIndex: el.style.zIndex, filter: el.style.filter }
-    el.style.transform = 'translateZ(40px) scale(1.02)'
+    el.style.transform = 'scale(1.04)'
     el.style.opacity = 1
     el.style.zIndex = 150
     el.style.filter = 'none'
@@ -347,7 +371,7 @@ function toggleSelect(el) {
     el.classList.add('selected')
     selectedBlocks.add(el)
     // Float forward
-    el.style.transform = 'translateZ(60px) scale(1.03)'
+    el.style.transform = 'scale(1.05)'
     el.style.opacity = 1
     el.style.zIndex = 200
     el.style.filter = 'none'
