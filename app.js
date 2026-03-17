@@ -245,14 +245,10 @@ async function callLLM(prompt, onToken) {
   const fetchHeaders = { ...headers }
   if (cfg.proxyUrl) {
     fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
-    // Proxy protocol: config via headers, body unchanged
+    // Companion-ui edge proxy protocol: config via x-provider/x-base-url, auth via x-api-key
     fetchHeaders['x-provider'] = cfg.provider || 'openai'
     fetchHeaders['x-base-url'] = cfg.baseUrl || (isAnthropic ? 'https://api.anthropic.com' : 'https://api.openai.com')
     fetchHeaders['x-api-key'] = cfg.apiKey
-    // Remove direct auth headers — proxy handles it
-    delete fetchHeaders['Authorization']
-    delete fetchHeaders['x-api-key']
-    delete fetchHeaders['anthropic-version']
   }
 
   const res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body })
