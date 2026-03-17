@@ -118,37 +118,33 @@ function showBubble(text, speak = false) {
 
 // ── TTS ──
 let currentAudio = null
-let audioUnlocked = false
+let audioCtx = null
 
-// Unlock audio on first user gesture (required by browser autoplay policy)
+// Get or create AudioContext (needed for autoplay unlock)
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  return audioCtx
+}
+
+// Call on user gesture to unlock
 function unlockAudio() {
-  if (audioUnlocked) return
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  const buf = ctx.createBuffer(1, 1, 22050)
-  const src = ctx.createBufferSource()
-  src.buffer = buf
-  src.connect(ctx.destination)
-  src.start(0)
-  audioUnlocked = true
-  console.log('[TTS] audio unlocked')
+  const ctx = getAudioCtx()
+  if (ctx.state === 'suspended') ctx.resume()
 }
 
 async function playTTS(text) {
   const config = getConfig()
   console.log('[TTS] called with:', text?.slice(0, 50))
-  console.log('[TTS] enabled:', config.ttsEnabled, 'hasKey:', !!config.ttsApiKey)
   if (!config.ttsEnabled || !config.ttsApiKey) return
   
   // 停止之前的音频
   if (currentAudio) {
     try { currentAudio.pause() } catch {}
-    currentAudio.src = ''
     currentAudio = null
   }
   
   try {
     const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
-    console.log('[TTS] fetching from:', `${baseUrl}/v1/audio/speech`)
     const res = await fetch(`${baseUrl}/v1/audio/speech`, {
       method: 'POST',
       headers: {
@@ -164,29 +160,26 @@ async function playTTS(text) {
       })
     })
     
-    console.log('[TTS] response:', res.status, res.headers.get('content-type'))
-    if (res.ok) {
-      const arrayBuffer = await res.arrayBuffer()
-      console.log('[TTS] audio bytes:', arrayBuffer.byteLength)
-      
-      // Use base64 data URL instead of blob URL for better compatibility
-      const bytes = new Uint8Array(arrayBuffer)
-      let binary = ''
-      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-      const b64 = btoa(binary)
-      const dataUrl = `data:audio/mpeg;base64,${b64}`
-      
-      currentAudio = new Audio(dataUrl)
-      currentAudio.onended = () => console.log('[TTS] playback ended')
-      currentAudio.onerror = (e) => console.error('[TTS] audio error:', e)
-      currentAudio.play()
-        .then(() => console.log('[TTS] playing!'))
-        .catch(e => console.error('[TTS] play failed:', e))
-    } else {
-      console.error('[TTS] API error:', res.status, await res.text())
-    }
+    console.log('[TTS] response:', res.status)
+    if (!res.ok) { console.error('[TTS] API error:', res.status); return }
+    
+    const arrayBuffer = await res.arrayBuffer()
+    console.log('[TTS] audio bytes:', arrayBuffer.byteLength)
+    if (arrayBuffer.byteLength === 0) return
+    
+    // Decode via AudioContext (bypasses format detection issues)
+    const ctx = getAudioCtx()
+    if (ctx.state === 'suspended') await ctx.resume()
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
+    const source = ctx.createBufferSource()
+    source.buffer = audioBuffer
+    source.connect(ctx.destination)
+    source.start(0)
+    source.onended = () => console.log('[TTS] playback ended')
+    currentAudio = { pause: () => { try { source.stop() } catch {} } }
+    console.log('[TTS] playing via AudioContext!')
   } catch (e) {
-    console.error('[TTS] fetch error:', e)
+    console.error('[TTS] error:', e)
   }
 }
 
@@ -748,12 +741,17 @@ async function transcribeAudio(audioBlob) {
     })
     
     if (res.ok) {
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('json')) {
+        showBubble('语音识别服务不可用')
+        return
+      }
       const { text } = await res.json()
       $('input').value = text
       $('bubble').classList.remove('visible')
       send()
     } else {
-      showBubble('识别失败')
+      showBubble('识别失败: ' + res.status)
     }
   } catch (e) {
     showBubble('识别错误: ' + e.message)
