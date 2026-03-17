@@ -263,6 +263,26 @@ function renderBlocks(blocks) {
 function setupBlockInteraction(el) {
   let isDragging = false, startX, startY, origLeft, origTop
 
+  // Hover: float forward
+  el.addEventListener('mouseenter', () => {
+    if (el.classList.contains('selected') || isDragging) return
+    el._preHover = { transform: el.style.transform, opacity: el.style.opacity, zIndex: el.style.zIndex, filter: el.style.filter }
+    el.style.transform = 'translateZ(40px) scale(1.02)'
+    el.style.opacity = 1
+    el.style.zIndex = 150
+    el.style.filter = 'none'
+  })
+  el.addEventListener('mouseleave', () => {
+    if (el.classList.contains('selected') || isDragging) return
+    if (el._preHover) {
+      el.style.transform = el._preHover.transform
+      el.style.opacity = el._preHover.opacity
+      el.style.zIndex = el._preHover.zIndex
+      el.style.filter = el._preHover.filter
+      el._preHover = null
+    }
+  })
+
   // Click to select/deselect
   el.addEventListener('click', e => {
     if (isDragging) return
