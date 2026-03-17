@@ -42,10 +42,11 @@ Layout rules:
 - Think holographic display, not flat webpage
 
 IMPORTANT for cards with images:
-- For movies/books/products, ALWAYS include "image" with a real poster/cover URL
-- Use TMDB image URLs like https://image.tmdb.org/t/p/w500/POSTER_PATH.jpg
-- Or Douban poster URLs — every card about a visual work MUST have an image
-- Multiple recommendation cards should ALL have images, not just the first one`
+- For movies/books/products, include "image" ONLY if you know the exact real URL
+- Do NOT guess or fabricate image URLs — if unsure, omit the "image" field entirely
+- Douban poster URLs (img9.doubanio.com) are reliable if you know the exact path
+- TMDB URLs require exact poster_path — do not guess random paths
+- It's better to show no image than a broken image`
 
 // ── Config ──
 function loadConfig() {
@@ -237,13 +238,16 @@ function pushOldBlocks() {
 
 function applyDepth(el, d) {
   const z = -d * 160
-  const s = Math.max(0.65, 1 - d * 0.08)
-  const o = Math.max(0.2, 1 - d * 0.25)
+  const s = Math.max(0.6, 1 - d * 0.1)
+  const o = Math.max(0, 1 - d * 0.3)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 100 - d * 20)
-  el.style.filter = d >= 2 ? `blur(${Math.min(d - 1, 3)}px)` : 'none'
+  // Blur starts at d>=1, ramps up quickly
+  el.style.filter = d >= 1 ? `blur(${Math.min(d * 1.5, 6)}px)` : 'none'
   el.style.pointerEvents = 'auto'
+  // Remove completely invisible blocks
+  if (o <= 0) el.remove()
 }
 
 function renderBlocks(blocks) {
@@ -362,7 +366,7 @@ function setupBlockInteraction(el) {
 
 function toggleSelect(el) {
   if (el.classList.contains('selected')) {
-    el.classList.remove('selected')
+    el.classList.remove('selected', 'glow-breathe')
     selectedBlocks.delete(el)
     // Return to depth-based position
     const d = depthLevel - parseInt(el.dataset.depth || '0')
@@ -370,17 +374,19 @@ function toggleSelect(el) {
   } else {
     el.classList.add('selected')
     selectedBlocks.add(el)
-    // Float forward
+    // Float forward — glow transitions in via CSS transition
     el.style.transform = 'translateZ(80px) scale(1.05)'
     el.style.opacity = 1
     el.style.zIndex = 200
     el.style.filter = 'none'
+    // Start breathing animation after glow transition completes
+    setTimeout(() => el.classList.add('glow-breathe'), 500)
   }
 }
 
 function clearSelection() {
   selectedBlocks.forEach(el => {
-    el.classList.remove('selected')
+    el.classList.remove('selected', 'glow-breathe')
     const d = depthLevel - parseInt(el.dataset.depth || '0')
     applyDepth(el, d)
   })
