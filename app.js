@@ -639,7 +639,7 @@ async function send() {
 
     // Final pass — render any remaining blocks
     const { speech, blocks } = parseResponse(reply)
-    if (speech && !$('bubble').classList.contains('visible')) showBubble(speech, true)
+    if (speech) showBubble(speech, true)
     if (blocks.length > lastBlockCount) {
       renderBlocks(blocks.slice(lastBlockCount))
     }
