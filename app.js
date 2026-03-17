@@ -119,10 +119,10 @@ function renderBlock(type, data) {
   if (data.w) el.style.width = `${data.w}%`
   
   // New blocks always at front
-  el.style.transform = `scale(1)`
+  el.style.transform = `translateZ(0px) scale(1)`
   el.style.opacity = 1
   el.style.zIndex = 100
-  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1), opacity 0.6s, filter 0.6s'
+  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1), opacity 0.6s, filter 0.6s, box-shadow 0.6s'
 
   // Entrance animation via opacity only (no transform conflict)
   el.style.opacity = 0
@@ -236,10 +236,10 @@ function pushOldBlocks() {
 }
 
 function applyDepth(el, d) {
-  // Use scale + opacity to simulate depth (no translateZ — it blocks click events)
+  const z = -d * 160
   const s = Math.max(0.65, 1 - d * 0.08)
   const o = Math.max(0.2, 1 - d * 0.25)
-  el.style.transform = `scale(${s})`
+  el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 100 - d * 20)
   el.style.filter = d >= 2 ? `blur(${Math.min(d - 1, 3)}px)` : 'none'
@@ -296,7 +296,7 @@ function setupBlockInteraction(el) {
   el.addEventListener('mouseenter', () => {
     if (el.classList.contains('selected') || isDragging) return
     el._preHover = { transform: el.style.transform, opacity: el.style.opacity, zIndex: el.style.zIndex, filter: el.style.filter }
-    el.style.transform = 'scale(1.04)'
+    el.style.transform = 'translateZ(60px) scale(1.04)'
     el.style.opacity = 1
     el.style.zIndex = 150
     el.style.filter = 'none'
@@ -371,7 +371,7 @@ function toggleSelect(el) {
     el.classList.add('selected')
     selectedBlocks.add(el)
     // Float forward
-    el.style.transform = 'scale(1.05)'
+    el.style.transform = 'translateZ(80px) scale(1.05)'
     el.style.opacity = 1
     el.style.zIndex = 200
     el.style.filter = 'none'
