@@ -233,9 +233,6 @@ function pushOldBlocks() {
     if (d <= 0) return
     applyDepth(old, d)
   })
-  
-  // 额外后退：让旧内容离得更远
-  space.style.transform = `translateZ(-${depthLevel * 30}px)`
 }
 
 function applyDepth(el, d) {
