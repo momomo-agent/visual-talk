@@ -120,7 +120,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       el.innerHTML = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
         ${(data.tags||[]).length ? `<div class="tags">${data.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -172,10 +172,10 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        el.innerHTML = `<div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy">`).join('')}</div>
+        el.innerHTML = `<div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}`
       } else if (data.url) {
-        el.innerHTML = `<img src="${esc(data.url)}" loading="lazy">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}`
+        el.innerHTML = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}`
       }
       break
   }
