@@ -226,7 +226,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="border-radius:0;margin:0" onerror="this.style.display='none'">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -283,10 +283,10 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" style="aspect-ratio:16/9;object-fit:cover;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="border-radius:0;margin:0" onerror="this.style.display='none'"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
