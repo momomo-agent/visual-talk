@@ -102,7 +102,7 @@ function getConfig() {
 // ── Bubble (top-left, no auto-fade) ──
 let bubbleTimer = null
 
-function showBubble(text) {
+function showBubble(text, speak = false) {
   const bubble = $('bubble')
   bubble.textContent = text
   bubble.className = 'bubble visible'
@@ -112,8 +112,8 @@ function showBubble(text) {
     setTimeout(() => { bubble.className = 'bubble' }, 500)
   }, 6000)
   
-  // TTS
-  if (text) playTTS(text)
+  // TTS only when explicitly requested
+  if (speak && text) playTTS(text)
 }
 
 // ── TTS ──
@@ -125,7 +125,8 @@ async function playTTS(text) {
   
   // 停止之前的音频
   if (currentAudio) {
-    currentAudio.pause()
+    try { currentAudio.pause() } catch {}
+    currentAudio.src = ''
     currentAudio = null
   }
   
@@ -141,20 +142,18 @@ async function playTTS(text) {
         model: 'tts-1-hd',
         voice: 'nova',
         input: text,
-        speed: 0.75
+        speed: 0.75,
+        response_format: 'mp3'
       })
     })
     
     if (res.ok) {
-      const blob = await res.blob()
+      const arrayBuffer = await res.arrayBuffer()
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
       const url = URL.createObjectURL(blob)
+      
       currentAudio = new Audio(url)
-      currentAudio.play().catch(e => {
-        console.error('Play failed:', e)
-        showBubble('播放失败，请检查浏览器权限')
-      })
-    } else {
-      console.error('TTS API error:', res.status, await res.text())
+      currentAudio.play().catch(() => {})
     }
   } catch (e) {
     console.error('TTS error:', e)
@@ -197,7 +196,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" style="display:none;border-radius:0;margin:0" onload="this.style.display='block'" onerror="this.remove()">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="border-radius:0;margin:0" onerror="this.style.display='none'">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -254,7 +253,7 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer" style="display:none" onload="this.style.display='block'" onerror="this.remove()">`).join('')}</div>
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
         body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="display:none;border-radius:0;margin:0" onload="this.style.display='block'" onerror="this.remove()"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
@@ -640,13 +639,13 @@ async function send() {
 
     // Final pass — render any remaining blocks
     const { speech, blocks } = parseResponse(reply)
-    if (speech && !$('bubble').classList.contains('visible')) showBubble(speech)
+    if (speech && !$('bubble').classList.contains('visible')) showBubble(speech, true)
     if (blocks.length > lastBlockCount) {
       renderBlocks(blocks.slice(lastBlockCount))
     }
 
     // If nothing structured, show as bubble
-    if (!speech && !blocks.length) showBubble(reply.slice(0, 100))
+    if (!speech && !blocks.length) showBubble(reply.slice(0, 100), true)
   } catch (err) {
     hideThinking()
     showBubble(`Error: ${err.message}`)
