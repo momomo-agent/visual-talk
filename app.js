@@ -197,12 +197,16 @@ function renderBlock(type, data) {
         body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="border-radius:0;margin:0"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" style="border-radius:0;margin:0"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
 
   el.innerHTML = bar + body
+  // Hide broken images after render
+  el.querySelectorAll('img').forEach(img => {
+    img.onerror = () => img.style.display = 'none'
+  })
   return el
 }
 
