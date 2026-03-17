@@ -215,24 +215,39 @@ function parseResponse(text) {
 }
 
 let depthLevel = 0
+let currentRoundDepth = -1
 const selectedBlocks = new Set()
+
+function pushOldBlocks() {
+  // Only push once per round
+  if (currentRoundDepth === depthLevel) return
+  depthLevel++
+  currentRoundDepth = depthLevel
+
+  const space = $('canvasSpace')
+  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
+    const d = depthLevel - parseInt(old.dataset.depth || '0')
+    if (d <= 0) return
+    applyDepth(old, d)
+  })
+}
+
+function applyDepth(el, d) {
+  const z = -d * 80
+  const s = Math.max(0.75, 1 - d * 0.05)
+  const o = Math.max(0.4, 1 - d * 0.15)
+  el.style.transform = `translateZ(${z}px) scale(${s})`
+  el.style.opacity = o
+  el.style.zIndex = Math.max(1, 100 - d * 10)
+  el.style.filter = d >= 3 ? 'blur(1px)' : 'none'
+}
 
 function renderBlocks(blocks) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
-  // Push existing non-selected blocks back one depth level
-  depthLevel++
-  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
-    const d = depthLevel - parseInt(old.dataset.depth || '0')
-    const z = -d * 80
-    const s = Math.max(0.75, 1 - d * 0.05)
-    const o = Math.max(0.4, 1 - d * 0.15)
-    old.style.transform = `translateZ(${z}px) scale(${s})`
-    old.style.opacity = o
-    old.style.zIndex = Math.max(1, 100 - d * 10)
-    old.style.filter = d >= 3 ? 'blur(1px)' : 'none'
-  })
+  // Push old blocks back (once per send round)
+  pushOldBlocks()
 
   // Render new blocks at front (z=0)
   blocks.forEach(({ type, data }, i) => {
@@ -304,12 +319,7 @@ function toggleSelect(el) {
     selectedBlocks.delete(el)
     // Return to depth-based position
     const d = depthLevel - parseInt(el.dataset.depth || '0')
-    const z = -d * 80
-    const s = Math.max(0.75, 1 - d * 0.05)
-    const o = Math.max(0.4, 1 - d * 0.15)
-    el.style.transform = `translateZ(${z}px) scale(${s})`
-    el.style.opacity = o
-    el.style.zIndex = Math.max(1, 100 - d * 10)
+    applyDepth(el, d)
   } else {
     el.classList.add('selected')
     selectedBlocks.add(el)
@@ -325,12 +335,7 @@ function clearSelection() {
   selectedBlocks.forEach(el => {
     el.classList.remove('selected')
     const d = depthLevel - parseInt(el.dataset.depth || '0')
-    const z = -d * 80
-    const s = Math.max(0.75, 1 - d * 0.05)
-    const o = Math.max(0.4, 1 - d * 0.15)
-    el.style.transform = `translateZ(${z}px) scale(${s})`
-    el.style.opacity = o
-    el.style.zIndex = Math.max(1, 100 - d * 10)
+    applyDepth(el, d)
   })
   selectedBlocks.clear()
 }
@@ -482,6 +487,7 @@ async function send() {
   input.value = ''
   btn.disabled = true
   showThinking()
+  currentRoundDepth = -1 // Allow push on next renderBlocks
 
   // If blocks are selected, prepend context
   const selCtx = window._selectedContext
