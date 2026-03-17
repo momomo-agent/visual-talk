@@ -11,6 +11,13 @@ body {
 .canvas {
   flex: 1; position: relative; overflow-y: auto; overflow-x: hidden;
   padding: 40px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.canvas::-webkit-scrollbar { width: 3px; }
+.canvas::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+
+.canvas-inner {
+  max-width: 720px; width: 100%;
   display: flex; flex-wrap: wrap; align-content: flex-start;
   gap: 16px;
 }
@@ -85,36 +92,30 @@ body {
 .v-block .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .v-block .img-grid img { aspect-ratio: 16/10; object-fit: cover; }
 
-/* ── AI Bubble ── */
+/* ── AI Bubble (corner stream) ── */
 .bubble {
-  position: fixed; bottom: 80px; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20,20,20,0.95); backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 16px; padding: 12px 20px;
-  max-width: 480px; font-size: 14px; line-height: 1.6; color: #bbb;
+  position: fixed; bottom: 80px; left: 24px;
+  background: rgba(20,20,20,0.9); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 12px; padding: 10px 16px;
+  max-width: 320px; font-size: 13px; line-height: 1.6; color: #888;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.4s, transform 0.4s;
+  transition: opacity 0.3s;
   z-index: 100;
 }
-.bubble.visible {
-  opacity: 1; pointer-events: auto;
-  transform: translateX(-50%) translateY(-4px);
-}
-.bubble.fading {
-  opacity: 0;
-  transform: translateX(-50%) translateY(4px);
-}
+.bubble.visible { opacity: 1; pointer-events: auto; }
+.bubble.fading { opacity: 0; }
 
 /* ── Input Bar ── */
 .input-bar {
   padding: 12px 20px 20px;
   display: flex; gap: 8px; align-items: center;
+  justify-content: center;
   background: #0a0a0a;
   border-top: 1px solid rgba(255,255,255,0.03);
 }
 .input-bar input {
-  flex: 1; background: #111; border: 1px solid #1a1a1a;
+  flex: 1; max-width: 680px; background: #111; border: 1px solid #1a1a1a;
   border-radius: 24px; color: #bbb; padding: 10px 16px;
   font-size: 14px; outline: none;
   transition: border-color 0.2s;

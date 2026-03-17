@@ -46,6 +46,9 @@ function loadConfig() {
     if (s.apiKey) $('apiKey').value = s.apiKey
     if (s.baseUrl) $('baseUrl').value = s.baseUrl
     if (s.model) $('model').value = s.model
+    if (s.proxyUrl) $('proxyUrl').value = s.proxyUrl
+    $('proxyEnabled').checked = !!s.proxyEnabled
+    $('proxyUrl').disabled = !s.proxyEnabled
   } catch {}
 }
 
@@ -55,15 +58,19 @@ function saveConfig() {
     apiKey: $('apiKey').value,
     baseUrl: $('baseUrl').value,
     model: $('model').value,
+    proxyUrl: $('proxyUrl').value,
+    proxyEnabled: $('proxyEnabled').checked,
   }))
 }
 
 function getConfig() {
+  const proxyEnabled = $('proxyEnabled').checked
   return {
     provider: $('provider').value || 'openai',
     apiKey: $('apiKey').value.trim(),
     baseUrl: $('baseUrl').value.trim() || undefined,
     model: $('model').value.trim() || undefined,
+    proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://proxy.link2web.site/proxy') : undefined,
   }
 }
 
@@ -170,23 +177,22 @@ function parseResponse(text) {
 }
 
 function renderBlocks(blocks) {
-  const canvas = $('canvas')
+  const inner = $('canvasInner')
   $('greeting').classList.add('hidden')
 
   blocks.forEach(({ type, data }, i) => {
     const el = renderBlock(type, data)
     el.style.animationDelay = `${i * 0.08}s`
-    canvas.appendChild(el)
+    inner.appendChild(el)
   })
 
-  // Scroll to new content
-  setTimeout(() => canvas.scrollTop = canvas.scrollHeight, 100)
+  setTimeout(() => $('canvas').scrollTop = $('canvas').scrollHeight, 100)
 }
 
-// ── LLM Call ──
+// ── LLM Call (streaming) ──
 let history = []
 
-async function callLLM(prompt) {
+async function callLLM(prompt, onToken) {
   const cfg = getConfig()
   if (!cfg.apiKey) {
     $('configOverlay').classList.add('open')
@@ -196,7 +202,7 @@ async function callLLM(prompt) {
   history.push({ role: 'user', content: prompt })
 
   const isAnthropic = cfg.provider === 'anthropic'
-  const url = isAnthropic
+  const targetUrl = isAnthropic
     ? `${cfg.baseUrl || 'https://api.anthropic.com'}/v1/messages`
     : `${cfg.baseUrl || 'https://api.openai.com'}/v1/chat/completions`
 
@@ -208,7 +214,7 @@ async function callLLM(prompt) {
     headers['anthropic-version'] = '2023-06-01'
     body = JSON.stringify({
       model: cfg.model || 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 4096, stream: true,
       system: SYSTEM,
       messages: history,
     })
@@ -216,24 +222,59 @@ async function callLLM(prompt) {
     headers['Authorization'] = `Bearer ${cfg.apiKey}`
     body = JSON.stringify({
       model: cfg.model || 'gpt-4o',
-      max_tokens: 4096,
+      max_tokens: 4096, stream: true,
       messages: [{ role: 'system', content: SYSTEM }, ...history],
     })
   }
 
-  const res = await fetch(url, { method: 'POST', headers, body })
+  // Proxy: forward via proxy URL with target in header
+  let fetchUrl = targetUrl
+  if (cfg.proxyUrl) {
+    fetchUrl = cfg.proxyUrl
+    headers['x-target-url'] = targetUrl
+  }
+
+  const res = await fetch(fetchUrl, { method: 'POST', headers, body })
   if (!res.ok) {
     const errText = await res.text()
     throw new Error(`API ${res.status}: ${errText}`)
   }
 
-  const json = await res.json()
-  const reply = isAnthropic
-    ? json.content?.[0]?.text || ''
-    : json.choices?.[0]?.message?.content || ''
+  let full = ''
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
 
-  history.push({ role: 'assistant', content: reply })
-  return reply
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+
+    const lines = buf.split('\n')
+    buf = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      if (data === '[DONE]') continue
+      try {
+        const j = JSON.parse(data)
+        let token = ''
+        if (isAnthropic) {
+          if (j.type === 'content_block_delta') token = j.delta?.text || ''
+        } else {
+          token = j.choices?.[0]?.delta?.content || ''
+        }
+        if (token) {
+          full += token
+          if (onToken) onToken(full)
+        }
+      } catch {}
+    }
+  }
+
+  history.push({ role: 'assistant', content: full })
+  return full
 }
 
 // ── Send ──
@@ -246,15 +287,33 @@ async function send() {
   input.value = ''
   btn.disabled = true
 
+  let lastBlockCount = 0
+
   try {
-    const reply = await callLLM(text)
+    const reply = await callLLM(text, (partial) => {
+      // Stream speech bubble
+      const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+      if (speechMatch) showBubble(speechMatch[1].trim())
+
+      // Live-render completed blocks
+      const { blocks } = parseResponse(partial)
+      if (blocks.length > lastBlockCount) {
+        const newBlocks = blocks.slice(lastBlockCount)
+        renderBlocks(newBlocks)
+        lastBlockCount = blocks.length
+      }
+    })
+
     if (!reply) return
 
+    // Final pass — render any remaining blocks
     const { speech, blocks } = parseResponse(reply)
-    if (speech) showBubble(speech)
-    if (blocks.length) renderBlocks(blocks)
+    if (speech && !$('bubble').classList.contains('visible')) showBubble(speech)
+    if (blocks.length > lastBlockCount) {
+      renderBlocks(blocks.slice(lastBlockCount))
+    }
 
-    // If no structured output, show as bubble
+    // If nothing structured, show as bubble
     if (!speech && !blocks.length) showBubble(reply.slice(0, 100))
   } catch (err) {
     showBubble(`Error: ${err.message}`)
@@ -267,8 +326,11 @@ async function send() {
 
 // ── Init ──
 loadConfig()
-document.querySelectorAll('#provider,#apiKey,#baseUrl,#model').forEach(el => {
-  el.addEventListener('input', saveConfig)
+document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#proxyUrl,#proxyEnabled').forEach(el => {
+  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', saveConfig)
+})
+$('proxyEnabled').addEventListener('change', () => {
+  $('proxyUrl').disabled = !$('proxyEnabled').checked
 })
 
 $('gearBtn').addEventListener('click', () => $('configOverlay').classList.add('open'))
