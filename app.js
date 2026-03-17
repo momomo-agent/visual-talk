@@ -228,6 +228,10 @@ function pushOldBlocks() {
   depthLevel++
   currentRoundDepth = depthLevel
 
+  // Clear selection when new response arrives
+  clearSelection()
+  updateSelectionContext()
+
   const space = $('canvasSpace')
   space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
     const d = depthLevel - parseInt(old.dataset.depth || '0')
