@@ -313,6 +313,7 @@ function parseResponse(text) {
 
 let depthLevel = 0
 let currentRoundDepth = -1
+let currentRoundEls = new Set()
 const selectedBlocks = new Set()
 
 function pushOldBlocks() {
@@ -320,13 +321,15 @@ function pushOldBlocks() {
   if (currentRoundDepth === depthLevel) return
   depthLevel++
   currentRoundDepth = depthLevel
+  currentRoundEls = new Set()
 
   // Clear selection when new response arrives
   clearSelection()
   updateSelectionContext()
 
   const space = $('canvasSpace')
-  space.querySelectorAll('.v-block:not(.selected):not(.fresh)').forEach(old => {
+  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
+    if (currentRoundEls.has(old)) return
     const d = depthLevel - parseInt(old.dataset.depth || '0')
     if (d <= 0) return
     applyDepth(old, d)
@@ -375,6 +378,7 @@ function renderBlocks(blocks) {
       existing.style.zIndex = 100 - i
       existing.style.filter = 'none'
       existing.classList.remove('receded')
+      currentRoundEls.add(existing)
       const updated = renderBlock(type, data)
       if (existing.innerHTML !== updated.innerHTML) {
         existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
@@ -386,14 +390,12 @@ function renderBlocks(blocks) {
     el.dataset.depth = depthLevel
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
-    el.classList.add('fresh')
     el.style.transform = `translateZ(${intraZ}px) scale(1)`
     el.style.zIndex = 100 - i
     el.style.transitionDelay = `${i * 0.1}s`
     setupBlockInteraction(el)
     space.appendChild(el)
-    // Remove fresh flag after animation settles
-    setTimeout(() => el.classList.remove('fresh'), 1000)
+    currentRoundEls.add(el)
   })
 }
 
