@@ -679,99 +679,57 @@ async function send() {
   }
 }
 
-// ── Voice Input (Whisper API) ──
-let mediaRecorder = null
-let audioChunks = []
+// ── Voice Input (Web Speech API) ──
+let recognition = null
 
-$('micBtn').addEventListener('mousedown', startRecording)
-$('micBtn').addEventListener('mouseup', stopRecording)
-$('micBtn').addEventListener('mouseleave', stopRecording)
+$('micBtn').addEventListener('click', toggleVoiceInput)
 
-async function startRecording() {
-  const config = getConfig()
-  if (!config.ttsEnabled || !config.ttsApiKey) {
-    showBubble('请先在设置中启用 TTS 并填写 API Key')
+function toggleVoiceInput() {
+  if (recognition) {
+    recognition.stop()
+    recognition = null
+    $('micBtn').classList.remove('recording')
     return
   }
-  
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    mediaRecorder = new MediaRecorder(stream)
-    audioChunks = []
-    
-    mediaRecorder.ondataavailable = (e) => {
-      audioChunks.push(e.data)
-    }
-    
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-      await transcribeAudio(audioBlob)
-      stream.getTracks().forEach(track => track.stop())
-    }
-    
-    mediaRecorder.start()
-    $('micBtn').classList.add('recording')
-  } catch (e) {
-    showBubble('无法访问麦克风: ' + e.message)
-  }
-}
 
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop()
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) {
+    showBubble('浏览器不支持语音识别')
+    return
+  }
+
+  recognition = new SR()
+  recognition.lang = 'zh-CN'
+  recognition.interimResults = false
+  recognition.continuous = false
+
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript
+    $('input').value = text
+    $('bubble').classList.remove('visible')
+    send()
+  }
+
+  recognition.onerror = (e) => {
+    console.error('[STT] error:', e.error)
+    if (e.error !== 'no-speech') showBubble('识别失败: ' + e.error)
+  }
+
+  recognition.onend = () => {
+    recognition = null
     $('micBtn').classList.remove('recording')
   }
-}
 
-async function transcribeAudio(audioBlob) {
-  const config = getConfig()
-  const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
-  
-  showBubble('正在识别...')
-  
-  try {
-    const formData = new FormData()
-    formData.append('file', audioBlob, 'audio.webm')
-    formData.append('model', 'whisper-1')
-    
-    const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
-      body: formData
-    })
-    
-    if (res.ok) {
-      const contentType = res.headers.get('content-type') || ''
-      if (!contentType.includes('json')) {
-        showBubble('语音识别服务不可用')
-        return
-      }
-      const { text } = await res.json()
-      $('input').value = text
-      $('bubble').classList.remove('visible')
-      send()
-    } else {
-      showBubble('识别失败: ' + res.status)
-    }
-  } catch (e) {
-    showBubble('识别错误: ' + e.message)
-  }
+  recognition.start()
+  $('micBtn').classList.add('recording')
+  showBubble('请说话...')
 }
 
 // ── Init ──
-function updateMicButton() {
-  const config = getConfig()
-  $('micBtn').style.display = (config.ttsEnabled && config.ttsApiKey) ? 'flex' : 'none'
-}
-
 loadConfig()
-updateMicButton()
 
 document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#showToolCalls,#ttsEnabled,#ttsBaseUrl,#ttsApiKey,#proxyUrl,#proxyEnabled').forEach(el => {
-  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', () => {
-    saveConfig()
-    updateMicButton()
-  })
+  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', saveConfig)
 })
 $('proxyEnabled').addEventListener('change', () => {
   $('proxyUrl').disabled = !$('proxyEnabled').checked
