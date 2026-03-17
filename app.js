@@ -502,7 +502,6 @@ async function send() {
   if (!text) return
 
   input.value = ''
-  input.disabled = true
   showThinking()
   currentRoundDepth = -1 // Allow push on next renderBlocks
 
@@ -547,7 +546,6 @@ async function send() {
     showBubble(`Error: ${err.message}`)
     console.error(err)
   } finally {
-    input.disabled = false
     input.focus()
   }
 }
@@ -560,6 +558,9 @@ document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#proxyUrl,#proxyEna
 $('proxyEnabled').addEventListener('change', () => {
   $('proxyUrl').disabled = !$('proxyEnabled').checked
 })
+
+// Bind interaction to any existing blocks (e.g. after page reload)
+document.querySelectorAll('.v-block').forEach(setupBlockInteraction)
 
 $('gearBtn').addEventListener('click', () => $('configOverlay').classList.add('open'))
 $('configClose').addEventListener('click', () => $('configOverlay').classList.remove('open'))
