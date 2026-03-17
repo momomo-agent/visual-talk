@@ -266,20 +266,15 @@ function renderBlock(type, data) {
         body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="display:none;border-radius:0;margin:0" onload="this.style.display='block'" onerror="this.remove()"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="border-radius:0;margin:0" onerror="this.style.display='none'"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
 
   el.innerHTML = bar + body
-  // Images: show on successful load, remove on error
+  // Images: always visible, hide on error only
   el.querySelectorAll('img').forEach(img => {
-    if (img.complete && img.naturalWidth > 0) {
-      img.style.display = 'block'
-    } else if (img.complete) {
-      img.remove()
-    }
-    // For images still loading, inline onload/onerror handles it
+    if (img.complete && img.naturalWidth === 0) img.style.display = 'none'
   })
   return el
 }
