@@ -46,7 +46,7 @@ About images:
 - Search for "[title] poster" or "[title] 剧照" or "[title] screenshot" to get real URLs
 - Use image URLs from search results (images array) — they are real and verified
 - NEVER guess or fabricate image URLs — always search first
-- Broken images are hidden automatically, but prefer verified URLs from search`
+- Images only appear after successful load — failed ones are invisible to the user`
 
 // ── Config ──
 function loadConfig() {
@@ -137,7 +137,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" style="border-radius:0;margin:0">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" style="display:none;border-radius:0;margin:0" onload="this.style.display='block'" onerror="this.remove()">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -194,18 +194,20 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`).join('')}</div>
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer" style="display:none" onload="this.style.display='block'" onerror="this.remove()">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" style="border-radius:0;margin:0"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="display:none;border-radius:0;margin:0" onload="this.style.display='block'" onerror="this.remove()"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
 
   el.innerHTML = bar + body
-  // Hide broken images after render
+  // Images: hidden by default, show onload, remove on error
   el.querySelectorAll('img').forEach(img => {
-    img.onerror = () => img.style.display = 'none'
+    img.style.display = 'none'
+    img.onload = () => { img.style.display = 'block' }
+    img.onerror = () => img.remove()
   })
   return el
 }
