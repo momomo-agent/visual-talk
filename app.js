@@ -146,7 +146,7 @@ function renderBlock(type, data) {
 
     case 'metric':
       body = `<div class="win-body">
-        <div class="big-num">${esc(String(data.value))}${data.unit ? `<span style="font-size:18px;color:#9a7a5a">${esc(data.unit)}</span>` : ''}</div>
+        <div class="big-num">${esc(String(data.value))}${data.unit ? `<span style="font-size:18px;color:#8a7a60">${esc(data.unit)}</span>` : ''}</div>
         <div class="big-label">${esc(data.label || '')}</div>
         </div>`
       break
