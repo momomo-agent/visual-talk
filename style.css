@@ -73,8 +73,8 @@ body {
   border-color: rgba(255,255,255,0.6);
 }
 .v-block.selected {
-  border-color: rgba(196,168,130,0.5);
-  box-shadow: 0 0 0 2px rgba(196,168,130,0.2), 0 8px 40px rgba(0,0,0,0.35);
+  border-color: rgba(232,190,140,0.3);
+  box-shadow: 0 0 20px rgba(232,190,140,0.15), 0 0 40px rgba(232,190,140,0.08), 0 8px 32px rgba(0,0,0,0.3);
 }
 
 /* Window title bar */
