@@ -41,12 +41,12 @@ Layout rules:
 - Create depth — don't put everything at z:0
 - Think holographic display, not flat webpage
 
-About images in cards:
-- For movies, use Douban poster URLs. Common format: https://img2.doubanio.com/view/photo/s_ratio_poster/public/pXXXXXX.jpg
-- For well-known movies you're confident about, include the image URL
-- If unsure about exact URL, still try — broken images are hidden automatically
-- Wikipedia movie poster URLs also work: https://upload.wikimedia.org/wikipedia/en/thumb/...
-- Do NOT create a separate card explaining you can't show images — just include or omit the "image" field silently`
+About images:
+- You have a web_search tool — USE IT to find real image URLs when the user asks about movies, books, products, or anything visual
+- Search for "[title] poster" or "[title] 剧照" or "[title] screenshot" to get real URLs
+- Use image URLs from search results (images array) — they are real and verified
+- NEVER guess or fabricate image URLs — always search first
+- Broken images are hidden automatically, but prefer verified URLs from search`
 
 // ── Config ──
 function loadConfig() {
@@ -426,14 +426,14 @@ document.addEventListener('click', e => {
 // ── LLM Call (streaming) ──
 let history = []
 
-async function callLLM(prompt, onToken) {
+async function callLLM(prompt, onToken, isToolContinue = false) {
   const cfg = getConfig()
   if (!cfg.apiKey) {
     $('configOverlay').classList.add('open')
     return null
   }
 
-  history.push({ role: 'user', content: prompt })
+  if (!isToolContinue) history.push({ role: 'user', content: prompt })
 
   const isAnthropic = cfg.provider === 'anthropic'
   const targetUrl = isAnthropic
@@ -441,6 +441,7 @@ async function callLLM(prompt, onToken) {
     : `${cfg.baseUrl || 'https://api.openai.com'}/v1/chat/completions`
 
   const headers = { 'Content-Type': 'application/json' }
+  const tools = isAnthropic ? TOOLS_ANTHROPIC : TOOLS_OPENAI
   let body
 
   if (isAnthropic) {
@@ -448,99 +449,91 @@ async function callLLM(prompt, onToken) {
     headers['anthropic-version'] = '2023-06-01'
     body = JSON.stringify({
       model: cfg.model || 'claude-sonnet-4-20250514',
-      max_tokens: 4096, stream: true,
+      max_tokens: 4096, stream: false,
       system: SYSTEM,
       messages: history,
+      tools,
     })
   } else {
     headers['Authorization'] = `Bearer ${cfg.apiKey}`
     body = JSON.stringify({
       model: cfg.model || 'gpt-4o',
-      max_tokens: 4096, stream: true,
+      max_tokens: 4096, stream: false,
       messages: [{ role: 'system', content: SYSTEM }, ...history],
+      tools,
     })
   }
 
-  // Proxy: wrap request in JSON body (link2web protocol, same as agentic-lite)
-  let fetchUrl = targetUrl
+  // ── Fetch (proxy or direct) — non-streaming for tool use ──
+  let data
   const fetchHeaders = { ...headers }
   const useProxy = !!cfg.proxyUrl
 
   if (useProxy) {
-    fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
-    // link2web: body as string, stream:false
-    const proxyBody = JSON.parse(body)
-    proxyBody.stream = false
+    const fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
     const proxyRes = await fetch(fetchUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        url: targetUrl,
-        method: 'POST',
-        headers: fetchHeaders,
-        body: JSON.stringify(proxyBody),
-        mode: 'raw'
-      })
+      body: JSON.stringify({ url: targetUrl, method: 'POST', headers: fetchHeaders, body, mode: 'raw' })
     })
     const result = await proxyRes.json()
     if (!result.success) throw new Error(result.error || `Proxy failed: ${result.status}`)
     const rawBody = typeof result.body === 'string' ? result.body : JSON.stringify(result.body)
     if (result.status >= 400) throw new Error(`API error ${result.status}: ${rawBody.slice(0, 300)}`)
-    const data = JSON.parse(rawBody)
-    const reply = isAnthropic
-      ? data.content?.[0]?.text || ''
-      : data.choices?.[0]?.message?.content || ''
-    // Simulate streaming for bubble
-    if (onToken) {
-      const words = reply.split(/(?<=\s)/)
-      let acc = ''
-      for (const w of words) { acc += w; onToken(acc); await new Promise(r => setTimeout(r, 20)) }
+    data = JSON.parse(rawBody)
+  } else {
+    const res = await fetch(targetUrl, { method: 'POST', headers: fetchHeaders, body })
+    if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    data = await res.json()
+  }
+
+  // ── Extract response ──
+  const toolCalls = isAnthropic
+    ? (data.content || []).filter(b => b.type === 'tool_use')
+    : (data.choices?.[0]?.message?.tool_calls || [])
+
+  const textParts = isAnthropic
+    ? (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+    : (data.choices?.[0]?.message?.content || '')
+
+  // Show partial text immediately
+  if (textParts && onToken) {
+    const words = textParts.split(/(?<=\s)/)
+    let acc = ''
+    for (const w of words) { acc += w; onToken(acc); await new Promise(r => setTimeout(r, 15)) }
+  }
+
+  // ── Tool use loop ──
+  if (toolCalls.length > 0) {
+    // Add assistant message with tool calls to history
+    if (isAnthropic) {
+      history.push({ role: 'assistant', content: data.content })
+    } else {
+      history.push(data.choices[0].message)
     }
-    history.push({ role: 'assistant', content: reply })
-    return reply
-  }
 
-  const res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body })
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new Error(`API ${res.status}: ${errText}`)
-  }
+    // Execute each tool and add results
+    for (const tc of toolCalls) {
+      const name = isAnthropic ? tc.name : tc.function.name
+      const args = isAnthropic ? tc.input : JSON.parse(tc.function.arguments || '{}')
 
-  let full = ''
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buf = ''
+      showBubble(`🔍 searching: ${args.query || name}...`)
+      const result = await executeTool(name, args, cfg.tavilyKey)
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-
-    const lines = buf.split('\n')
-    buf = lines.pop() || ''
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const data = line.slice(6).trim()
-      if (data === '[DONE]') continue
-      try {
-        const j = JSON.parse(data)
-        let token = ''
-        if (isAnthropic) {
-          if (j.type === 'content_block_delta') token = j.delta?.text || ''
-        } else {
-          token = j.choices?.[0]?.delta?.content || ''
-        }
-        if (token) {
-          full += token
-          if (onToken) onToken(full)
-        }
-      } catch {}
+      if (isAnthropic) {
+        history.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(result) }] })
+      } else {
+        history.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) })
+      }
     }
+
+    // Continue LLM with tool results
+    return await callLLM(null, onToken, true)
   }
 
-  history.push({ role: 'assistant', content: full })
-  return full
+  // ── Final text response ──
+  history.push({ role: 'assistant', content: textParts })
+  return textParts
 }
 
 // ── Send ──
