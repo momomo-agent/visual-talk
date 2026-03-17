@@ -41,12 +41,12 @@ Layout rules:
 - Create depth — don't put everything at z:0
 - Think holographic display, not flat webpage
 
-IMPORTANT about images:
-- For movie/book/product cards, include "image" with a poster URL when possible
-- Use Douban poster format: https://img9.doubanio.com/view/photo/s_ratio_poster/public/pXXXXXXXX.jpg
-- Only use URLs you are confident are real and accessible
-- If you're not sure about the exact URL, omit the "image" field — a card without image is better than a broken one
-- NEVER guess or fabricate TMDB paths — they return 404 if wrong`
+About images in cards:
+- For movies, use Douban poster URLs. Common format: https://img2.doubanio.com/view/photo/s_ratio_poster/public/pXXXXXX.jpg
+- For well-known movies you're confident about, include the image URL
+- If unsure about exact URL, still try — broken images are hidden automatically
+- Wikipedia movie poster URLs also work: https://upload.wikimedia.org/wikipedia/en/thumb/...
+- Do NOT create a separate card explaining you can't show images — just include or omit the "image" field silently`
 
 // ── Config ──
 function loadConfig() {
