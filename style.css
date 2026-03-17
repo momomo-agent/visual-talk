@@ -186,6 +186,30 @@ body {
 }
 .input-bar input::placeholder { color: rgba(196,168,130,0.2); }
 
+.mic-btn {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(28,24,18,0.7); backdrop-filter: blur(12px);
+  border: 1px solid rgba(196,168,130,0.1);
+  color: rgba(196,168,130,0.3); font-size: 20px;
+  cursor: pointer; transition: all 0.3s;
+  display: flex; align-items: center; justify-content: center;
+}
+.mic-btn:hover {
+  background: rgba(28,24,18,0.85);
+  border-color: rgba(196,168,130,0.2);
+  color: rgba(196,168,130,0.5);
+}
+.mic-btn.recording {
+  background: rgba(232,133,106,0.2);
+  border-color: rgba(232,133,106,0.4);
+  color: rgba(232,133,106,0.8);
+  animation: pulse-mic 1.5s ease-in-out infinite;
+}
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
 /* ── Config ── */
 .gear-btn {
   position: fixed; top: 14px; right: 14px; z-index: 50;
