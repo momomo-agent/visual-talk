@@ -326,7 +326,7 @@ function pushOldBlocks() {
   updateSelectionContext()
 
   const space = $('canvasSpace')
-  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
+  space.querySelectorAll('.v-block:not(.selected):not(.fresh)').forEach(old => {
     const d = depthLevel - parseInt(old.dataset.depth || '0')
     if (d <= 0) return
     applyDepth(old, d)
@@ -386,11 +386,14 @@ function renderBlocks(blocks) {
     el.dataset.depth = depthLevel
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
+    el.classList.add('fresh')
     el.style.transform = `translateZ(${intraZ}px) scale(1)`
     el.style.zIndex = 100 - i
     el.style.transitionDelay = `${i * 0.1}s`
     setupBlockInteraction(el)
     space.appendChild(el)
+    // Remove fresh flag after animation settles
+    setTimeout(() => el.classList.remove('fresh'), 1000)
   })
 }
 
