@@ -240,34 +240,41 @@ async function callLLM(prompt, onToken) {
     })
   }
 
-  // Proxy: wrap request in JSON body (link2web protocol)
+  // Proxy: wrap request in JSON body (link2web protocol, same as agentic-lite)
   let fetchUrl = targetUrl
   const fetchHeaders = { ...headers }
   const useProxy = !!cfg.proxyUrl
 
   if (useProxy) {
     fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
-    // link2web proxy: non-streaming, wraps entire request
+    // link2web: body as string, stream:false
     const proxyBody = JSON.parse(body)
-    proxyBody.stream = false // proxy doesn't support SSE
+    proxyBody.stream = false
     const proxyRes = await fetch(fetchUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         url: targetUrl,
         method: 'POST',
         headers: fetchHeaders,
-        body: proxyBody,
+        body: JSON.stringify(proxyBody),
         mode: 'raw'
       })
     })
-    const proxyResult = await proxyRes.json()
-    if (!proxyResult.success) throw new Error(proxyResult.error || `Proxy error ${proxyResult.status}`)
-    const data = typeof proxyResult.body === 'string' ? JSON.parse(proxyResult.body) : proxyResult.body
+    const result = await proxyRes.json()
+    if (!result.success) throw new Error(result.error || `Proxy failed: ${result.status}`)
+    const rawBody = typeof result.body === 'string' ? result.body : JSON.stringify(result.body)
+    if (result.status >= 400) throw new Error(`API error ${result.status}: ${rawBody.slice(0, 300)}`)
+    const data = JSON.parse(rawBody)
     const reply = isAnthropic
       ? data.content?.[0]?.text || ''
       : data.choices?.[0]?.message?.content || ''
-    if (onToken) onToken(reply)
+    // Simulate streaming for bubble
+    if (onToken) {
+      const words = reply.split(/(?<=\s)/)
+      let acc = ''
+      for (const w of words) { acc += w; onToken(acc); await new Promise(r => setTimeout(r, 20)) }
+    }
     history.push({ role: 'assistant', content: reply })
     return reply
   }
