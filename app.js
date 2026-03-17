@@ -77,7 +77,7 @@ function getConfig() {
   }
 }
 
-// ── Bubble ──
+// ── Bubble (top-left, no auto-fade) ──
 let bubbleTimer = null
 
 function showBubble(text) {
@@ -87,9 +87,13 @@ function showBubble(text) {
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
     bubble.className = 'bubble fading'
-    setTimeout(() => { bubble.className = 'bubble' }, 400)
-  }, 4000)
+    setTimeout(() => { bubble.className = 'bubble' }, 500)
+  }, 6000)
 }
+
+// ── Thinking ──
+function showThinking() { $('thinking').classList.add('visible') }
+function hideThinking() { $('thinking').classList.remove('visible') }
 
 // ── Canvas Rendering ──
 function esc(s) {
@@ -116,7 +120,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       el.innerHTML = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="lazy">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" onerror="this.style.display='none'">` : ''}
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
         ${(data.tags||[]).length ? `<div class="tags">${data.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
@@ -195,9 +199,17 @@ function renderBlocks(blocks) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
+  // Push old blocks back (recede into distance)
+  space.querySelectorAll('.v-block:not(.receded)').forEach(old => {
+    old.classList.add('receded')
+    const curZ = parseFloat(old.dataset.z || 0)
+    old.style.transform = `translateZ(${curZ - 200}px) scale(0.7)`
+  })
+
   blocks.forEach(({ type, data }, i) => {
     const el = renderBlock(type, data)
     el.style.animationDelay = `${i * 0.12}s`
+    el.dataset.z = data.z || 0
     space.appendChild(el)
   })
 }
@@ -331,11 +343,13 @@ async function send() {
 
   input.value = ''
   btn.disabled = true
+  showThinking()
 
   let lastBlockCount = 0
 
   try {
     const reply = await callLLM(text, (partial) => {
+      hideThinking()
       // Stream speech bubble
       const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
       if (speechMatch) showBubble(speechMatch[1].trim())
@@ -350,6 +364,7 @@ async function send() {
     })
 
     if (!reply) return
+    hideThinking()
 
     // Final pass — render any remaining blocks
     const { speech, blocks } = parseResponse(reply)
@@ -361,6 +376,7 @@ async function send() {
     // If nothing structured, show as bubble
     if (!speech && !blocks.length) showBubble(reply.slice(0, 100))
   } catch (err) {
+    hideThinking()
     showBubble(`Error: ${err.message}`)
     console.error(err)
   } finally {
