@@ -111,75 +111,86 @@ function renderBlock(type, data) {
   if (data.w) el.style.width = `${data.w}%`
   
   // Z-axis: depth + scale + opacity
-  const scale = 1 + z * 0.002 // close = bigger
+  const scale = 1 + z * 0.002
   const opacity = Math.max(0.4, Math.min(1, 0.8 + z * 0.003))
   el.style.transform = `translateZ(${z}px) scale(${scale})`
   el.style.opacity = opacity
   el.style.zIndex = Math.round(50 + z)
 
+  // Window title bar label
+  const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
+  const bar = `<div class="win-bar"><div class="win-dot"></div><span>${esc(typeLabel)}</span></div>`
+
+  let body = ''
   switch (type) {
     case 'card':
-      el.innerHTML = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : ''}
+      body = `
+        ${data.image ? `<img src="${esc(data.image)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" style="border-radius:0;margin:0">` : ''}
+        <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
         ${(data.tags||[]).length ? `<div class="tags">${data.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${data.progress != null ? `<div class="progress-track"><div class="progress-bar" style="width:${data.progress}%"></div></div>` : ''}
         ${(data.items||[]).map(it => `<div class="list-item">${esc(typeof it === 'string' ? it : it.title)}</div>`).join('')}
-        ${data.footer ? `<div class="footer">${esc(data.footer)}</div>` : ''}`
+        ${data.footer ? `<div class="footer">${esc(data.footer)}</div>` : ''}
+        </div>`
       break
 
     case 'metric':
-      el.innerHTML = `
-        <div class="big-num">${esc(String(data.value))}${data.unit ? `<span style="font-size:18px;color:#555">${esc(data.unit)}</span>` : ''}</div>
-        <div class="big-label">${esc(data.label || '')}</div>`
+      body = `<div class="win-body">
+        <div class="big-num">${esc(String(data.value))}${data.unit ? `<span style="font-size:18px;color:#9a7a5a">${esc(data.unit)}</span>` : ''}</div>
+        <div class="big-label">${esc(data.label || '')}</div>
+        </div>`
       break
 
     case 'steps':
-      el.innerHTML = `${data.title ? `<h3>${esc(data.title)}</h3>` : ''}${(data.items||[]).map(ev =>
+      body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}${(data.items||[]).map(ev =>
         `<div class="tl-item">
           ${ev.time ? `<div class="tl-time">${esc(ev.time)}</div>` : ''}
           <div class="tl-title">${esc(ev.title||'')}</div>
           ${ev.detail ? `<div class="tl-detail">${esc(ev.detail)}</div>` : ''}
         </div>`
-      ).join('')}`
+      ).join('')}</div>`
       break
 
-    case 'columns':
+    case 'columns': {
       const cols = data.cols || []
-      el.innerHTML = `${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+      body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
         <div class="cols" style="grid-template-columns:repeat(${cols.length},1fr)">
           ${cols.map(c => `<div class="col">
             ${c.name ? `<h4>${esc(c.name)}</h4>` : ''}
             ${(c.items||[]).map(it => `<div class="col-item">${esc(it)}</div>`).join('')}
           </div>`).join('')}
-        </div>`
+        </div></div>`
       break
+    }
 
     case 'callout':
-      el.innerHTML = (data.author || data.source)
+      body = `<div class="win-body">${(data.author || data.source)
         ? `<div class="quote">"${esc(data.text)}"</div><div class="attribution">${esc(data.author||'')}${data.source ? ` — ${esc(data.source)}` : ''}</div>`
         : `<div class="highlight">${esc(data.text)}</div>`
+      }</div>`
       break
 
     case 'code':
-      el.innerHTML = `<pre style="background:#0e0e0e;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;color:#bbb"><code>${esc(data.code||'')}</code></pre>`
+      body = `<div class="win-body"><pre style="background:rgba(0,0,0,0.06);padding:14px;border-radius:4px;overflow-x:auto;font-size:12px;color:#4a3a2a"><code>${esc(data.code||'')}</code></pre></div>`
       break
 
     case 'markdown':
-      el.innerHTML = `<div class="md-body">${marked.parse(data.content||'')}</div>`
+      body = `<div class="win-body"><div class="md-body">${marked.parse(data.content||'')}</div></div>`
       break
 
     case 'media':
       if (data.images?.length) {
-        el.innerHTML = `<div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer">`).join('')}</div>
-          ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}`
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="lazy" referrerpolicy="no-referrer">`).join('')}</div>
+          ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        el.innerHTML = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}`
+        body = `<img src="${esc(data.url)}" loading="lazy" referrerpolicy="no-referrer" style="border-radius:0;margin:0"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
 
+  el.innerHTML = bar + body
   return el
 }
 
