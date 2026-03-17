@@ -168,14 +168,20 @@ async function playTTS(text) {
     if (res.ok) {
       const arrayBuffer = await res.arrayBuffer()
       console.log('[TTS] audio bytes:', arrayBuffer.byteLength)
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
-      const url = URL.createObjectURL(blob)
       
-      currentAudio = new Audio(url)
+      // Use base64 data URL instead of blob URL for better compatibility
+      const bytes = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+      const b64 = btoa(binary)
+      const dataUrl = `data:audio/mpeg;base64,${b64}`
+      
+      currentAudio = new Audio(dataUrl)
       currentAudio.onended = () => console.log('[TTS] playback ended')
       currentAudio.onerror = (e) => console.error('[TTS] audio error:', e)
-      const playResult = currentAudio.play()
-      playResult.then(() => console.log('[TTS] playing!')).catch(e => console.error('[TTS] play failed:', e))
+      currentAudio.play()
+        .then(() => console.log('[TTS] playing!'))
+        .catch(e => console.error('[TTS] play failed:', e))
     } else {
       console.error('[TTS] API error:', res.status, await res.text())
     }
