@@ -147,8 +147,11 @@ async function playTTS(text) {
     
     if (res.ok) {
       const blob = await res.blob()
-      currentAudio = new Audio(URL.createObjectURL(blob))
-      currentAudio.play()
+      const url = URL.createObjectURL(blob)
+      currentAudio = new Audio()
+      currentAudio.src = url
+      currentAudio.oncanplaythrough = () => currentAudio.play()
+      currentAudio.onerror = (e) => console.error('Audio error:', e)
     }
   } catch (e) {
     console.error('TTS error:', e)
