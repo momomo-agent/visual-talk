@@ -7,12 +7,19 @@ body {
   display: flex; flex-direction: column;
 }
 
-/* ── Canvas ── */
+/* ── Canvas (3D space) ── */
 .canvas {
-  flex: 1; position: relative; overflow: auto;
+  flex: 1; position: relative; overflow: hidden;
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
 }
-.canvas::-webkit-scrollbar { width: 3px; }
-.canvas::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+.canvas::-webkit-scrollbar { display: none; }
+
+.canvas-space {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(.23,1,.32,1);
+}
 .canvas::-webkit-scrollbar { width: 3px; }
 .canvas::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
 
@@ -25,19 +32,27 @@ body {
 }
 .greeting.hidden { opacity: 0; pointer-events: none; }
 
-/* ── Visual blocks (AI-generated UI) ── */
+/* ── Visual blocks (3D floating cards) ── */
 .v-block {
   position: absolute;
-  background: #111; border: 1px solid rgba(255,255,255,0.04);
-  border-radius: 12px; padding: 20px;
-  animation: blockIn 0.5s cubic-bezier(.23,1,.32,1);
-  min-width: 200px; max-width: 480px;
-  transition: transform 0.3s, opacity 0.3s;
+  background: rgba(17,17,17,0.85); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 14px; padding: 20px;
+  min-width: 180px; max-width: 460px;
+  transform-style: preserve-3d;
+  animation: blockFloat 0.6s cubic-bezier(.23,1,.32,1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: transform 0.4s, box-shadow 0.4s;
+}
+.v-block:hover {
+  transform: translateZ(20px) scale(1.02);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  border-color: rgba(232,133,106,0.1);
 }
 
-@keyframes blockIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes blockFloat {
+  from { opacity: 0; transform: translateZ(-60px) scale(0.9); }
+  to { opacity: 1; transform: translateZ(0) scale(1); }
 }
 
 /* Block types */

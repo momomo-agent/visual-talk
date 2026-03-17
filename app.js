@@ -3,41 +3,43 @@
 const $ = id => document.getElementById(id)
 const STORAGE_KEY = 'visual-talk-config'
 
-const SYSTEM = `You are Visual Talk — an AI that expresses itself by placing visual blocks on a free-form canvas.
+const SYSTEM = `You are Visual Talk — an AI that expresses itself by placing holographic cards in a 3D space.
 
-The screen is your canvas. You decide WHERE each block appears — like arranging items on a desk.
+The screen is a window into a 3D environment. Cards float at different depths, like a holographic display.
 
 When you respond, output:
 
-1. **Speech** (optional): A brief whisper (under 15 words). Appears as a floating bubble.
+1. **Speech** (optional): A whisper (under 15 words). <!--vt:speech text-->
 
-2. **Visual blocks** with position: <!--vt:TYPE JSON-->
+2. **Visual blocks** with 3D position: <!--vt:TYPE JSON-->
 
-Every block MUST include layout fields:
-- "x": horizontal position in % (0=left edge, 100=right edge)
-- "y": vertical position in % (0=top, 100=bottom)
-- "w": width in % (10-60)
+Every block MUST include layout:
+- "x": horizontal % (0=left, 100=right)
+- "y": vertical % (0=top, 100=bottom)  
+- "z": depth (-100=far back, 0=neutral, 100=close to viewer)
+- "w": width % (15-50)
 
-Available block types:
-- card: {"x":10,"y":10,"w":35,"title":"","sub":"","image":"url","tags":[],"items":[],"progress":75,"footer":""}
-- metric: {"x":50,"y":10,"w":15,"value":"42","label":"Score","unit":"%"}
-- steps: {"x":10,"y":40,"w":40,"title":"","items":[{"time":"","title":"","detail":""}]}
-- columns: {"x":10,"y":10,"w":50,"title":"","cols":[{"name":"A","items":["point"]}]}
-- callout: {"x":30,"y":50,"w":40,"text":"quote","author":"","source":""}
-- code: {"x":10,"y":60,"w":45,"code":"","language":"js"}
-- markdown: {"x":10,"y":10,"w":50,"content":"# Rich text"}
-- media: {"x":5,"y":5,"w":40,"url":"image-url","caption":""}
+Depth guidelines:
+- z: 40-80 = hero/primary content (large, bright, close)
+- z: -10 to 30 = secondary content (normal)
+- z: -80 to -20 = ambient/context (smaller, dimmer, further back)
 
-Layout guidelines:
-- Spread blocks across the screen, don't stack vertically
-- Use the full width: left side (x:5-35), center (x:30-60), right (x:55-90)
-- 3 metrics in a row: x:10/x:40/x:70, w:20 each
-- Main content left + secondary right, or centered hero + details around it
-- Think like a magazine layout, not a list
-- Avoid overlapping blocks
+Available types:
+- card: {"x":5,"y":8,"z":50,"w":35,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
+- metric: {"x":50,"y":10,"z":20,"w":18,"value":"42","label":"Score","unit":"%"}
+- steps: {"x":5,"y":40,"z":0,"w":35,"title":"","items":[{"time":"","title":"","detail":""}]}
+- columns: {"x":10,"y":15,"z":10,"w":45,"title":"","cols":[{"name":"A","items":[""]}]}
+- callout: {"x":30,"y":50,"z":-20,"w":35,"text":"quote","author":"","source":""}
+- code: {"x":10,"y":60,"z":0,"w":40,"code":"","language":""}
+- markdown: {"x":10,"y":10,"z":0,"w":40,"content":"# text"}
+- media: {"x":5,"y":5,"z":60,"w":40,"url":"image-url","caption":""}
 
-Format: <!--vt:speech Your whisper-->
-then blocks: <!--vt:card {"x":5,"y":5,"w":40,"title":"..."}-->`
+Layout rules:
+- Primary content: center-left, high z (close)
+- Metrics: spread horizontally, medium z
+- Quotes/context: offset to side, low z (far)
+- Create depth — don't put everything at z:0
+- Think holographic display, not flat webpage`
 
 // ── Config ──
 function loadConfig() {
@@ -98,10 +100,18 @@ function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
 
-  // Position from AI
+  // 3D positioning
+  const z = data.z || 0
   if (data.x != null) el.style.left = `${data.x}%`
   if (data.y != null) el.style.top = `${data.y}%`
   if (data.w) el.style.width = `${data.w}%`
+  
+  // Z-axis: depth + scale + opacity
+  const scale = 1 + z * 0.002 // close = bigger
+  const opacity = Math.max(0.4, Math.min(1, 0.8 + z * 0.003))
+  el.style.transform = `translateZ(${z}px) scale(${scale})`
+  el.style.opacity = opacity
+  el.style.zIndex = Math.round(50 + z)
 
   switch (type) {
     case 'card':
@@ -182,13 +192,13 @@ function parseResponse(text) {
 }
 
 function renderBlocks(blocks) {
-  const canvas = $('canvas')
+  const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
   blocks.forEach(({ type, data }, i) => {
     const el = renderBlock(type, data)
-    el.style.animationDelay = `${i * 0.1}s`
-    canvas.appendChild(el)
+    el.style.animationDelay = `${i * 0.12}s`
+    space.appendChild(el)
   })
 }
 
@@ -357,3 +367,12 @@ $('input').addEventListener('keydown', e => {
   }
 })
 $('sendBtn').addEventListener('click', send)
+
+// ── 3D parallax: mouse moves shift perspective ──
+document.addEventListener('mousemove', e => {
+  const space = $('canvasSpace')
+  if (!space) return
+  const rx = (e.clientY / window.innerHeight - 0.5) * -8
+  const ry = (e.clientX / window.innerWidth - 0.5) * 8
+  space.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+})
