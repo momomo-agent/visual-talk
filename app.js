@@ -148,10 +148,13 @@ async function playTTS(text) {
     if (res.ok) {
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      currentAudio = new Audio()
-      currentAudio.src = url
-      currentAudio.oncanplaythrough = () => currentAudio.play()
-      currentAudio.onerror = (e) => console.error('Audio error:', e)
+      currentAudio = new Audio(url)
+      currentAudio.play().catch(e => {
+        console.error('Play failed:', e)
+        showBubble('播放失败，请检查浏览器权限')
+      })
+    } else {
+      console.error('TTS API error:', res.status, await res.text())
     }
   } catch (e) {
     console.error('TTS error:', e)
