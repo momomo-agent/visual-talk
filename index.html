@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Talk</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- AI speech bubble -->
+  <div class="bubble" id="bubble"></div>
+
+  <!-- Canvas: AI's expression space -->
+  <div class="canvas" id="canvas">
+    <div class="greeting" id="greeting">visual talk</div>
+  </div>
+
+  <!-- Input bar -->
+  <div class="input-bar">
+    <input type="text" id="input" placeholder="say something..." autocomplete="off" />
+    <button id="sendBtn" class="send-btn">↑</button>
+  </div>
+
+  <!-- Config (hidden, gear icon to toggle) -->
+  <button class="gear-btn" id="gearBtn">⚙</button>
+  <div class="config-overlay" id="configOverlay">
+    <div class="config-box">
+      <div class="field">
+        <label>Provider</label>
+        <select id="provider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="text" id="apiKey" placeholder="sk-...">
+      </div>
+      <div class="field">
+        <label>Base URL</label>
+        <input id="baseUrl" placeholder="https://api.openai.com">
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <input id="model" placeholder="gpt-4o">
+      </div>
+      <button class="config-close" id="configClose">Done</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
