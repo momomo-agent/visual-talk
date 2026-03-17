@@ -121,6 +121,8 @@ let currentAudio = null
 
 async function playTTS(text) {
   const config = getConfig()
+  console.log('[TTS] called with:', text?.slice(0, 50))
+  console.log('[TTS] enabled:', config.ttsEnabled, 'hasKey:', !!config.ttsApiKey)
   if (!config.ttsEnabled || !config.ttsApiKey) return
   
   // 停止之前的音频
@@ -132,6 +134,7 @@ async function playTTS(text) {
   
   try {
     const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
+    console.log('[TTS] fetching from:', `${baseUrl}/v1/audio/speech`)
     const res = await fetch(`${baseUrl}/v1/audio/speech`, {
       method: 'POST',
       headers: {
@@ -147,16 +150,23 @@ async function playTTS(text) {
       })
     })
     
+    console.log('[TTS] response:', res.status, res.headers.get('content-type'))
     if (res.ok) {
       const arrayBuffer = await res.arrayBuffer()
+      console.log('[TTS] audio bytes:', arrayBuffer.byteLength)
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
       const url = URL.createObjectURL(blob)
       
       currentAudio = new Audio(url)
-      currentAudio.play().catch(() => {})
+      currentAudio.onended = () => console.log('[TTS] playback ended')
+      currentAudio.onerror = (e) => console.error('[TTS] audio error:', e)
+      const playResult = currentAudio.play()
+      playResult.then(() => console.log('[TTS] playing!')).catch(e => console.error('[TTS] play failed:', e))
+    } else {
+      console.error('[TTS] API error:', res.status, await res.text())
     }
   } catch (e) {
-    console.error('TTS error:', e)
+    console.error('[TTS] fetch error:', e)
   }
 }
 
