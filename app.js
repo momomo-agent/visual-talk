@@ -240,15 +240,36 @@ async function callLLM(prompt, onToken) {
     })
   }
 
-  // Proxy: transparent proxy with config in headers
+  // Proxy: wrap request in JSON body (link2web protocol)
   let fetchUrl = targetUrl
   const fetchHeaders = { ...headers }
-  if (cfg.proxyUrl) {
+  const useProxy = !!cfg.proxyUrl
+
+  if (useProxy) {
     fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
-    // Companion-ui edge proxy protocol: config via x-provider/x-base-url, auth via x-api-key
-    fetchHeaders['x-provider'] = cfg.provider || 'openai'
-    fetchHeaders['x-base-url'] = cfg.baseUrl || (isAnthropic ? 'https://api.anthropic.com' : 'https://api.openai.com')
-    fetchHeaders['x-api-key'] = cfg.apiKey
+    // link2web proxy: non-streaming, wraps entire request
+    const proxyBody = JSON.parse(body)
+    proxyBody.stream = false // proxy doesn't support SSE
+    const proxyRes = await fetch(fetchUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: targetUrl,
+        method: 'POST',
+        headers: fetchHeaders,
+        body: proxyBody,
+        mode: 'raw'
+      })
+    })
+    const proxyResult = await proxyRes.json()
+    if (!proxyResult.success) throw new Error(proxyResult.error || `Proxy error ${proxyResult.status}`)
+    const data = typeof proxyResult.body === 'string' ? JSON.parse(proxyResult.body) : proxyResult.body
+    const reply = isAnthropic
+      ? data.content?.[0]?.text || ''
+      : data.choices?.[0]?.message?.content || ''
+    if (onToken) onToken(reply)
+    history.push({ role: 'assistant', content: reply })
+    return reply
   }
 
   const res = await fetch(fetchUrl, { method: 'POST', headers: fetchHeaders, body })
