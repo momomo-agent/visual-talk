@@ -42,10 +42,11 @@ Layout rules:
 - Think holographic display, not flat webpage
 
 IMPORTANT about images:
-- Do NOT include "image" URLs in card data — you cannot verify if URLs exist
-- Leave the "image" field out entirely. The UI handles missing images gracefully.
-- This applies to ALL cards: movies, books, products, etc.
-- Never fabricate or guess image URLs from TMDB, Douban, or any other source`
+- For movie/book/product cards, include "image" with a poster URL when possible
+- Use Douban poster format: https://img9.doubanio.com/view/photo/s_ratio_poster/public/pXXXXXXXX.jpg
+- Only use URLs you are confident are real and accessible
+- If you're not sure about the exact URL, omit the "image" field — a card without image is better than a broken one
+- NEVER guess or fabricate TMDB paths — they return 404 if wrong`
 
 // ── Config ──
 function loadConfig() {
