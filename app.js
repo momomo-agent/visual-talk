@@ -239,9 +239,9 @@ function pushOldBlocks() {
 }
 
 function applyDepth(el, d) {
-  const z = -d * 80
-  const s = Math.max(0.75, 1 - d * 0.05)
-  const o = Math.max(0.4, 1 - d * 0.15)
+  const z = -d * 120
+  const s = Math.max(0.7, 1 - d * 0.06)
+  const o = Math.max(0.35, 1 - d * 0.18)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 100 - d * 10)
@@ -560,7 +560,7 @@ async function send() {
 
 // ── Init ──
 loadConfig()
-document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#proxyUrl,#proxyEnabled').forEach(el => {
+document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#proxyUrl,#proxyEnabled').forEach(el => {
   el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', saveConfig)
 })
 $('proxyEnabled').addEventListener('change', () => {
