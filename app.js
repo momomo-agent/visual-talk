@@ -900,6 +900,7 @@ async function transcribeAndSend(blob) {
   if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key'); return }
 
   showBubble('识别中...')
+  showThinking()
   try {
     const form = new FormData()
     form.append('file', blob, 'audio.webm')
@@ -909,18 +910,21 @@ async function transcribeAndSend(blob) {
       headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
       body: form
     })
-    if (!res.ok) { showBubble('识别失败: ' + res.status); return }
+    if (!res.ok) { hideThinking(); showBubble('识别失败: ' + res.status); return }
     const ct = res.headers.get('content-type') || ''
-    if (!ct.includes('json')) { showBubble('识别服务不可用'); return }
+    if (!ct.includes('json')) { hideThinking(); showBubble('识别服务不可用'); return }
     const { text } = await res.json()
     if (text?.trim()) {
       $('input').value = text.trim()
       $('bubble').classList.remove('visible')
+      // thinking stays visible — send() will manage it
       send()
     } else {
+      hideThinking()
       showBubble('没听清，再说一次？')
     }
   } catch (e) {
+    hideThinking()
     showBubble('识别错误: ' + e.message)
   }
 }
