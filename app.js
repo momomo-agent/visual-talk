@@ -162,22 +162,32 @@ async function playTTS(text) {
   
   try {
     const baseUrl = config.ttsBaseUrl
-    const url = `${baseUrl}/v1/audio/speech`
-    console.log('[TTS] fetching:', url)
-    
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.ttsApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: config.ttsModel || 'tts-1',
-        voice: config.ttsVoice || 'alloy',
-        input: text,
-        response_format: 'mp3'
-      })
+    const ttsUrl = `${baseUrl}/v1/audio/speech`
+    const ttsHeaders = {
+      'Authorization': `Bearer ${config.ttsApiKey}`,
+      'Content-Type': 'application/json'
+    }
+    const ttsBody = JSON.stringify({
+      model: config.ttsModel || 'tts-1',
+      voice: config.ttsVoice || 'alloy',
+      input: text,
+      response_format: 'mp3'
     })
+
+    // Fetch with retry (yunwu.ai CORS is intermittent)
+    let res, lastErr
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        console.log(`[TTS] fetch attempt ${attempt + 1}:`, ttsUrl)
+        res = await fetch(ttsUrl, { method: 'POST', headers: ttsHeaders, body: ttsBody })
+        break
+      } catch (err) {
+        lastErr = err
+        console.warn(`[TTS] attempt ${attempt + 1} failed:`, err.message)
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+      }
+    }
+    if (!res) throw lastErr
     
     console.log('[TTS] response status:', res.status, 'gen:', gen)
     if (gen !== ttsGeneration) { console.log('[TTS] stale, skipping'); return }
