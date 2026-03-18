@@ -64,13 +64,19 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 ## Canvas Commands
 
-Cards belong to the canvas, not to individual responses. You can bring old cards forward, reposition them, or remove them to compose a coherent scene across conversation turns.
+Cards belong to the canvas, not to individual responses. Before creating new cards, check what's already on screen — reuse and evolve existing cards when they're relevant.
 
-- \`<!--vt:remove TITLE -->\` — remove a card by title (fades out)
-- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring a card forward and reposition it. It rejoins the current group.
+- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring an old card forward to join your new composition. It flies to the new position and becomes part of the current group.
 - \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — update a card's content and bring it forward.
+- \`<!--vt:remove TITLE -->\` — remove a card that's no longer relevant (fades out).
 
-Old cards naturally recede as new ones appear — you rarely need to remove them. Focus on adding and evolving, not clearing.
+**When to reuse vs create new:**
+- If an existing card is directly relevant to your response → move it nearby your new cards
+- If an existing card's data is outdated → update it with new info
+- If the user selected/pointed at a card → it's important to them, reference or evolve it
+- Only create new cards for genuinely new information
+
+Old cards naturally recede as new ones appear. A canvas that evolves feels alive; one that only adds feels cluttered.
 
 ## Finding Images
 
@@ -939,9 +945,22 @@ async function send() {
 
   // Capture selection context at send time
   const selCtx = window._selectedContext
-  const fullPrompt = selCtx
-    ? `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${text}`
-    : text
+  
+  // Build canvas context — tell LLM what cards exist
+  const canvasCards = [...document.querySelectorAll('#canvasSpace .v-block')].map(el => {
+    const title = el.querySelector('h2, h3, .big-label')?.textContent || ''
+    const depth = parseInt(el.dataset.depth || '0')
+    const type = el.dataset.contentKey?.split('-')[1] || 'card'
+    return title ? `"${title}" (depth:${depth})` : null
+  }).filter(Boolean)
+  
+  let fullPrompt = text
+  if (canvasCards.length) {
+    fullPrompt = `[Cards on canvas: ${canvasCards.join(', ')}]\n\n${fullPrompt}`
+  }
+  if (selCtx) {
+    fullPrompt = `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${fullPrompt}`
+  }
 
   sendQueue.push(fullPrompt)
   if (!sendProcessing) processSendQueue()
