@@ -551,14 +551,23 @@ function renderBlocks(blocks, offset = 0) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
-    // Intra-response z: later cards should be closer (higher z)
-    // Start from LLM's z, but ensure each subsequent card is at least as close as the previous
-    const llmZ = data.z || 0
-    const minZ = i === 0 ? 0 : (blocks[i - 1]._finalZ || 0)
-    const intraZ = Math.max(minZ, llmZ)
-    blocks[i]._finalZ = intraZ  // Store for next card's minZ check
+    // Intra-group z: each new card in this group is the closest.
+    // Push existing cards in this group slightly back.
+    const INTRA_PUSH = 15  // px per new card within group
+    const groupCount = currentRoundEls.size
     
-    // z-index follows translateZ: higher z = higher z-index
+    // Push back all existing cards in current group
+    currentRoundEls.forEach(existing => {
+      const curZ = parseFloat(existing.dataset.intraZ) || 0
+      const pushed = curZ - INTRA_PUSH
+      existing.dataset.intraZ = pushed
+      existing.style.transform = `translateZ(${pushed}px) scale(1)`
+      existing.style.zIndex = 100 + Math.floor(pushed / 10)
+    })
+    
+    // New card gets the front position
+    const llmZ = data.z || 0
+    const intraZ = Math.max(llmZ, groupCount * INTRA_PUSH)
     const zIndex = 100 + Math.floor(intraZ / 10)
 
     if (existing) {
