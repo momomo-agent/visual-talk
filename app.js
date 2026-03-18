@@ -262,25 +262,8 @@ function showToolLog(text) {
 }
 
 // ── Thinking ──
-let thinkingLogItem = null
-
-function showThinking() {
-  if (thinkingLogItem) return
-  const log = $('toolLog')
-  const item = document.createElement('div')
-  item.className = 'tool-log-item'
-  item.innerHTML = '<span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span> thinking'
-  log.appendChild(item)
-  thinkingLogItem = item
-}
-
-function hideThinking() {
-  if (!thinkingLogItem) return
-  const item = thinkingLogItem
-  thinkingLogItem = null
-  item.classList.add('fading')
-  item.addEventListener('animationend', () => item.remove(), { once: true })
-}
+function showThinking() { $('thinking').classList.add('visible') }
+function hideThinking() { $('thinking').classList.remove('visible') }
 
 // ── Canvas Rendering ──
 function esc(s) {
