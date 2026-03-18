@@ -437,12 +437,12 @@ function pushOldBlocks() {
 
 function applyDepth(el, d) {
   const z = -d * 160
-  const s = Math.max(0.5, 1 - d * 0.15)
-  const o = Math.max(0, 1 - d * 0.5)
+  const s = Math.max(0.5, 1 - d * 0.12)
+  const o = Math.max(0, 1 - d * 0.4)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 50 - d * 20)
-  el.style.filter = d >= 1 ? `blur(${d * 5}px)` : 'none'
+  el.style.filter = d >= 1 ? `blur(${d * 4}px)` : 'none'
   el.style.pointerEvents = 'auto'
   if (o <= 0) el.remove()
 }
@@ -456,9 +456,10 @@ function renderBlocks(blocks) {
 
   // Render new blocks — reuse existing if content matches
   blocks.forEach(({ type, data }, i) => {
-    const contentKey = JSON.stringify({ type, title: data.title, value: data.value, text: data.text, code: data.code, image: data.image, url: data.url })
+    // Use round + index as stable key (content changes during streaming)
+    const contentKey = `round-${depthLevel}-block-${i}`
 
-    // Check for existing block with same content
+    // Check for existing block from this round
     let existing = null
     space.querySelectorAll('.v-block').forEach(old => {
       if (old.dataset.contentKey === contentKey) existing = old
