@@ -1299,12 +1299,12 @@ document.addEventListener('keydown', e => {
   // Don't hijack if user is typing in input or config
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   e.preventDefault()
-  $('micBtn').dispatchEvent(new PointerEvent('pointerdown'))
+  startRecording()
 })
 
 document.addEventListener('keyup', e => {
   if (e.key !== ' ') return
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   e.preventDefault()
-  $('micBtn').dispatchEvent(new PointerEvent('pointerup'))
+  stopRecording()
 })
