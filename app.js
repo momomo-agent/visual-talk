@@ -1079,6 +1079,7 @@ function startWebSpeech() {
   recognition.interimResults = false
   recognition.onresult = e => {
     const text = e.results[0]?.[0]?.transcript?.trim()
+    console.log('[STT] Web Speech result:', text)
     webSpeechRecognition = null
     $('micBtn').classList.remove('recording')
     if (text) {
@@ -1218,6 +1219,7 @@ async function transcribeAndSend(blob) {
     const ct = res.headers.get('content-type') || ''
     if (!ct.includes('json')) { hideThinking(); showBubble('识别服务不可用'); return }
     const { text } = await res.json()
+    console.log('[STT] Whisper result:', text)
     if (text?.trim()) {
       $('input').value = text.trim()
       $('bubble').classList.remove('visible')
@@ -1289,4 +1291,20 @@ document.addEventListener('mousemove', e => {
   const rx = (e.clientY / window.innerHeight - 0.5) * -8
   const ry = (e.clientX / window.innerWidth - 0.5) * 8
   space.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+})
+
+// ── Spacebar = push-to-talk (when not typing in input) ──
+document.addEventListener('keydown', e => {
+  if (e.key !== ' ' || e.repeat) return
+  // Don't hijack if user is typing in input or config
+  if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
+  e.preventDefault()
+  $('micBtn').dispatchEvent(new PointerEvent('pointerdown'))
+})
+
+document.addEventListener('keyup', e => {
+  if (e.key !== ' ') return
+  if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
+  e.preventDefault()
+  $('micBtn').dispatchEvent(new PointerEvent('pointerup'))
 })
