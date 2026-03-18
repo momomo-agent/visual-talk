@@ -192,6 +192,14 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 
+// Image proxy fallback on CORS/load error
+const PROXY = 'https://proxy.link2web.site/?url='
+function imgErr(img) {
+  if (img.dataset.proxied) { img.style.display = 'none'; return }
+  img.dataset.proxied = '1'
+  img.src = PROXY + encodeURIComponent(img.src)
+}
+
 function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
@@ -219,7 +227,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -276,10 +284,10 @@ function renderBlock(type, data) {
 
     case 'media':
       if (data.images?.length) {
-        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" style="aspect-ratio:16/9;object-fit:cover;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'">`).join('')}</div>
+        body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" style="aspect-ratio:16/9;object-fit:cover;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="this.style.display='none'"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
