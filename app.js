@@ -20,7 +20,7 @@ Every block MUST include layout:
 - "w": width % (15-45)
 
 SPATIAL LAYOUT — critical rules:
-- NEVER align cards in a row or grid. Offset them diagonally, scatter them.
+- NEVER align cards in a row or grid. Scatter them freely across the space.
 - Vary z-depth dramatically: hero card at z:60, supporting cards at z:-20 to z:10, ambient details at z:-60.
 - Stagger y positions: don't put two cards at the same y. Cascade them.
 - Leave negative space — 30-40% of the screen should be empty. Less is more.
@@ -307,7 +307,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;max-width:380px;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -367,7 +367,7 @@ function renderBlock(type, data) {
         body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" style="object-fit:cover;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;max-width:380px;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
   }
@@ -447,7 +447,7 @@ function renderBlocks(blocks) {
     })
 
     // Intra-response z offset: each block slightly behind the previous
-    const intraZ = -i * 30
+    const intraZ = -i * 60
 
     if (existing) {
       // Bring existing block to front
