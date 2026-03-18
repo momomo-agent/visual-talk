@@ -534,7 +534,6 @@ function parseResponse(text) {
   let m
   while ((m = blockRegex.exec(text)) !== null) {
     if (m[1] === 'speech') continue
-    if (m[1] === 'clear') { commands.push({ cmd: 'clear' }); continue }
     if (m[1] === 'remove') { commands.push({ cmd: 'remove', target: m[2].trim() }); continue }
     if (m[1] === 'move') {
       try { commands.push({ cmd: 'move', ...JSON.parse(m[2]) }) } catch {}
@@ -559,13 +558,6 @@ function executeCommands(commands) {
   const space = $('canvasSpace')
   for (const cmd of commands) {
     switch (cmd.cmd) {
-      case 'clear':
-        space.querySelectorAll('.v-block').forEach(el => el.remove())
-        selectedBlocks.clear()
-        depthLevel = 0
-        currentRoundDepth = -1
-        currentRoundEls = new Set()
-        break
       case 'remove': {
         // Remove by title match or index
         const blocks = [...space.querySelectorAll('.v-block')]
