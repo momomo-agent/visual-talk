@@ -26,6 +26,8 @@ SPATIAL LAYOUT — your cards tell a story:
 - Gestalt grouping: related cards cluster together (close x/y, similar z). Unrelated cards stay apart. Proximity = relationship.
 - NEVER align cards in a row or grid. Each card floats independently.
 - Vary z-depth dramatically between groups. Depth IS the hierarchy.
+- Overlap is OK — a small card peeking from behind a large one creates depth.
+- Visual center of gravity should be upper half of the screen.
 - Primary content: center-left, high z. Metrics: nearby the card they describe. Quotes/context: offset, low z.
 
 Depth guidelines:
@@ -297,11 +299,11 @@ function renderBlock(type, data) {
   el.style.transform = `translateZ(0px) scale(1)`
   el.style.opacity = 1
   el.style.zIndex = 100
-  el.style.transition = 'transform 0.8s cubic-bezier(.16,1,.3,1), opacity 0.8s cubic-bezier(.16,1,.3,1), filter 0.8s, box-shadow 0.6s'
+  el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1s cubic-bezier(.22,1,.36,1), filter 0.8s, box-shadow 0.6s'
 
-  // Entrance animation — starts large and close, settles into position
+  // Entrance animation — starts slightly large and close, settles gently
   el.style.opacity = 0
-  el.style.transform = `translateZ(120px) scale(1.15)`
+  el.style.transform = `translateZ(40px) scale(1.06)`
 
   // Window title bar label
   const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
@@ -450,18 +452,13 @@ function renderBlocks(blocks) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
-    // Intra-response z: LLM's z sets relative depth within this response
-    // All new cards stay in front (positive translateZ base)
+    // Intra-response z: LLM's z sets relative depth, but all new cards stay in front
     const llmZ = data.z || 0
-    const intraZ = llmZ
+    const intraZ = Math.max(0, llmZ)
 
     if (existing) {
-      // Bring existing block to front — but don't interrupt entrance animation
+      // Update content only — don't touch transform/opacity (let animations breathe)
       existing.dataset.depth = depthLevel
-      if (!existing._animating) {
-        existing.style.transform = `translateZ(${intraZ}px) scale(1)`
-        existing.style.opacity = 1
-      }
       existing.style.zIndex = 100 + i
       existing.style.filter = 'none'
       existing.classList.remove('receded')
@@ -479,21 +476,19 @@ function renderBlocks(blocks) {
     el.dataset.intraZ = intraZ
     // Keep initial transform from renderBlock (large + close) for entrance animation
     el.style.zIndex = 100 + i
-    el.style.transitionDelay = `${i * 0.12}s`
-    el._animating = true
+    el.style.transitionDelay = `${i * 0.08}s`
     setupBlockInteraction(el)
     space.appendChild(el)
     currentRoundEls.add(el)
-    // Trigger entrance animation: from large/close → settle into position
+    // Trigger entrance: gently settle from slightly large → natural size
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.style.transform = `translateZ(${intraZ}px) scale(1)`
         el.style.opacity = 1
-        // Clear animation lock after transition completes
-        setTimeout(() => {
-          el._animating = false
+        // Clear delay after animation so interactions are instant
+        el.addEventListener('transitionend', () => {
           el.style.transitionDelay = '0s'
-        }, 900)
+        }, { once: true })
       })
     })
   })
