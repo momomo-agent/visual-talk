@@ -83,17 +83,23 @@ function saveConfig() {
   }))
 }
 
+// Normalize base URL: trim, strip trailing slashes and accidental /v1 suffix
+function cleanBaseUrl(url) {
+  if (!url) return undefined
+  return url.trim().replace(/\/+$/, '').replace(/\/v1$/, '')
+}
+
 function getConfig() {
   const proxyEnabled = $('proxyEnabled').checked
   return {
     provider: $('provider').value || 'openai',
     apiKey: $('apiKey').value.trim(),
-    baseUrl: $('baseUrl').value.trim() || undefined,
+    baseUrl: cleanBaseUrl($('baseUrl').value),
     model: $('model').value.trim() || undefined,
     tavilyKey: $('tavilyKey').value.trim() || undefined,
     showToolCalls: $('showToolCalls').checked,
     ttsEnabled: $('ttsEnabled').checked,
-    ttsBaseUrl: $('ttsBaseUrl').value.trim() || undefined,
+    ttsBaseUrl: cleanBaseUrl($('ttsBaseUrl').value),
     ttsApiKey: $('ttsApiKey').value.trim() || undefined,
     proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
@@ -144,7 +150,8 @@ async function playTTS(text) {
   }
   
   try {
-    const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
+    if (!config.ttsBaseUrl) return
+    const baseUrl = config.ttsBaseUrl
     const res = await fetch(`${baseUrl}/v1/audio/speech`, {
       method: 'POST',
       headers: {
@@ -719,8 +726,9 @@ async function send() {
   }
 }
 
-// ── Voice Input (Whisper API via yunwu.ai) ──
+// ── Voice Input (Whisper API) ──
 let mediaRecorder = null
+let micDownTime = 0
 
 $('micBtn').addEventListener('mousedown', startRecording)
 $('micBtn').addEventListener('mouseup', stopRecording)
@@ -729,6 +737,11 @@ $('micBtn').addEventListener('touchend', stopRecording)
 
 async function startRecording() {
   if (mediaRecorder) return
+  micDownTime = Date.now()
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showBubble('需要 HTTPS 才能使用麦克风')
+    return
+  }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     const chunks = []
@@ -736,9 +749,14 @@ async function startRecording() {
     mediaRecorder.ondataavailable = e => chunks.push(e.data)
     mediaRecorder.onstop = async () => {
       stream.getTracks().forEach(t => t.stop())
-      const blob = new Blob(chunks, { type: 'audio/webm' })
+      const held = Date.now() - micDownTime
       mediaRecorder = null
       $('micBtn').classList.remove('recording')
+      if (held < 300) {
+        showBubble('长按说话')
+        return
+      }
+      const blob = new Blob(chunks, { type: 'audio/webm' })
       await transcribeAndSend(blob)
     }
     mediaRecorder.start()
@@ -757,7 +775,8 @@ function stopRecording() {
 
 async function transcribeAndSend(blob) {
   const config = getConfig()
-  const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
+  if (!config.ttsBaseUrl) { showBubble('请先配置 TTS Base URL'); return }
+  const baseUrl = config.ttsBaseUrl
   if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key'); return }
 
   showBubble('识别中...')
