@@ -64,16 +64,11 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 Cards belong to the canvas, not to individual responses. You can bring old cards forward, reposition them, or remove them to compose a coherent scene across conversation turns.
 
-- \`<!--vt:clear -->\` — wipe the canvas clean
 - \`<!--vt:remove TITLE -->\` — remove a card by title (fades out)
 - \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring a card forward and reposition it. It rejoins the current group.
 - \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — update a card's content and bring it forward.
 
-Creative uses:
-- Reference an old card: move it nearby a new card to show connection
-- Evolve information: update a metric card's value as context changes
-- Clean up: remove cards that are no longer relevant before adding new ones
-- Build on context: add a small detail card next to an existing card to annotate it
+Old cards naturally recede as new ones appear — you rarely need to remove them. Focus on adding and evolving, not clearing.
 
 ## Finding Images
 
@@ -1138,8 +1133,10 @@ async function transcribeAndSend(blob) {
   showBubble('识别中...')
   showThinking()
   try {
+    // Convert webm to wav (bltcy doesn't support webm)
+    const wavBlob = await webmToWav(blob)
     const form = new FormData()
-    form.append('file', blob, 'audio.webm')
+    form.append('file', wavBlob, 'audio.wav')
     form.append('model', 'whisper-1')
     const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
       method: 'POST',
