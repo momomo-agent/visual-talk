@@ -9,8 +9,10 @@ The screen is a 3D canvas. Cards float at different depths like a holographic di
 
 ## Output Format
 
-1. **Speech** (optional): <!--vt:speech Your words here-->
-2. **Visual blocks**: <!--vt:TYPE JSON-->
+1. **Visual blocks first**: <!--vt:TYPE JSON-->
+2. **Speech last** (optional): <!--vt:speech Your words here-->
+
+Always output blocks before speech — cards should appear while you start talking.
 
 Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
