@@ -456,10 +456,12 @@ function renderBlocks(blocks) {
     const intraZ = llmZ
 
     if (existing) {
-      // Bring existing block to front
+      // Bring existing block to front — but don't interrupt entrance animation
       existing.dataset.depth = depthLevel
-      existing.style.transform = `translateZ(${intraZ}px) scale(1)`
-      existing.style.opacity = 1
+      if (!existing._animating) {
+        existing.style.transform = `translateZ(${intraZ}px) scale(1)`
+        existing.style.opacity = 1
+      }
       existing.style.zIndex = 100 + i
       existing.style.filter = 'none'
       existing.classList.remove('receded')
@@ -477,7 +479,8 @@ function renderBlocks(blocks) {
     el.dataset.intraZ = intraZ
     // Keep initial transform from renderBlock (large + close) for entrance animation
     el.style.zIndex = 100 + i
-    el.style.transitionDelay = `${i * 0.25}s`
+    el.style.transitionDelay = `${i * 0.12}s`
+    el._animating = true
     setupBlockInteraction(el)
     space.appendChild(el)
     currentRoundEls.add(el)
@@ -486,6 +489,8 @@ function renderBlocks(blocks) {
       requestAnimationFrame(() => {
         el.style.transform = `translateZ(${intraZ}px) scale(1)`
         el.style.opacity = 1
+        // Clear animation lock after transition completes
+        setTimeout(() => { el._animating = false }, 900)
       })
     })
   })
