@@ -13,6 +13,7 @@ The screen is a 3D canvas. Cards float at different depths like a holographic di
 2. **Speech last** (optional): <!--vt:speech Your words here-->
 
 Always output blocks before speech — cards should appear while you start talking.
+Speech is a brief companion to the visual — one or two short sentences max. The cards carry the information; your voice just adds warmth and connection.
 
 Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
@@ -161,7 +162,12 @@ let bubbleTimer = null
 
 function showBubble(text) {
   const bubble = $('bubble')
-  bubble.textContent = text
+  // Keep bubble text short — truncate at first sentence end or 80 chars
+  let display = text
+  const sentenceEnd = text.search(/[。！？.!?]/)
+  if (sentenceEnd > 0 && sentenceEnd < 80) display = text.slice(0, sentenceEnd + 1)
+  else if (text.length > 80) display = text.slice(0, 80) + '…'
+  bubble.textContent = display
   bubble.className = 'bubble visible'
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
