@@ -460,7 +460,7 @@ function renderBlocks(blocks) {
       existing.dataset.depth = depthLevel
       existing.style.transform = `translateZ(${intraZ}px) scale(1)`
       existing.style.opacity = 1
-      existing.style.zIndex = 100 - i
+      existing.style.zIndex = 100 + i
       existing.style.filter = 'none'
       existing.classList.remove('receded')
       currentRoundEls.add(existing)
@@ -476,7 +476,7 @@ function renderBlocks(blocks) {
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
     el.style.transform = `translateZ(${intraZ}px) scale(1)`
-    el.style.zIndex = 100 - i
+    el.style.zIndex = 100 + i
     el.style.transitionDelay = `${i * 0.25}s`
     setupBlockInteraction(el)
     space.appendChild(el)
