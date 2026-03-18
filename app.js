@@ -13,7 +13,11 @@ The screen is a 3D canvas. Cards float at different depths like a holographic di
 2. **Speech last** (optional): <!--vt:speech Your words here-->
 
 Always output blocks before speech — cards should appear while you start talking.
-Speech is a brief companion to the visual — one short sentence, 15 words max. The cards carry all the information; your voice is just a gentle aside, like a whisper. Never explain the cards in speech — let them speak for themselves.
+Speech is a brief companion to the visual — like a whisper, not a lecture. One sentence. Think movie dialogue, not explanation. The cards carry all the information; your voice is the emotional coloring.
+
+Good speech: "这部电影，看完之后会安静很久。"
+Good speech: "Let me show you something interesting."
+Bad speech: "这是一部由斯派克·琼斯执导的2013年科幻爱情电影，讲述了一个男人爱上AI的故事，我来为你展示一些相关信息。"
 
 Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
@@ -162,12 +166,7 @@ let bubbleTimer = null
 
 function showBubble(text) {
   const bubble = $('bubble')
-  // Keep bubble text short — truncate at first sentence end or 80 chars
-  let display = text
-  const sentenceEnd = text.search(/[。！？.!?]/)
-  if (sentenceEnd > 0 && sentenceEnd < 80) display = text.slice(0, sentenceEnd + 1)
-  else if (text.length > 80) display = text.slice(0, 80) + '…'
-  bubble.textContent = display
+  bubble.textContent = text
   bubble.className = 'bubble visible'
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
@@ -194,19 +193,13 @@ function unlockAudio() {
 }
 
 async function playTTS(text) {
-  // Truncate speech — keep only first sentence or 60 chars
-  let ttsText = text
-  const end = text.search(/[。！？.!?]/)
-  if (end > 0 && end < 60) ttsText = text.slice(0, end + 1)
-  else if (text.length > 60) ttsText = text.slice(0, 60)
-  
   const config = getConfig()
   const gen = ++ttsGeneration
-  console.log('[TTS] called with:', ttsText, 'gen:', gen)
+  console.log('[TTS] called with:', text?.slice(0, 80), 'gen:', gen)
   if (!config.ttsEnabled) { console.log('[TTS] disabled'); return }
   if (!config.ttsApiKey) { console.log('[TTS] no API key'); return }
   if (!config.ttsBaseUrl) { console.log('[TTS] no base URL'); return }
-  if (!ttsText?.trim()) { console.log('[TTS] empty text'); return }
+  if (!text?.trim()) { console.log('[TTS] empty text'); return }
   
   // Stop previous audio
   if (currentAudio) {
@@ -224,7 +217,7 @@ async function playTTS(text) {
     const ttsBody = JSON.stringify({
       model: config.ttsModel || 'tts-1',
       voice: config.ttsVoice || 'alloy',
-      input: ttsText,
+      input: text,
       response_format: 'mp3'
     })
 
