@@ -313,11 +313,25 @@ function esc(s) {
 const PROXY = 'https://proxy.link2web.site/?url='
 function imgErr(img) {
   console.warn('[IMG] load failed:', img.src.slice(0, 120))
-  if (img.dataset.proxied) { img.style.display = 'none'; console.warn('[IMG] proxy also failed, hiding'); return }
-  img.dataset.proxied = '1'
-  const proxied = PROXY + encodeURIComponent(img.src)
-  console.log('[IMG] retrying via proxy:', proxied.slice(0, 120))
-  img.src = proxied
+  const retries = parseInt(img.dataset.retries || '0')
+  
+  if (retries === 0) {
+    // Retry 1: proxy
+    img.dataset.retries = '1'
+    const proxied = PROXY + encodeURIComponent(img.dataset.originalSrc || img.src)
+    console.log('[IMG] retry via proxy:', proxied.slice(0, 120))
+    img.src = proxied
+  } else if (retries === 1) {
+    // Retry 2: images.weserv.nl (free image proxy/cache)
+    img.dataset.retries = '2'
+    const weserv = 'https://images.weserv.nl/?url=' + encodeURIComponent(img.dataset.originalSrc || img.src)
+    console.log('[IMG] retry via weserv:', weserv.slice(0, 120))
+    img.src = weserv
+  } else {
+    // All retries failed — hide
+    img.style.display = 'none'
+    console.warn('[IMG] all retries failed, hiding')
+  }
 }
 
 function renderBlock(type, data) {
@@ -348,7 +362,7 @@ function renderBlock(type, data) {
   switch (type) {
     case 'card':
       body = `
-        ${data.image ? `<img src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">` : ''}
+        ${data.image ? `<img src="${esc(data.image)}" data-original-src="${esc(data.image)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">` : ''}
         <div class="win-body">
         ${data.title ? `<h2>${esc(data.title)}</h2>` : ''}
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
@@ -408,7 +422,7 @@ function renderBlock(type, data) {
         body = `<div class="win-body"><div class="img-grid">${data.images.map(u => `<img src="${esc(typeof u==='string'?u:u.url)}" loading="eager" referrerpolicy="no-referrer" style="object-fit:cover;background:rgba(0,0,0,0.05)" onerror="imgErr(this)">`).join('')}</div>
           ${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       } else if (data.url) {
-        body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+        body = `<img src="${esc(data.url)}" data-original-src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
       break
 
