@@ -26,7 +26,6 @@ SPATIAL LAYOUT — your cards tell a story:
 - Gestalt grouping: related cards cluster together (close x/y, similar z). Unrelated cards stay apart. Proximity = relationship.
 - NEVER align cards in a row or grid. Each card floats independently.
 - Vary z-depth dramatically between groups. Depth IS the hierarchy.
-- Overlap is OK — a small card peeking from behind a large one creates depth.
 - Primary content: center-left, high z. Metrics: nearby the card they describe. Quotes/context: offset, low z.
 
 Depth guidelines:
