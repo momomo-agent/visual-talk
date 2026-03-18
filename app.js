@@ -603,7 +603,7 @@ document.addEventListener('click', e => {
 // ── LLM Call (streaming) ──
 let history = []
 
-async function callLLM(prompt, onToken, isToolContinue = false) {
+async function callLLM(prompt, onToken, onSpeech, isToolContinue = false) {
   const cfg = getConfig()
   if (!cfg.apiKey) {
     $('configOverlay').classList.add('open')
@@ -673,7 +673,13 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
     ? (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
     : (data.choices?.[0]?.message?.content || '')
 
-  // Show partial text immediately
+  // Fire speech immediately — before simulated streaming starts
+  if (textParts && onSpeech) {
+    const sm = textParts.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+    if (sm) onSpeech(sm[1].trim())
+  }
+
+  // Simulated streaming for block rendering
   if (textParts && onToken) {
     console.log('[LLM] response text:', textParts.slice(0, 500))
     const words = textParts.split(/(?<=\s)/)
@@ -708,7 +714,7 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
     }
 
     // Continue LLM with tool results
-    return await callLLM(null, onToken, true)
+    return await callLLM(null, onToken, onSpeech, true)
   }
 
   // ── Final text response ──
@@ -752,28 +758,24 @@ async function processSendQueue() {
     currentRoundDepth = -1
 
     let lastBlockCount = 0
-    let speechFired = false
+    let speechHandled = false
     try {
-      const reply = await callLLM(prompt, (partial) => {
-        // Speech: fire TTS as soon as the complete tag is detected (once only)
-        if (!speechFired) {
-          const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
-          if (speechMatch) {
-            speechFired = true
-            const speechText = speechMatch[1].trim()
-            showBubble(speechText)
-            playTTS(speechText)
+      const reply = await callLLM(prompt,
+        // onToken: render blocks as they complete
+        (partial) => {
+          const { blocks } = parseResponse(partial)
+          if (blocks.length > lastBlockCount) {
+            renderBlocks(blocks.slice(lastBlockCount))
+            lastBlockCount = blocks.length
           }
+        },
+        // onSpeech: fires once, before simulated streaming starts
+        (speechText) => {
+          speechHandled = true
+          showBubble(speechText)
+          playTTS(speechText)
         }
-
-        // Live-render completed blocks
-        const { blocks } = parseResponse(partial)
-        if (blocks.length > lastBlockCount) {
-          const newBlocks = blocks.slice(lastBlockCount)
-          renderBlocks(newBlocks)
-          lastBlockCount = blocks.length
-        }
-      })
+      )
 
       if (!reply) continue
 
@@ -784,11 +786,11 @@ async function processSendQueue() {
         renderBlocks(blocks.slice(lastBlockCount))
       }
 
-      // TTS: play speech (if not already fired during streaming) or fallback
-      if (speech && !speechFired) {
+      // TTS fallback: only if speech wasn't already handled
+      if (speech && !speechHandled) {
         showBubble(speech)
         playTTS(speech)
-      } else if (!speech && !blocks.length) {
+      } else if (!speech && !speechHandled && !blocks.length) {
         // No structured output at all — strip any vt markers and show plain text
         const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
         if (plain) {
