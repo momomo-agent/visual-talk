@@ -43,7 +43,7 @@ Available types:
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 
-Visual weight: cards with images or media are eye-catching — place them in the upper half of the screen where they're immediately visible.
+Visual weight: cards with images or media are eye-catching — place them in the upper portion of the screen (y < 30) where they're immediately visible. Multiple images should not overlap — space them apart.
 
 About images:
 - You have a web_search tool — USE IT to find real image URLs when the user asks about movies, books, products, or anything visual
@@ -475,16 +475,18 @@ function renderBlocks(blocks) {
     el.dataset.depth = depthLevel
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
-    el.style.transform = `translateZ(${intraZ}px) scale(1)`
+    // Keep initial transform from renderBlock (large + close) for entrance animation
     el.style.zIndex = 100 + i
     el.style.transitionDelay = `${i * 0.25}s`
     setupBlockInteraction(el)
     space.appendChild(el)
     currentRoundEls.add(el)
-    // Trigger entrance animation
+    // Trigger entrance animation: from large/close → settle into position
     requestAnimationFrame(() => {
-      el.style.transform = `translateZ(${intraZ}px) scale(1)`
-      el.style.opacity = 1
+      requestAnimationFrame(() => {
+        el.style.transform = `translateZ(${intraZ}px) scale(1)`
+        el.style.opacity = 1
+      })
     })
   })
 }
