@@ -490,7 +490,10 @@ function renderBlocks(blocks) {
         el.style.transform = `translateZ(${intraZ}px) scale(1)`
         el.style.opacity = 1
         // Clear animation lock after transition completes
-        setTimeout(() => { el._animating = false }, 900)
+        setTimeout(() => {
+          el._animating = false
+          el.style.transitionDelay = '0s'
+        }, 900)
       })
     })
   })
