@@ -334,7 +334,7 @@ function renderBlock(type, data) {
   el.style.transform = `translateZ(0px) scale(1)`
   el.style.opacity = 1
   el.style.zIndex = 100
-  el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1s cubic-bezier(.22,1,.36,1), filter 0.8s, box-shadow 0.6s'
+  el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1s cubic-bezier(.22,1,.36,1), filter 0.8s, box-shadow 0.6s, left 1s cubic-bezier(.22,1,.36,1), top 1s cubic-bezier(.22,1,.36,1)'
 
   // Entrance animation — starts slightly large and close, settles gently
   el.style.opacity = 0
@@ -687,12 +687,13 @@ function renderBlocks(blocks, offset = 0) {
     const groupCount = currentRoundEls.size
     
     // Push back all existing cards in current group
-    currentRoundEls.forEach(existing => {
-      const curZ = parseFloat(existing.dataset.intraZ) || 0
+    currentRoundEls.forEach(sibling => {
+      const curZ = parseFloat(sibling.dataset.intraZ) || 0
       const pushed = curZ - INTRA_PUSH
-      existing.dataset.intraZ = pushed
-      existing.style.transform = `translateZ(${pushed}px) scale(1)`
-      existing.style.zIndex = 100 + Math.floor(pushed / 10)
+      sibling.dataset.intraZ = pushed
+      sibling.style.transform = `translateZ(${pushed}px) scale(1)`
+      sibling.style.opacity = 1  // Ensure visible (might be mid-entrance)
+      sibling.style.zIndex = 100 + Math.floor(pushed / 10)
     })
     
     // New card gets the front position
