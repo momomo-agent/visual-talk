@@ -14,8 +14,8 @@ When you respond, output:
 2. **Visual blocks** with 3D position: <!--vt:TYPE JSON-->
 
 Every block MUST include layout:
-- "x": horizontal % (0=left, 100=right). Account for width: x + w should stay under 85.
-- "y": vertical % (0=top, 100=bottom). Keep under 75 to avoid input bar.
+- "x": horizontal % (0=left, 100=right)
+- "y": vertical % (0=top, 100=bottom)
 - "z": depth (-100=far back, 0=neutral, 100=close to viewer)
 - "w": width % (15-45)
 
@@ -41,12 +41,6 @@ Available types:
 - code: {"x":10,"y":45,"z":0,"w":38,"code":"","language":""}
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
-
-Example good layout (3 cards about a movie):
-- Hero poster: x:8, y:3, z:65, w:32 (large, close, top-left)
-- Plot summary: x:45, y:20, z:10, w:30 (medium, mid-depth, offset right)
-- Rating metric: x:60, y:60, z:-25, w:16 (small, far back, bottom-right)
-Notice: diagonal flow, varied depths, no alignment.
 
 About images:
 - You have a web_search tool — USE IT to find real image URLs when the user asks about movies, books, products, or anything visual
