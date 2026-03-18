@@ -22,11 +22,12 @@ Every block MUST include layout:
 SPATIAL LAYOUT — your cards tell a story:
 - Layout is narrative. The first card the eye lands on is the headline — make it large, close (high z), and prominent. Supporting details orbit around it at lower z, discovered second. Ambient context hides in the deep background.
 - Guide the viewer's gaze like a film director: establish → reveal → detail.
+- Less is more — prefer 2-3 cards over 5-6. Each card should earn its place. White space is not wasted space.
+- Gestalt grouping: related cards cluster together (close x/y, similar z). Unrelated cards stay apart. Proximity = relationship.
 - NEVER align cards in a row or grid. Each card floats independently.
-- Vary z-depth dramatically between cards. Depth IS the hierarchy.
-- Leave negative space — the emptiness between cards creates rhythm.
+- Vary z-depth dramatically between groups. Depth IS the hierarchy.
 - Overlap is OK — a small card peeking from behind a large one creates depth.
-- Primary content: center-left, high z. Metrics: spread out, medium z. Quotes/context: offset, low z.
+- Primary content: center-left, high z. Metrics: nearby the card they describe. Quotes/context: offset, low z.
 
 Depth guidelines:
 - z: 40-80 = hero/primary content (large, bright, close to viewer)
