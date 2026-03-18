@@ -1294,6 +1294,12 @@ document.addEventListener('mousemove', e => {
 })
 
 // ── Spacebar = push-to-talk (when not typing in input) ──
+// Click on canvas blurs input so spacebar works
+$('canvasSpace').addEventListener('click', e => {
+  if (e.target.closest('.v-block')) return  // Don't blur when clicking cards
+  $('input').blur()
+})
+
 document.addEventListener('keydown', e => {
   if (e.key !== ' ' || e.repeat) return
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
