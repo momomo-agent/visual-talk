@@ -114,7 +114,7 @@ function getConfig() {
 // ── Bubble (top-left, no auto-fade) ──
 let bubbleTimer = null
 
-function showBubble(text, speak = false) {
+function showBubble(text) {
   const bubble = $('bubble')
   bubble.textContent = text
   bubble.className = 'bubble visible'
@@ -122,15 +122,13 @@ function showBubble(text, speak = false) {
   bubbleTimer = setTimeout(() => {
     bubble.className = 'bubble fading'
     setTimeout(() => { bubble.className = 'bubble' }, 500)
-  }, 6000)
-  
-  // TTS only when explicitly requested
-  if (speak && text) playTTS(text)
+  }, 8000)
 }
 
 // ── TTS ──
 let currentAudio = null
 let audioCtx = null
+let ttsGeneration = 0  // Cancel stale TTS requests
 
 // Get or create AudioContext (needed for autoplay unlock)
 function getAudioCtx() {
@@ -146,51 +144,78 @@ function unlockAudio() {
 
 async function playTTS(text) {
   const config = getConfig()
-  console.log('[TTS] called with:', text?.slice(0, 50))
-  if (!config.ttsEnabled || !config.ttsApiKey) return
+  const gen = ++ttsGeneration
+  console.log('[TTS] called with:', text?.slice(0, 50), 'gen:', gen)
+  if (!config.ttsEnabled) { console.log('[TTS] disabled'); return }
+  if (!config.ttsApiKey) { console.log('[TTS] no API key'); return }
+  if (!config.ttsBaseUrl) { console.log('[TTS] no base URL'); return }
+  if (!text?.trim()) { console.log('[TTS] empty text'); return }
   
-  // 停止之前的音频
+  // Stop previous audio
   if (currentAudio) {
     try { currentAudio.pause() } catch {}
     currentAudio = null
   }
   
   try {
-    if (!config.ttsBaseUrl) return
     const baseUrl = config.ttsBaseUrl
-    const res = await fetch(`${baseUrl}/v1/audio/speech`, {
+    const url = `${baseUrl}/v1/audio/speech`
+    console.log('[TTS] fetching:', url)
+    
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.ttsApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: config.ttsModel || 'tts-1-hd',
+        model: config.ttsModel || 'tts-1',
         voice: 'nova',
         input: text,
-        speed: 0.75,
         response_format: 'mp3'
       })
     })
     
-    console.log('[TTS] response:', res.status)
-    if (!res.ok) { console.error('[TTS] API error:', res.status); return }
+    console.log('[TTS] response status:', res.status, 'gen:', gen)
+    if (gen !== ttsGeneration) { console.log('[TTS] stale, skipping'); return }
+    
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error('[TTS] API error:', res.status, errText.slice(0, 200))
+      return
+    }
     
     const arrayBuffer = await res.arrayBuffer()
-    console.log('[TTS] audio bytes:', arrayBuffer.byteLength)
-    if (arrayBuffer.byteLength === 0) return
+    console.log('[TTS] audio bytes:', arrayBuffer.byteLength, 'gen:', gen)
+    if (gen !== ttsGeneration) { console.log('[TTS] stale, skipping'); return }
+    if (arrayBuffer.byteLength === 0) { console.log('[TTS] empty response'); return }
     
-    // Decode via AudioContext (bypasses format detection issues)
+    // Try AudioContext decode first, fallback to Audio element
     const ctx = getAudioCtx()
     if (ctx.state === 'suspended') await ctx.resume()
-    const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
-    const source = ctx.createBufferSource()
-    source.buffer = audioBuffer
-    source.connect(ctx.destination)
-    source.start(0)
-    source.onended = () => console.log('[TTS] playback ended')
-    currentAudio = { pause: () => { try { source.stop() } catch {} } }
-    console.log('[TTS] playing via AudioContext!')
+    
+    try {
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
+      if (gen !== ttsGeneration) return
+      const source = ctx.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(ctx.destination)
+      source.start(0)
+      source.onended = () => { console.log('[TTS] playback ended'); currentAudio = null }
+      currentAudio = { pause: () => { try { source.stop() } catch {} } }
+      console.log('[TTS] playing via AudioContext')
+    } catch (decodeErr) {
+      console.warn('[TTS] AudioContext decode failed, trying Audio element:', decodeErr.message)
+      if (gen !== ttsGeneration) return
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
+      const blobUrl = URL.createObjectURL(blob)
+      const audio = new Audio(blobUrl)
+      audio.onended = () => { URL.revokeObjectURL(blobUrl); currentAudio = null; console.log('[TTS] ended (Audio)') }
+      audio.onerror = (e) => { console.error('[TTS] Audio element error:', e); URL.revokeObjectURL(blobUrl) }
+      await audio.play()
+      currentAudio = audio
+      console.log('[TTS] playing via Audio element')
+    }
   } catch (e) {
     console.error('[TTS] error:', e)
   }
@@ -699,7 +724,7 @@ async function send() {
 
   try {
     const reply = await callLLM(fullPrompt, (partial) => {
-      // Stream speech bubble
+      // Stream speech bubble (text only, TTS fires once at final pass)
       const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
       if (speechMatch) showBubble(speechMatch[1].trim())
 
@@ -714,15 +739,21 @@ async function send() {
 
     if (!reply) return
 
-    // Final pass — render any remaining blocks
+    // Final pass — render any remaining blocks and trigger TTS once
     const { speech, blocks } = parseResponse(reply)
-    if (speech) showBubble(speech, true)
     if (blocks.length > lastBlockCount) {
       renderBlocks(blocks.slice(lastBlockCount))
     }
 
-    // If nothing structured, show as bubble
-    if (!speech && !blocks.length) showBubble(reply.slice(0, 100), true)
+    // TTS: play speech or fallback to plain text (always call playTTS directly)
+    if (speech) {
+      showBubble(speech)
+      playTTS(speech)
+    } else if (!blocks.length) {
+      const fallbackText = reply.slice(0, 100)
+      showBubble(fallbackText)
+      playTTS(fallbackText)
+    }
   } catch (err) {
     showBubble(`Error: ${err.message}`)
     console.error(err)
