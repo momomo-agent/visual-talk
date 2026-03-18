@@ -73,7 +73,6 @@ Cards belong to the canvas, not to individual responses. Before creating new car
 
 - \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring an old card forward to join your new composition. It flies to the new position and becomes part of the current group.
 - \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — update a card's content and bring it forward.
-- \`<!--vt:remove TITLE -->\` — remove a card that's no longer relevant (fades out).
 
 **When to reuse vs create new:**
 - If an existing card is directly relevant to your response → move it nearby your new cards
@@ -547,7 +546,6 @@ function parseResponse(text) {
   let m
   while ((m = blockRegex.exec(text)) !== null) {
     if (m[1] === 'speech') continue
-    if (m[1] === 'remove') { commands.push({ cmd: 'remove', target: m[2].trim() }); continue }
     if (m[1] === 'move') {
       try { commands.push({ cmd: 'move', ...JSON.parse(m[2]) }) } catch {}
       continue
@@ -571,22 +569,6 @@ function executeCommands(commands) {
   const space = $('canvasSpace')
   for (const cmd of commands) {
     switch (cmd.cmd) {
-      case 'remove': {
-        // Remove by title match or index
-        const blocks = [...space.querySelectorAll('.v-block')]
-        const target = cmd.target.toLowerCase()
-        blocks.forEach(el => {
-          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
-          if (title.includes(target) || el.dataset.contentKey?.includes(target)) {
-            el.style.transition = 'opacity 0.5s, transform 0.5s'
-            el.style.opacity = 0
-            el.style.transform += ' scale(0.8)'
-            setTimeout(() => el.remove(), 500)
-            selectedBlocks.delete(el)
-          }
-        })
-        break
-      }
       case 'move': {
         // Move card to new position — brings it to current group (front)
         const blocks = [...space.querySelectorAll('.v-block')]
