@@ -229,9 +229,9 @@ function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
 
-  // Position — remap y to avoid bottom input bar
-  if (data.x != null) el.style.left = `${data.x}%`
-  if (data.y != null) el.style.top = `${(data.y / 100) * 90}%`
+  // Position — remap to safe area (center 90% width, top 85% height)
+  if (data.x != null) el.style.left = `${5 + (data.x / 100) * 90}%`
+  if (data.y != null) el.style.top = `${5 + (data.y / 100) * 85}%`
   if (data.w) el.style.width = `${data.w}%`
   
   // New blocks always at front
@@ -240,9 +240,9 @@ function renderBlock(type, data) {
   el.style.zIndex = 100
   el.style.transition = 'transform 0.8s cubic-bezier(.16,1,.3,1), opacity 0.8s cubic-bezier(.16,1,.3,1), filter 0.8s, box-shadow 0.6s'
 
-  // Entrance animation via opacity only (no transform conflict)
+  // Entrance animation — starts hidden, animated in by renderBlocks with delay
   el.style.opacity = 0
-  requestAnimationFrame(() => { el.style.opacity = 1 })
+  el.style.transform = `translateZ(-60px) scale(0.95)`
 
   // Window title bar label
   const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
@@ -364,15 +364,13 @@ function pushOldBlocks() {
 
 function applyDepth(el, d) {
   const z = -d * 160
-  const s = Math.max(0.6, 1 - d * 0.1)
-  const o = Math.max(0, 1 - d * 0.3)
+  const s = Math.max(0.5, 1 - d * 0.15)
+  const o = Math.max(0, 1 - d * 0.5)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 100 - d * 20)
-  // Blur starts at d>=1, ramps up quickly
-  el.style.filter = d >= 1 ? `blur(${Math.min(d * 1.5, 6)}px)` : 'none'
+  el.style.filter = d >= 1 ? `blur(${d * 5}px)` : 'none'
   el.style.pointerEvents = 'auto'
-  // Remove completely invisible blocks
   if (o <= 0) el.remove()
 }
 
@@ -385,7 +383,7 @@ function renderBlocks(blocks) {
 
   // Render new blocks — reuse existing if content matches
   blocks.forEach(({ type, data }, i) => {
-    const contentKey = JSON.stringify({ type, title: data.title, value: data.value, text: data.text, code: data.code })
+    const contentKey = JSON.stringify({ type, title: data.title, value: data.value, text: data.text, code: data.code, image: data.image, url: data.url })
 
     // Check for existing block with same content
     let existing = null
@@ -418,10 +416,15 @@ function renderBlocks(blocks) {
     el.dataset.intraZ = intraZ
     el.style.transform = `translateZ(${intraZ}px) scale(1)`
     el.style.zIndex = 100 - i
-    el.style.transitionDelay = `${i * 0.1}s`
+    el.style.transitionDelay = `${i * 0.25}s`
     setupBlockInteraction(el)
     space.appendChild(el)
     currentRoundEls.add(el)
+    // Trigger entrance animation
+    requestAnimationFrame(() => {
+      el.style.transform = `translateZ(${intraZ}px) scale(1)`
+      el.style.opacity = 1
+    })
   })
 }
 
@@ -683,7 +686,6 @@ async function send() {
 
   try {
     const reply = await callLLM(fullPrompt, (partial) => {
-      hideThinking()
       // Stream speech bubble
       const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
       if (speechMatch) showBubble(speechMatch[1].trim())
@@ -698,7 +700,6 @@ async function send() {
     })
 
     if (!reply) return
-    hideThinking()
 
     // Final pass — render any remaining blocks
     const { speech, blocks } = parseResponse(reply)
@@ -710,10 +711,10 @@ async function send() {
     // If nothing structured, show as bubble
     if (!speech && !blocks.length) showBubble(reply.slice(0, 100), true)
   } catch (err) {
-    hideThinking()
     showBubble(`Error: ${err.message}`)
     console.error(err)
   } finally {
+    hideThinking()
     input.focus()
   }
 }
