@@ -183,6 +183,31 @@ async function playTTS(text) {
   }
 }
 
+// ── Tool Call Log (top-right) ──
+function showToolLog(text) {
+  const log = $('toolLog')
+  const item = document.createElement('div')
+  item.className = 'tool-log-item'
+  item.textContent = text
+  log.appendChild(item)
+  // Fade out oldest when > 5
+  while (log.children.length > 5) {
+    const old = log.firstChild
+    if (!old.classList.contains('fading')) {
+      old.classList.add('fading')
+      old.addEventListener('animationend', () => old.remove(), { once: true })
+    } else {
+      old.remove()
+    }
+  }
+  // Auto fade out after 8s
+  setTimeout(() => {
+    if (!item.parentNode) return
+    item.classList.add('fading')
+    item.addEventListener('animationend', () => item.remove(), { once: true })
+  }, 8000)
+}
+
 // ── Thinking ──
 function showThinking() { $('thinking').classList.add('visible') }
 function hideThinking() { $('thinking').classList.remove('visible') }
@@ -612,7 +637,7 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
       const name = isAnthropic ? tc.name : tc.function.name
       const args = isAnthropic ? tc.input : JSON.parse(tc.function.arguments || '{}')
 
-      if (cfg.showToolCalls) showBubble(`🔍 searching: ${args.query || name}...`)
+      if (cfg.showToolCalls) showToolLog(`${name}: ${args.query || args.url || ''}`.slice(0, 60))
       const result = await executeTool(name, args, cfg.tavilyKey)
 
       if (isAnthropic) {

@@ -37,6 +37,9 @@
     </button>
   </div>
 
+  <!-- Tool calls log (top-right, left of gear) -->
+  <div class="tool-log" id="toolLog"></div>
+
   <!-- Config (hidden, gear icon to toggle) -->
   <button class="gear-btn" id="gearBtn">⚙</button>
   <div class="config-overlay" id="configOverlay">
@@ -66,13 +69,13 @@
       </div>
       <div class="field">
         <label>
-          <input type="checkbox" id="showToolCalls" style="margin-right:4px;vertical-align:middle;accent-color:#e8856a">
+          <input type="checkbox" id="showToolCalls" style="accent-color:#e8856a">
           显示 Tool 调用
         </label>
       </div>
       <div class="field">
         <label>
-          <input type="checkbox" id="ttsEnabled" style="margin-right:4px;vertical-align:middle;accent-color:#e8856a">
+          <input type="checkbox" id="ttsEnabled" style="accent-color:#e8856a">
           TTS 语音
         </label>
       </div>
@@ -86,7 +89,7 @@
       </div>
       <div class="field">
         <label>
-          <input type="checkbox" id="proxyEnabled" style="margin-right:4px;vertical-align:middle;accent-color:#e8856a">
+          <input type="checkbox" id="proxyEnabled" style="accent-color:#e8856a">
           Proxy
         </label>
         <input id="proxyUrl" placeholder="companion-ui.momomo.dev/api/proxy" disabled>
