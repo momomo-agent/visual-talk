@@ -56,14 +56,18 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 ## Canvas Commands
 
-Beyond adding new cards, you can manipulate existing ones:
+Cards belong to the canvas, not to individual responses. You can bring old cards forward, reposition them, or remove them to compose a coherent scene across conversation turns.
 
-- \`<!--vt:clear -->\` — wipe the canvas clean (start fresh)
-- \`<!--vt:remove TITLE -->\` — remove a card by title (fades out gracefully)
-- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — reposition a card
-- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — change card content
+- \`<!--vt:clear -->\` — wipe the canvas clean
+- \`<!--vt:remove TITLE -->\` — remove a card by title (fades out)
+- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring a card forward and reposition it. It rejoins the current group.
+- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — update a card's content and bring it forward.
 
-Use these to evolve the canvas across conversation turns instead of always creating new cards. Move cards aside, remove irrelevant ones, update data.
+Creative uses:
+- Reference an old card: move it nearby a new card to show connection
+- Evolve information: update a metric card's value as context changes
+- Clean up: remove cards that are no longer relevant before adding new ones
+- Build on context: add a small detail card next to an existing card to annotate it
 
 ## Finding Images
 
@@ -466,32 +470,44 @@ function executeCommands(commands) {
         break
       }
       case 'move': {
-        // Move card by title match to new position
+        // Move card to new position — brings it to current group (front)
         const blocks = [...space.querySelectorAll('.v-block')]
         const target = (cmd.title || '').toLowerCase()
         blocks.forEach(el => {
           const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
           if (title.includes(target)) {
+            // Promote to current group
+            el.dataset.depth = depthLevel
+            currentRoundEls.add(el)
+            el.style.filter = 'none'
+            el.style.opacity = 1
+            el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 0.8s, filter 0.8s, left 1s cubic-bezier(.22,1,.36,1), top 1s cubic-bezier(.22,1,.36,1)'
             if (cmd.x != null) el.style.left = `${5 + (cmd.x / 100) * 90}%`
             if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 85}%`
-            if (cmd.z != null) {
-              el.style.transform = `translateZ(${cmd.z}px) scale(1)`
-              el.style.zIndex = 100 + Math.floor(cmd.z / 10)
-            }
+            const z = cmd.z != null ? cmd.z : 30
+            el.dataset.intraZ = z
+            el.style.transform = `translateZ(${z}px) scale(1)`
+            el.style.zIndex = 100 + Math.floor(z / 10)
           }
         })
         break
       }
       case 'update': {
-        // Update card content by title match
+        // Update card content — brings it to current group (front)
         const blocks = [...space.querySelectorAll('.v-block')]
         const target = (cmd.title || '').toLowerCase()
         blocks.forEach(el => {
           const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
           if (title.includes(target)) {
+            // Promote to current group
+            el.dataset.depth = depthLevel
+            currentRoundEls.add(el)
+            el.style.filter = 'none'
+            el.style.opacity = 1
             if (cmd.newTitle) { const h = el.querySelector('h2, h3'); if (h) h.textContent = cmd.newTitle }
             if (cmd.sub) { const s = el.querySelector('.sub'); if (s) s.textContent = cmd.sub }
             if (cmd.footer) { const f = el.querySelector('.footer'); if (f) f.textContent = cmd.footer }
+            if (cmd.value) { const v = el.querySelector('.big-num'); if (v) v.textContent = cmd.value }
           }
         })
         break
