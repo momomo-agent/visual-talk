@@ -298,9 +298,9 @@ function renderBlock(type, data) {
   el.style.zIndex = 100
   el.style.transition = 'transform 0.8s cubic-bezier(.16,1,.3,1), opacity 0.8s cubic-bezier(.16,1,.3,1), filter 0.8s, box-shadow 0.6s'
 
-  // Entrance animation — starts hidden, animated in by renderBlocks with delay
+  // Entrance animation — starts large and close, settles into position
   el.style.opacity = 0
-  el.style.transform = `translateZ(-60px) scale(0.95)`
+  el.style.transform = `translateZ(120px) scale(1.15)`
 
   // Window title bar label
   const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
