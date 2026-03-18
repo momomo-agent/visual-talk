@@ -121,8 +121,6 @@ function showBubble(text) {
   const bubble = $('bubble')
   bubble.textContent = text
   bubble.className = 'bubble visible'
-  console.log('[Bubble] showing:', text)
-  console.trace('[Bubble] stack')
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
     bubble.className = 'bubble fading'
@@ -756,11 +754,7 @@ async function processSendQueue() {
     let lastBlockCount = 0
     try {
       const reply = await callLLM(prompt, (partial) => {
-        // Stream speech bubble (text only, TTS fires once at final pass)
-        const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
-        if (speechMatch) showBubble(speechMatch[1].trim())
-
-        // Live-render completed blocks
+        // Live-render completed blocks only — speech handled in final pass
         const { blocks } = parseResponse(partial)
         if (blocks.length > lastBlockCount) {
           const newBlocks = blocks.slice(lastBlockCount)
