@@ -722,79 +722,78 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
   return textParts
 }
 
-// ── Send ──
-let sendLock = false
+// ── Send (queue-based) ──
+const sendQueue = []
+let sendProcessing = false
 
 async function send() {
   const input = $('input')
   const text = input.value.trim()
   if (!text) return
 
-  // Queue: wait for previous send to finish
-  if (sendLock) {
-    console.log('[Send] queued, waiting for previous send to finish')
-    const waitStart = Date.now()
-    while (sendLock && Date.now() - waitStart < 60000) {
-      await new Promise(r => setTimeout(r, 200))
-    }
-    if (sendLock) { showBubble('上一条还在处理...'); return }
-  }
-
-  sendLock = true
   unlockAudio()
   input.value = ''
-  showThinking()
-  currentRoundDepth = -1 // Allow push on next renderBlocks
 
-  // If blocks are selected, prepend context
+  // Capture selection context at send time
   const selCtx = window._selectedContext
   const fullPrompt = selCtx
     ? `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${text}`
     : text
 
-  let lastBlockCount = 0
+  sendQueue.push(fullPrompt)
+  if (!sendProcessing) processSendQueue()
+}
 
-  try {
-    const reply = await callLLM(fullPrompt, (partial) => {
-      // Stream speech bubble (text only, TTS fires once at final pass)
-      const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
-      if (speechMatch) showBubble(speechMatch[1].trim())
+async function processSendQueue() {
+  sendProcessing = true
+  while (sendQueue.length > 0) {
+    const prompt = sendQueue.shift()
+    showThinking()
+    currentRoundDepth = -1
 
-      // Live-render completed blocks
-      const { blocks } = parseResponse(partial)
+    let lastBlockCount = 0
+    try {
+      const reply = await callLLM(prompt, (partial) => {
+        // Stream speech bubble (text only, TTS fires once at final pass)
+        const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+        if (speechMatch) showBubble(speechMatch[1].trim())
+
+        // Live-render completed blocks
+        const { blocks } = parseResponse(partial)
+        if (blocks.length > lastBlockCount) {
+          const newBlocks = blocks.slice(lastBlockCount)
+          renderBlocks(newBlocks)
+          lastBlockCount = blocks.length
+        }
+      })
+
+      if (!reply) continue
+
+      // Final pass — render any remaining blocks and trigger TTS once
+      const { speech, blocks } = parseResponse(reply)
+      console.log('[Send] final parse:', { speech, blockCount: blocks.length, blocks: blocks.map(b => ({ type: b.type, image: b.data.image, url: b.data.url })) })
       if (blocks.length > lastBlockCount) {
-        const newBlocks = blocks.slice(lastBlockCount)
-        renderBlocks(newBlocks)
-        lastBlockCount = blocks.length
+        renderBlocks(blocks.slice(lastBlockCount))
       }
-    })
 
-    if (!reply) return
-
-    // Final pass — render any remaining blocks and trigger TTS once
-    const { speech, blocks } = parseResponse(reply)
-    console.log('[Send] final parse:', { speech, blockCount: blocks.length, blocks: blocks.map(b => ({ type: b.type, image: b.data.image, url: b.data.url })) })
-    if (blocks.length > lastBlockCount) {
-      renderBlocks(blocks.slice(lastBlockCount))
+      // TTS: play speech or fallback to plain text
+      if (speech) {
+        showBubble(speech)
+        playTTS(speech)
+      } else if (!blocks.length) {
+        const fallbackText = reply.slice(0, 100)
+        showBubble(fallbackText)
+        playTTS(fallbackText)
+      }
+    } catch (err) {
+      showBubble(`Error: ${err.message}`)
+      console.error(err)
+    } finally {
+      hideThinking()
     }
-
-    // TTS: play speech or fallback to plain text (always call playTTS directly)
-    if (speech) {
-      showBubble(speech)
-      playTTS(speech)
-    } else if (!blocks.length) {
-      const fallbackText = reply.slice(0, 100)
-      showBubble(fallbackText)
-      playTTS(fallbackText)
-    }
-  } catch (err) {
-    showBubble(`Error: ${err.message}`)
-    console.error(err)
-  } finally {
-    sendLock = false
-    hideThinking()
-    input.focus()
   }
+  sendProcessing = false
+  $('input').focus()
 }
 
 // ── Voice Input ──
