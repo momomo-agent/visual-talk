@@ -520,7 +520,7 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
     return null
   }
 
-  if (!isToolContinue) history.push({ role: 'user', content: prompt })
+  if (!isToolContinue && prompt) history.push({ role: 'user', content: prompt })
 
   const isAnthropic = cfg.provider === 'anthropic'
   const targetUrl = isAnthropic
@@ -619,7 +619,13 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
   }
 
   // ── Final text response ──
-  history.push({ role: 'assistant', content: textParts })
+  if (isAnthropic) {
+    // Keep full content structure (may include text + tool_use blocks)
+    const content = data.content || []
+    if (content.length) history.push({ role: 'assistant', content })
+  } else {
+    if (textParts) history.push({ role: 'assistant', content: textParts })
+  }
   return textParts
 }
 
