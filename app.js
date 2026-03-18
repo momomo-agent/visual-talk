@@ -49,7 +49,7 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 **Avoid**:
 - Grid layouts (cards at x:0, x:33, x:66 in a row)
 - Vertical stacks (same x, incrementing y)
-- Overlapping text — if two cards overlap, one should be far back (z difference ≥ 40) and blurred
+- Overlapping is OK sparingly — a slight overlap adds depth. But if text overlaps text, they must be at very different z-depths (≥ 40 apart) so the back one blurs away. Don't stack cards directly on top of each other.
 
 ## Types
 - card: {"x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
