@@ -54,6 +54,17 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 
+## Canvas Commands
+
+Beyond adding new cards, you can manipulate existing ones:
+
+- \`<!--vt:clear -->\` — wipe the canvas clean (start fresh)
+- \`<!--vt:remove TITLE -->\` — remove a card by title (fades out gracefully)
+- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — reposition a card
+- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — change card content
+
+Use these to evolve the canvas across conversation turns instead of always creating new cards. Move cards aside, remove irrelevant ones, update data.
+
 ## Finding Images
 
 When the user asks about movies, books, products, or anything visual:
@@ -401,19 +412,93 @@ function renderBlock(type, data) {
 function parseResponse(text) {
   const speech = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
   const blocks = []
+  const commands = []
   const blockRegex = /<!--vt:(\w+)\s+([\s\S]*?)-->/g
   let m
   while ((m = blockRegex.exec(text)) !== null) {
     if (m[1] === 'speech') continue
+    if (m[1] === 'clear') { commands.push({ cmd: 'clear' }); continue }
+    if (m[1] === 'remove') { commands.push({ cmd: 'remove', target: m[2].trim() }); continue }
+    if (m[1] === 'move') {
+      try { commands.push({ cmd: 'move', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
+    if (m[1] === 'update') {
+      try { commands.push({ cmd: 'update', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
     try { blocks.push({ type: m[1], data: JSON.parse(m[2]) }) } catch {}
   }
-  return { speech: speech ? speech[1].trim() : null, blocks }
+  return { speech: speech ? speech[1].trim() : null, blocks, commands }
 }
 
 let depthLevel = 0
 let currentRoundDepth = -1
 let currentRoundEls = new Set()
 const selectedBlocks = new Set()
+
+// ── Canvas commands (clear/remove/move/update) ──
+function executeCommands(commands) {
+  const space = $('canvasSpace')
+  for (const cmd of commands) {
+    switch (cmd.cmd) {
+      case 'clear':
+        space.querySelectorAll('.v-block').forEach(el => el.remove())
+        selectedBlocks.clear()
+        depthLevel = 0
+        currentRoundDepth = -1
+        currentRoundEls = new Set()
+        break
+      case 'remove': {
+        // Remove by title match or index
+        const blocks = [...space.querySelectorAll('.v-block')]
+        const target = cmd.target.toLowerCase()
+        blocks.forEach(el => {
+          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
+          if (title.includes(target) || el.dataset.contentKey?.includes(target)) {
+            el.style.transition = 'opacity 0.5s, transform 0.5s'
+            el.style.opacity = 0
+            el.style.transform += ' scale(0.8)'
+            setTimeout(() => el.remove(), 500)
+            selectedBlocks.delete(el)
+          }
+        })
+        break
+      }
+      case 'move': {
+        // Move card by title match to new position
+        const blocks = [...space.querySelectorAll('.v-block')]
+        const target = (cmd.title || '').toLowerCase()
+        blocks.forEach(el => {
+          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
+          if (title.includes(target)) {
+            if (cmd.x != null) el.style.left = `${5 + (cmd.x / 100) * 90}%`
+            if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 85}%`
+            if (cmd.z != null) {
+              el.style.transform = `translateZ(${cmd.z}px) scale(1)`
+              el.style.zIndex = 100 + Math.floor(cmd.z / 10)
+            }
+          }
+        })
+        break
+      }
+      case 'update': {
+        // Update card content by title match
+        const blocks = [...space.querySelectorAll('.v-block')]
+        const target = (cmd.title || '').toLowerCase()
+        blocks.forEach(el => {
+          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
+          if (title.includes(target)) {
+            if (cmd.newTitle) { const h = el.querySelector('h2, h3'); if (h) h.textContent = cmd.newTitle }
+            if (cmd.sub) { const s = el.querySelector('.sub'); if (s) s.textContent = cmd.sub }
+            if (cmd.footer) { const f = el.querySelector('.footer'); if (f) f.textContent = cmd.footer }
+          }
+        })
+        break
+      }
+    }
+  }
+}
 
 function pushOldBlocks() {
   // Only push once per round
@@ -447,7 +532,7 @@ function applyDepth(el, d) {
   if (o <= 0) el.remove()
 }
 
-function renderBlocks(blocks) {
+function renderBlocks(blocks, offset = 0) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
@@ -456,10 +541,11 @@ function renderBlocks(blocks) {
 
   // Render new blocks — reuse existing if content matches
   blocks.forEach(({ type, data }, i) => {
-    // Use round + index as stable key (content changes during streaming)
-    const contentKey = `round-${depthLevel}-block-${i}`
+    const globalIndex = offset + i
+    // Stable key: round + global index (not slice index)
+    const contentKey = `r${depthLevel}-${globalIndex}`
 
-    // Check for existing block from this round
+    // Check for existing block from this round with same key
     let existing = null
     space.querySelectorAll('.v-block').forEach(old => {
       if (old.dataset.contentKey === contentKey) existing = old
@@ -738,11 +824,12 @@ async function processSendQueue() {
     let speechHandled = false
     try {
       const reply = await callLLM(prompt,
-        // onToken: render blocks as they complete
+        // onToken: render blocks as they stream in
         (partial) => {
-          const { blocks } = parseResponse(partial)
+          const { blocks, commands } = parseResponse(partial)
+          if (commands.length) executeCommands(commands)
           if (blocks.length > lastBlockCount) {
-            renderBlocks(blocks.slice(lastBlockCount))
+            renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
             lastBlockCount = blocks.length
           }
         },
@@ -756,11 +843,12 @@ async function processSendQueue() {
 
       if (!reply) continue
 
-      // Final pass — render any remaining blocks and trigger TTS once
-      const { speech, blocks } = parseResponse(reply)
-      console.log('[Send] final parse:', { speech, blockCount: blocks.length, blocks: blocks.map(b => ({ type: b.type, image: b.data.image, url: b.data.url })) })
+      // Final pass — render any remaining blocks/commands and trigger TTS once
+      const { speech, blocks, commands } = parseResponse(reply)
+      console.log('[Send] final parse:', { speech, blockCount: blocks.length, commands: commands.length })
+      if (commands.length) executeCommands(commands)
       if (blocks.length > lastBlockCount) {
-        renderBlocks(blocks.slice(lastBlockCount))
+        renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
       }
 
       // TTS fallback: only if speech wasn't already handled
