@@ -42,6 +42,8 @@ Available types:
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 
+Visual weight: cards with images or media are eye-catching — place them in the upper half of the screen where they're immediately visible.
+
 About images:
 - You have a web_search tool — USE IT to find real image URLs when the user asks about movies, books, products, or anything visual
 - Search for "[title] poster" or "[title] 剧照" to get real URLs
