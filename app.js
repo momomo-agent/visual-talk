@@ -9,7 +9,7 @@ The screen is a window into a 3D environment. Cards float at different depths, l
 
 When you respond, output:
 
-1. **Speech** (optional): A whisper (under 15 words). <!--vt:speech text-->
+1. **Speech** (optional): A short spoken line (under 15 words). Format: <!--vt:speech Your actual words here-->
 
 2. **Visual blocks** with 3D position: <!--vt:TYPE JSON-->
 
