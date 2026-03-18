@@ -752,9 +752,21 @@ async function processSendQueue() {
     currentRoundDepth = -1
 
     let lastBlockCount = 0
+    let speechFired = false
     try {
       const reply = await callLLM(prompt, (partial) => {
-        // Live-render completed blocks only — speech handled in final pass
+        // Speech: fire TTS as soon as the complete tag is detected (once only)
+        if (!speechFired) {
+          const speechMatch = partial.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+          if (speechMatch) {
+            speechFired = true
+            const speechText = speechMatch[1].trim()
+            showBubble(speechText)
+            playTTS(speechText)
+          }
+        }
+
+        // Live-render completed blocks
         const { blocks } = parseResponse(partial)
         if (blocks.length > lastBlockCount) {
           const newBlocks = blocks.slice(lastBlockCount)
@@ -772,11 +784,11 @@ async function processSendQueue() {
         renderBlocks(blocks.slice(lastBlockCount))
       }
 
-      // TTS: play speech or fallback to plain text
-      if (speech) {
+      // TTS: play speech (if not already fired during streaming) or fallback
+      if (speech && !speechFired) {
         showBubble(speech)
         playTTS(speech)
-      } else if (!blocks.length) {
+      } else if (!speech && !blocks.length) {
         // No structured output at all — strip any vt markers and show plain text
         const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
         if (plain) {
