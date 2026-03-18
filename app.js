@@ -600,132 +600,78 @@ document.addEventListener('click', e => {
   updateSelectionContext()
 })
 
-// ── LLM Call (streaming) ──
-let history = []
+// ── LLM Call (via agentic-claw) ──
+let claw = null
+let clawConfigKey = null
 
-async function callLLM(prompt, onToken, onSpeech, isToolContinue = false) {
+function ensureClaw() {
+  const cfg = getConfig()
+  const key = JSON.stringify([cfg.provider, cfg.apiKey, cfg.baseUrl, cfg.model, cfg.proxyUrl])
+  if (claw && clawConfigKey === key) return claw
+  if (claw) claw.destroy()
+
+  // Make agenticAsk available for claw
+  globalThis.agenticAsk = AgenticCore.agenticAsk
+
+  claw = AgenticClaw.createClaw({
+    apiKey: cfg.apiKey,
+    provider: cfg.provider || 'openai',
+    baseUrl: cfg.baseUrl || undefined,
+    model: cfg.model || undefined,
+    proxyUrl: (cfg.proxyEnabled && cfg.proxyUrl) ? cfg.proxyUrl : undefined,
+    systemPrompt: SYSTEM,
+    maxTokens: 4096,
+    stream: true,
+    tools: [{
+      name: 'web_search',
+      description: 'Search the web for information, images, news. Use for ANY question needing real-world facts, current events, image URLs, or verification.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+          search_depth: { type: 'string', enum: ['basic', 'advanced'] },
+          include_images: { type: 'boolean', description: 'Include image URLs' }
+        },
+        required: ['query']
+      },
+      execute: async (input) => executeTool('web_search', input, cfg.tavilyKey)
+    }],
+  })
+  clawConfigKey = key
+  return claw
+}
+
+async function callLLM(prompt, onToken, onSpeech) {
   const cfg = getConfig()
   if (!cfg.apiKey) {
     $('configOverlay').classList.add('open')
     return null
   }
 
-  if (!isToolContinue && prompt) history.push({ role: 'user', content: prompt })
+  const c = ensureClaw()
+  let accumulated = ''
+  let speechFired = false
 
-  const isAnthropic = cfg.provider === 'anthropic'
-  const targetUrl = isAnthropic
-    ? `${cfg.baseUrl || 'https://api.anthropic.com'}/v1/messages`
-    : `${cfg.baseUrl || 'https://api.openai.com'}/v1/chat/completions`
+  const { answer } = await c.chat(prompt, (type, data) => {
+    if (type === 'token' && data.text) {
+      accumulated += data.text
+      if (onToken) onToken(accumulated)
 
-  const headers = { 'Content-Type': 'application/json' }
-  const tools = isAnthropic ? TOOLS_ANTHROPIC : TOOLS_OPENAI
-  let body
-
-  if (isAnthropic) {
-    headers['x-api-key'] = cfg.apiKey
-    headers['anthropic-version'] = '2023-06-01'
-    body = JSON.stringify({
-      model: cfg.model || 'claude-sonnet-4-20250514',
-      max_tokens: 4096, stream: false,
-      system: SYSTEM,
-      messages: history,
-      tools,
-    })
-  } else {
-    headers['Authorization'] = `Bearer ${cfg.apiKey}`
-    body = JSON.stringify({
-      model: cfg.model || 'gpt-4o',
-      max_tokens: 4096, stream: false,
-      messages: [{ role: 'system', content: SYSTEM }, ...history],
-      tools,
-    })
-  }
-
-  // ── Fetch (proxy or direct) — non-streaming for tool use ──
-  let data
-  const fetchHeaders = { ...headers }
-  const useProxy = !!cfg.proxyUrl
-
-  if (useProxy) {
-    const fetchUrl = cfg.proxyUrl.startsWith('http') ? cfg.proxyUrl : `https://${cfg.proxyUrl}`
-    const proxyRes = await fetch(fetchUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url: targetUrl, method: 'POST', headers: fetchHeaders, body, mode: 'raw' })
-    })
-    const result = await proxyRes.json()
-    if (!result.success) throw new Error(result.error || `Proxy failed: ${result.status}`)
-    const rawBody = typeof result.body === 'string' ? result.body : JSON.stringify(result.body)
-    if (result.status >= 400) throw new Error(`API error ${result.status}: ${rawBody.slice(0, 300)}`)
-    data = JSON.parse(rawBody)
-  } else {
-    const res = await fetch(targetUrl, { method: 'POST', headers: fetchHeaders, body })
-    if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 300)}`)
-    data = await res.json()
-  }
-
-  // ── Extract response ──
-  const toolCalls = isAnthropic
-    ? (data.content || []).filter(b => b.type === 'tool_use')
-    : (data.choices?.[0]?.message?.tool_calls || [])
-
-  const textParts = isAnthropic
-    ? (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
-    : (data.choices?.[0]?.message?.content || '')
-
-  // Fire speech immediately — before simulated streaming starts
-  if (textParts && onSpeech) {
-    const sm = textParts.match(/<!--vt:speech\s+([\s\S]*?)-->/)
-    if (sm) onSpeech(sm[1].trim())
-  }
-
-  // Simulated streaming for block rendering
-  if (textParts && onToken) {
-    console.log('[LLM] response text:', textParts.slice(0, 500))
-    const words = textParts.split(/(?<=\s)/)
-    let acc = ''
-    for (const w of words) { acc += w; onToken(acc); await new Promise(r => setTimeout(r, 15)) }
-  }
-
-  // ── Tool use loop ──
-  if (toolCalls.length > 0) {
-    // Add assistant message with tool calls to history
-    if (isAnthropic) {
-      history.push({ role: 'assistant', content: data.content })
-    } else {
-      history.push(data.choices[0].message)
-    }
-
-    // Execute each tool and add results
-    for (const tc of toolCalls) {
-      const name = isAnthropic ? tc.name : tc.function.name
-      const args = isAnthropic ? tc.input : JSON.parse(tc.function.arguments || '{}')
-
-      if (cfg.showToolCalls) showToolLog(`${name}: ${args.query || args.url || ''}`.slice(0, 60))
-      console.log('[Tool] calling:', name, args)
-      const result = await executeTool(name, args, cfg.tavilyKey)
-      console.log('[Tool] result:', name, JSON.stringify(result).slice(0, 500))
-
-      if (isAnthropic) {
-        history.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(result) }] })
-      } else {
-        history.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) })
+      // Check for speech tag completion during streaming
+      if (!speechFired && onSpeech) {
+        const sm = accumulated.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+        if (sm) {
+          speechFired = true
+          onSpeech(sm[1].trim())
+        }
       }
     }
+    if (type === 'tool' && cfg.showToolCalls) {
+      showToolLog(`${data.name}: ${(data.input?.query || data.input?.url || '').slice(0, 60)}`)
+    }
+  })
 
-    // Continue LLM with tool results
-    return await callLLM(null, onToken, onSpeech, true)
-  }
-
-  // ── Final text response ──
-  if (isAnthropic) {
-    // Keep full content structure (may include text + tool_use blocks)
-    const content = data.content || []
-    if (content.length) history.push({ role: 'assistant', content })
-  } else {
-    if (textParts) history.push({ role: 'assistant', content: textParts })
-  }
-  return textParts
+  return answer
 }
 
 // ── Send (queue-based) ──

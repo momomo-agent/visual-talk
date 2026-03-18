@@ -1,41 +1,6 @@
-// ── Tool definitions for LLM ──
-
-const TOOLS_OPENAI = [
-  {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description: 'Search the web for information, images, news. Use for ANY question needing real-world facts, current events, image URLs, or verification.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search query' },
-          search_depth: { type: 'string', enum: ['basic', 'advanced'] },
-          include_images: { type: 'boolean', description: 'Include image URLs' }
-        },
-        required: ['query']
-      }
-    }
-  }
-]
-
-const TOOLS_ANTHROPIC = [
-  {
-    name: 'web_search',
-    description: 'Search the web for information, images, news. Use for ANY question needing real-world facts, current events, image URLs, or verification.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Search query' },
-        search_depth: { type: 'string', enum: ['basic', 'advanced'] },
-        include_images: { type: 'boolean', description: 'Include image URLs' }
-      },
-      required: ['query']
-    }
-  }
-]
-
-// ── Execute tools ──
+// ── Tool execution (search) ──
+// Tool definitions are now in app.js (passed to createClaw).
+// This file only contains the execute implementations.
 
 async function executeTool(name, args, tavilyKey) {
   if (name === 'web_search') return await tavilySearch(args, tavilyKey)
