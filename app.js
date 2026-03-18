@@ -452,14 +452,20 @@ function renderBlocks(blocks) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
-    // Intra-response z: LLM's z sets relative depth, but all new cards stay in front
+    // Intra-response z: later cards should be closer (higher z)
+    // Start from LLM's z, but ensure each subsequent card is at least as close as the previous
     const llmZ = data.z || 0
-    const intraZ = Math.max(0, llmZ)
+    const minZ = i === 0 ? 0 : (blocks[i - 1]._finalZ || 0)
+    const intraZ = Math.max(minZ, llmZ)
+    blocks[i]._finalZ = intraZ  // Store for next card's minZ check
+    
+    // z-index follows translateZ: higher z = higher z-index
+    const zIndex = 100 + Math.floor(intraZ / 10)
 
     if (existing) {
       // Update content only — don't touch transform/opacity (let animations breathe)
       existing.dataset.depth = depthLevel
-      existing.style.zIndex = 100 + i
+      existing.style.zIndex = zIndex
       existing.style.filter = 'none'
       existing.classList.remove('receded')
       currentRoundEls.add(existing)
@@ -475,7 +481,7 @@ function renderBlocks(blocks) {
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
     // Keep initial transform from renderBlock (large + close) for entrance animation
-    el.style.zIndex = 100 + i
+    el.style.zIndex = zIndex
     el.style.transitionDelay = `${i * 0.08}s`
     setupBlockInteraction(el)
     space.appendChild(el)
