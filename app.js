@@ -1202,7 +1202,6 @@ async function transcribeAndSend(blob) {
   const baseUrl = config.ttsBaseUrl
   if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key'); return }
 
-  showBubble('识别中...')
   showThinking()
   try {
     // Convert webm to wav (bltcy doesn't support webm)
