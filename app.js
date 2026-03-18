@@ -961,7 +961,7 @@ loadConfig()
 // ── Voice picker ──
 function getActiveVoice() {
   const active = document.querySelector('.voice-chip.active')
-  return active?.dataset.voice || 'alloy'
+  return active?.dataset.voice || 'shimmer'
 }
 
 function setActiveVoice(voice) {
