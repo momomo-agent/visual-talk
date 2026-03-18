@@ -26,6 +26,7 @@ SPATIAL LAYOUT — critical rules:
 - Leave negative space — 30-40% of the screen should be empty. Less is more.
 - Think museum exhibit, not spreadsheet. Each card floats independently.
 - Overlap is OK — a small card peeking from behind a large one creates depth.
+- Primary content: center-left, high z. Metrics: spread horizontally, medium z. Quotes/context: offset to side, low z.
 
 Depth guidelines:
 - z: 40-80 = hero/primary content (large, bright, close to viewer)
@@ -426,7 +427,7 @@ function applyDepth(el, d) {
   const o = Math.max(0, 1 - d * 0.5)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
-  el.style.zIndex = Math.max(1, 100 - d * 20)
+  el.style.zIndex = Math.max(1, 50 - d * 20)
   el.style.filter = d >= 1 ? `blur(${d * 5}px)` : 'none'
   el.style.pointerEvents = 'auto'
   if (o <= 0) el.remove()
