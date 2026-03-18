@@ -53,6 +53,14 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - code: {"x":10,"y":45,"z":0,"w":38,"code":"","language":""}
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
+- chart: {"x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
+  chartType: "bar" (horizontal) or "column" (vertical)
+- list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
+  style: "unordered", "ordered", or "todo"
+- embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
+  Supports YouTube, Bilibili, Google Maps, and generic link previews
+- label: {"x":30,"y":45,"z":-20,"w":20,"text":"annotation text","size":14,"color":"rgba(200,169,110,0.7)"}
+  Frameless floating text — for annotations, labels, spatial context
 
 ## Canvas Commands
 
@@ -333,8 +341,8 @@ function renderBlock(type, data) {
   el.style.transform = `translateZ(40px) scale(1.06)`
 
   // Window title bar label
-  const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media' }[type] || type
-  const bar = `<div class="win-bar"><div class="win-dot"></div><span>${esc(typeLabel)}</span></div>`
+  const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media', chart: 'chart', list: 'list', embed: 'embed', label: '' }[type] || type
+  const bar = type === 'label' ? '' : `<div class="win-bar"><div class="win-dot"></div><span>${esc(typeLabel)}</span></div>`
 
   let body = ''
   switch (type) {
@@ -402,6 +410,112 @@ function renderBlock(type, data) {
       } else if (data.url) {
         body = `<img src="${esc(data.url)}" loading="eager" referrerpolicy="no-referrer" style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)" onerror="imgErr(this)"><div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       }
+      break
+
+    case 'chart': {
+      // Pure CSS bar/column chart
+      const items = data.items || []
+      const maxVal = Math.max(...items.map(d => parseFloat(d.value) || 0), 1)
+      const chartType = data.chartType || 'bar' // bar or column
+      if (chartType === 'column') {
+        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+          <div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0">
+            ${items.map(d => {
+              const pct = ((parseFloat(d.value) || 0) / maxVal) * 100
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <span style="font-size:11px;color:#8a7a60">${esc(String(d.value))}</span>
+                <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px;min-height:4px;transition:height 0.6s"></div>
+                <span style="font-size:10px;color:#6a5a4a">${esc(d.label || '')}</span>
+              </div>`
+            }).join('')}
+          </div></div>`
+      } else {
+        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+          <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
+            ${items.map(d => {
+              const pct = ((parseFloat(d.value) || 0) / maxVal) * 100
+              return `<div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:11px;color:#6a5a4a;min-width:60px;text-align:right">${esc(d.label || '')}</span>
+                <div style="flex:1;height:18px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
+                  <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#c8a96e,#8a7a60);border-radius:3px;transition:width 0.6s"></div>
+                </div>
+                <span style="font-size:11px;color:#8a7a60;min-width:35px">${esc(String(d.value))}</span>
+              </div>`
+            }).join('')}
+          </div></div>`
+      }
+      break
+    }
+
+    case 'list': {
+      const style = data.style || 'unordered' // unordered, ordered, todo
+      const items = data.items || []
+      const listItems = items.map((it, idx) => {
+        const text = typeof it === 'string' ? it : it.text || it.title || ''
+        const done = typeof it === 'object' && it.done
+        if (style === 'todo') {
+          return `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
+            <span style="font-size:14px;line-height:1.4">${done ? '✅' : '⬜'}</span>
+            <span style="font-size:13px;color:${done ? '#8a7a60' : '#4a3a2a'};${done ? 'text-decoration:line-through;opacity:0.6' : ''}">${esc(text)}</span>
+          </div>`
+        } else if (style === 'ordered') {
+          return `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
+            <span style="font-size:12px;color:#8a7a60;min-width:18px;font-weight:600">${idx + 1}.</span>
+            <span style="font-size:13px;color:#4a3a2a">${esc(text)}</span>
+          </div>`
+        } else {
+          return `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
+            <span style="font-size:8px;color:#8a7a60;margin-top:5px">●</span>
+            <span style="font-size:13px;color:#4a3a2a">${esc(text)}</span>
+          </div>`
+        }
+      }).join('')
+      body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}${listItems}</div>`
+      break
+    }
+
+    case 'embed': {
+      // Link preview / video / map embed
+      const embedUrl = data.url || ''
+      let embedContent = ''
+      
+      // YouTube
+      const ytMatch = embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
+      if (ytMatch) {
+        embedContent = `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px" allowfullscreen></iframe>`
+      }
+      // Bilibili
+      else if (embedUrl.includes('bilibili.com/video/')) {
+        const bvMatch = embedUrl.match(/(BV[\w]+)/)
+        if (bvMatch) {
+          embedContent = `<iframe src="https://player.bilibili.com/player.html?bvid=${bvMatch[1]}&page=1" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px" allowfullscreen></iframe>`
+        }
+      }
+      // Map (Google Maps embed)
+      else if (embedUrl.includes('maps') || data.type === 'map') {
+        const q = encodeURIComponent(data.query || data.title || '')
+        embedContent = `<iframe src="https://maps.google.com/maps?q=${q}&output=embed" style="width:100%;height:200px;border:none;border-radius:4px"></iframe>`
+      }
+      // Generic link preview
+      else {
+        embedContent = `<a href="${esc(embedUrl)}" target="_blank" rel="noopener" style="display:block;padding:12px;background:rgba(0,0,0,0.04);border-radius:6px;text-decoration:none;color:#4a3a2a">
+          ${data.image ? `<img src="${esc(data.image)}" style="width:100%;border-radius:4px;margin-bottom:8px;object-fit:cover" onerror="imgErr(this)">` : ''}
+          <div style="font-weight:600;font-size:14px">${esc(data.title || embedUrl)}</div>
+          ${data.description ? `<div style="font-size:12px;color:#8a7a60;margin-top:4px">${esc(data.description)}</div>` : ''}
+          <div style="font-size:11px;color:#a09080;margin-top:4px">${esc(new URL(embedUrl).hostname)}</div>
+        </a>`
+      }
+      body = `<div class="win-body">${embedContent}${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+      break
+    }
+
+    case 'label':
+      // Frameless floating text — like a sticky note on the canvas
+      el.style.background = 'transparent'
+      el.style.boxShadow = 'none'
+      el.style.backdropFilter = 'none'
+      el.style.border = 'none'
+      body = `<div style="font-size:${data.size || 16}px;color:${data.color || 'rgba(200,169,110,0.8)'};font-weight:${data.bold ? '600' : '400'};text-align:${data.align || 'left'};line-height:1.5">${esc(data.text || '')}</div>`
       break
   }
 
@@ -1051,7 +1165,7 @@ loadConfig()
 // ── Voice picker ──
 function getActiveVoice() {
   const active = document.querySelector('.voice-chip.active')
-  return active?.dataset.voice || 'shimmer'
+  return active?.dataset.voice || 'nova'
 }
 
 function setActiveVoice(voice) {
