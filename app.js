@@ -63,6 +63,7 @@ function loadConfig() {
     if (s.ttsBaseUrl) $('ttsBaseUrl').value = s.ttsBaseUrl
     if (s.ttsModel) $('ttsModel').value = s.ttsModel
     if (s.ttsApiKey) $('ttsApiKey').value = s.ttsApiKey
+    if (s.ttsVoice) setActiveVoice(s.ttsVoice)
     if (s.proxyUrl) $('proxyUrl').value = s.proxyUrl
     $('proxyEnabled').checked = !!s.proxyEnabled
     $('proxyUrl').disabled = !s.proxyEnabled
@@ -82,6 +83,7 @@ function saveConfig() {
     ttsBaseUrl: $('ttsBaseUrl').value,
     ttsApiKey: $('ttsApiKey').value,
     ttsModel: $('ttsModel').value,
+    ttsVoice: getActiveVoice(),
     proxyUrl: $('proxyUrl').value,
     proxyEnabled: $('proxyEnabled').checked,
   }))
@@ -107,6 +109,7 @@ function getConfig() {
     ttsBaseUrl: cleanBaseUrl($('ttsBaseUrl').value),
     ttsApiKey: $('ttsApiKey').value.trim() || undefined,
     ttsModel: $('ttsModel').value.trim() || undefined,
+    ttsVoice: getActiveVoice(),
     proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
 }
@@ -170,7 +173,7 @@ async function playTTS(text) {
       },
       body: JSON.stringify({
         model: config.ttsModel || 'tts-1',
-        voice: 'nova',
+        voice: config.ttsVoice || 'alloy',
         input: text,
         response_format: 'mp3'
       })
@@ -907,6 +910,29 @@ async function transcribeAndSend(blob) {
 
 // ── Init ──
 loadConfig()
+
+// ── Voice picker ──
+function getActiveVoice() {
+  const active = document.querySelector('.voice-chip.active')
+  return active?.dataset.voice || 'alloy'
+}
+
+function setActiveVoice(voice) {
+  document.querySelectorAll('.voice-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.voice === voice)
+  })
+}
+
+$('voicePicker').addEventListener('click', e => {
+  const chip = e.target.closest('.voice-chip')
+  if (!chip) return
+  setActiveVoice(chip.dataset.voice)
+  saveConfig()
+  // Preview: speak a short sample
+  chip.classList.add('previewing')
+  setTimeout(() => chip.classList.remove('previewing'), 600)
+  playTTS('Hello, this is ' + chip.dataset.voice)
+})
 
 document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#showToolCalls,#ttsEnabled,#webSpeech,#ttsBaseUrl,#ttsApiKey,#ttsModel,#proxyUrl,#proxyEnabled').forEach(el => {
   el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', saveConfig)

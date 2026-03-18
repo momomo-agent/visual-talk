@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Talk</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <!-- AI speech -->
@@ -98,6 +98,17 @@
         <input id="ttsModel" placeholder="tts-1-hd">
       </div>
       <div class="field">
+        <label>Voice</label>
+        <div class="voice-picker" id="voicePicker">
+          <button class="voice-chip active" data-voice="alloy">alloy</button>
+          <button class="voice-chip" data-voice="echo">echo</button>
+          <button class="voice-chip" data-voice="fable">fable</button>
+          <button class="voice-chip" data-voice="nova">nova</button>
+          <button class="voice-chip" data-voice="onyx">onyx</button>
+          <button class="voice-chip" data-voice="shimmer">shimmer</button>
+        </div>
+      </div>
+      <div class="field">
         <label>
           <input type="checkbox" id="proxyEnabled" style="accent-color:#e8856a">
           Proxy
@@ -108,7 +119,7 @@
     </div>
   </div>
 
-  <script src="tools.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="tools.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
