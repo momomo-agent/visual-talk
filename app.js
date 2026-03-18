@@ -925,6 +925,7 @@ async function callLLM(prompt, onToken, onSpeech) {
 // ── Send (queue-based) ──
 const sendQueue = []
 let sendProcessing = false
+let lastInputWasVoice = false
 
 async function send() {
   const input = $('input')
@@ -1030,7 +1031,8 @@ async function processSendQueue() {
     }
   }
   sendProcessing = false
-  $('input').focus()
+  if (!lastInputWasVoice) $('input').focus()
+  lastInputWasVoice = false
 }
 
 // ── Voice Input ──
@@ -1066,6 +1068,7 @@ function startWebSpeech() {
     $('micBtn').classList.remove('recording')
     if (text) {
       $('input').value = text
+      lastInputWasVoice = true
       send()
     } else {
       showBubble('没听清，再说一次？')
@@ -1206,6 +1209,7 @@ async function transcribeAndSend(blob) {
       $('input').value = text.trim()
       $('bubble').classList.remove('visible')
       // thinking stays visible — send() will manage it
+      lastInputWasVoice = true
       send()
     } else {
       hideThinking()
