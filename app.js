@@ -723,11 +723,24 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
 }
 
 // ── Send ──
+let sendLock = false
+
 async function send() {
   const input = $('input')
   const text = input.value.trim()
   if (!text) return
 
+  // Queue: wait for previous send to finish
+  if (sendLock) {
+    console.log('[Send] queued, waiting for previous send to finish')
+    const waitStart = Date.now()
+    while (sendLock && Date.now() - waitStart < 60000) {
+      await new Promise(r => setTimeout(r, 200))
+    }
+    if (sendLock) { showBubble('上一条还在处理...'); return }
+  }
+
+  sendLock = true
   unlockAudio()
   input.value = ''
   showThinking()
@@ -778,6 +791,7 @@ async function send() {
     showBubble(`Error: ${err.message}`)
     console.error(err)
   } finally {
+    sendLock = false
     hideThinking()
     input.focus()
   }
