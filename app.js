@@ -693,50 +693,71 @@ async function send() {
   }
 }
 
-// ── Voice Input (Web Speech API) ──
-let recognition = null
+// ── Voice Input (Whisper API via yunwu.ai) ──
+let mediaRecorder = null
 
-$('micBtn').addEventListener('click', toggleVoiceInput)
+$('micBtn').addEventListener('mousedown', startRecording)
+$('micBtn').addEventListener('mouseup', stopRecording)
+$('micBtn').addEventListener('touchstart', startRecording)
+$('micBtn').addEventListener('touchend', stopRecording)
 
-function toggleVoiceInput() {
-  if (recognition) {
-    recognition.stop()
-    recognition = null
-    $('micBtn').classList.remove('recording')
-    return
+async function startRecording() {
+  if (mediaRecorder) return
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const chunks = []
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+    mediaRecorder.ondataavailable = e => chunks.push(e.data)
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop())
+      const blob = new Blob(chunks, { type: 'audio/webm' })
+      mediaRecorder = null
+      $('micBtn').classList.remove('recording')
+      await transcribeAndSend(blob)
+    }
+    mediaRecorder.start()
+    $('micBtn').classList.add('recording')
+    showBubble('松开发送...')
+  } catch (e) {
+    showBubble('麦克风不可用: ' + e.message)
   }
+}
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SR) {
-    showBubble('浏览器不支持语音识别')
-    return
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop()
   }
+}
 
-  recognition = new SR()
-  recognition.lang = 'zh-CN'
-  recognition.interimResults = false
-  recognition.continuous = false
+async function transcribeAndSend(blob) {
+  const config = getConfig()
+  const baseUrl = config.ttsBaseUrl || 'https://yunwu.ai'
+  if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key'); return }
 
-  recognition.onresult = (e) => {
-    const text = e.results[0][0].transcript
-    $('input').value = text
-    $('bubble').classList.remove('visible')
-    send()
+  showBubble('识别中...')
+  try {
+    const form = new FormData()
+    form.append('file', blob, 'audio.webm')
+    form.append('model', 'whisper-1')
+    const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
+      body: form
+    })
+    if (!res.ok) { showBubble('识别失败: ' + res.status); return }
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.includes('json')) { showBubble('识别服务不可用'); return }
+    const { text } = await res.json()
+    if (text?.trim()) {
+      $('input').value = text.trim()
+      $('bubble').classList.remove('visible')
+      send()
+    } else {
+      showBubble('没听清，再说一次？')
+    }
+  } catch (e) {
+    showBubble('识别错误: ' + e.message)
   }
-
-  recognition.onerror = (e) => {
-    console.error('[STT] error:', e.error)
-    if (e.error !== 'no-speech') showBubble('识别失败: ' + e.error)
-  }
-
-  recognition.onend = () => {
-    recognition = null
-    $('micBtn').classList.remove('recording')
-  }
-
-  recognition.start()
-  $('micBtn').classList.add('recording')
-  showBubble('请说话...')
 }
 
 // ── Init ──
