@@ -200,6 +200,12 @@ body {
   border-color: rgba(196,168,130,0.2);
   color: rgba(196,168,130,0.5);
 }
+.mic-btn.active {
+  background: rgba(28,24,18,0.9);
+  border-color: rgba(196,168,130,0.3);
+  color: rgba(196,168,130,0.6);
+  transform: scale(0.92);
+}
 .mic-btn.recording {
   background: rgba(232,133,106,0.2);
   border-color: rgba(232,133,106,0.4);

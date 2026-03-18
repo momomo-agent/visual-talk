@@ -1296,9 +1296,9 @@ document.addEventListener('mousemove', e => {
 // ── Spacebar = push-to-talk (when not typing in input) ──
 document.addEventListener('keydown', e => {
   if (e.key !== ' ' || e.repeat) return
-  // Don't hijack if user is typing in input or config
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   e.preventDefault()
+  $('micBtn').classList.add('active')
   startRecording()
 })
 
@@ -1306,5 +1306,6 @@ document.addEventListener('keyup', e => {
   if (e.key !== ' ') return
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   e.preventDefault()
+  $('micBtn').classList.remove('active')
   stopRecording()
 })
