@@ -781,9 +781,12 @@ async function processSendQueue() {
         showBubble(speech)
         playTTS(speech)
       } else if (!blocks.length) {
-        const fallbackText = reply.slice(0, 100)
-        showBubble(fallbackText)
-        playTTS(fallbackText)
+        // No structured output at all — strip any vt markers and show plain text
+        const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
+        if (plain) {
+          showBubble(plain.slice(0, 100))
+          playTTS(plain.slice(0, 100))
+        }
       }
     } catch (err) {
       showBubble(`Error: ${err.message}`)
