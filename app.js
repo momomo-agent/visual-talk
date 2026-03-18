@@ -451,8 +451,9 @@ function renderBlocks(blocks) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
-    // Intra-response z offset: each block slightly behind the previous
-    const intraZ = -i * 60
+    // Intra-response z offset: combine LLM's z with stacking order
+    const llmZ = data.z || 0
+    const intraZ = llmZ - i * 60
 
     if (existing) {
       // Bring existing block to front
