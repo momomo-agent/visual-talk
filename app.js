@@ -13,7 +13,7 @@ The screen is a 3D canvas. Cards float at different depths like a holographic di
 2. **Speech last** (optional): <!--vt:speech Your words here-->
 
 Always output blocks before speech — cards should appear while you start talking.
-Speech is a brief companion to the visual — one or two short sentences max. The cards carry the information; your voice just adds warmth and connection.
+Speech is a brief companion to the visual — one short sentence, 15 words max. The cards carry all the information; your voice is just a gentle aside, like a whisper. Never explain the cards in speech — let them speak for themselves.
 
 Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
@@ -194,13 +194,19 @@ function unlockAudio() {
 }
 
 async function playTTS(text) {
+  // Truncate speech — keep only first sentence or 60 chars
+  let ttsText = text
+  const end = text.search(/[。！？.!?]/)
+  if (end > 0 && end < 60) ttsText = text.slice(0, end + 1)
+  else if (text.length > 60) ttsText = text.slice(0, 60)
+  
   const config = getConfig()
   const gen = ++ttsGeneration
-  console.log('[TTS] called with:', text?.slice(0, 50), 'gen:', gen)
+  console.log('[TTS] called with:', ttsText, 'gen:', gen)
   if (!config.ttsEnabled) { console.log('[TTS] disabled'); return }
   if (!config.ttsApiKey) { console.log('[TTS] no API key'); return }
   if (!config.ttsBaseUrl) { console.log('[TTS] no base URL'); return }
-  if (!text?.trim()) { console.log('[TTS] empty text'); return }
+  if (!ttsText?.trim()) { console.log('[TTS] empty text'); return }
   
   // Stop previous audio
   if (currentAudio) {
@@ -218,7 +224,7 @@ async function playTTS(text) {
     const ttsBody = JSON.stringify({
       model: config.ttsModel || 'tts-1',
       voice: config.ttsVoice || 'alloy',
-      input: text,
+      input: ttsText,
       response_format: 'mp3'
     })
 
