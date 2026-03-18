@@ -450,9 +450,10 @@ function renderBlocks(blocks) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
-    // Intra-response z offset: combine LLM's z with stacking order
+    // Intra-response z: LLM's z sets relative depth within this response
+    // All new cards stay in front (positive translateZ base)
     const llmZ = data.z || 0
-    const intraZ = llmZ - i * 60
+    const intraZ = llmZ
 
     if (existing) {
       // Bring existing block to front
