@@ -653,7 +653,7 @@ function pushOldBlocks() {
 function applyDepth(el, d) {
   const z = -d * 160
   const s = Math.max(0.5, 1 - d * 0.12)
-  const o = Math.max(0, 1 - d * 0.4)
+  const o = Math.max(0, 1 - d * 0.45)
   el.style.transform = `translateZ(${z}px) scale(${s})`
   el.style.opacity = o
   el.style.zIndex = Math.max(1, 50 - d * 20)
