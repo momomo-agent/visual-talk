@@ -265,6 +265,10 @@ body {
 }
 .config-box label:has(input[type="checkbox"]) {
   display: flex; align-items: center; flex-direction: row-reverse; justify-content: space-between;
+  white-space: nowrap; width: 100%;
+}
+.config-box label:has(input[type="checkbox"]) input[type="checkbox"] {
+  width: auto; flex-shrink: 0;
 }
 .config-box input, .config-box select {
   background: rgba(0,0,0,0.3); border: 1px solid rgba(196,168,130,0.06);

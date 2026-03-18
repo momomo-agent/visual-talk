@@ -59,7 +59,9 @@ function loadConfig() {
     if (s.tavilyKey) $('tavilyKey').value = s.tavilyKey
     $('showToolCalls').checked = !!s.showToolCalls
     $('ttsEnabled').checked = !!s.ttsEnabled
+    $('webSpeech').checked = !!s.webSpeech
     if (s.ttsBaseUrl) $('ttsBaseUrl').value = s.ttsBaseUrl
+    if (s.ttsModel) $('ttsModel').value = s.ttsModel
     if (s.ttsApiKey) $('ttsApiKey').value = s.ttsApiKey
     if (s.proxyUrl) $('proxyUrl').value = s.proxyUrl
     $('proxyEnabled').checked = !!s.proxyEnabled
@@ -76,8 +78,10 @@ function saveConfig() {
     tavilyKey: $('tavilyKey').value,
     showToolCalls: $('showToolCalls').checked,
     ttsEnabled: $('ttsEnabled').checked,
+    webSpeech: $('webSpeech').checked,
     ttsBaseUrl: $('ttsBaseUrl').value,
     ttsApiKey: $('ttsApiKey').value,
+    ttsModel: $('ttsModel').value,
     proxyUrl: $('proxyUrl').value,
     proxyEnabled: $('proxyEnabled').checked,
   }))
@@ -99,8 +103,10 @@ function getConfig() {
     tavilyKey: $('tavilyKey').value.trim() || undefined,
     showToolCalls: $('showToolCalls').checked,
     ttsEnabled: $('ttsEnabled').checked,
+    webSpeech: $('webSpeech').checked,
     ttsBaseUrl: cleanBaseUrl($('ttsBaseUrl').value),
     ttsApiKey: $('ttsApiKey').value.trim() || undefined,
+    ttsModel: $('ttsModel').value.trim() || undefined,
     proxyUrl: proxyEnabled ? ($('proxyUrl').value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
   }
 }
@@ -159,7 +165,7 @@ async function playTTS(text) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'tts-1-hd',
+        model: config.ttsModel || 'tts-1-hd',
         voice: 'nova',
         input: text,
         speed: 0.75,
@@ -726,9 +732,11 @@ async function send() {
   }
 }
 
-// ── Voice Input (Whisper API) ──
+// ── Voice Input ──
 let mediaRecorder = null
 let micDownTime = 0
+let micReleased = false
+let webSpeechRecognition = null
 
 $('micBtn').addEventListener('mousedown', startRecording)
 $('micBtn').addEventListener('mouseup', stopRecording)
@@ -736,14 +744,62 @@ $('micBtn').addEventListener('touchstart', startRecording)
 $('micBtn').addEventListener('touchend', stopRecording)
 
 async function startRecording() {
+  const cfg = getConfig()
+  if (cfg.webSpeech) return startWebSpeech()
+  return startWhisper()
+}
+
+// ── Web Speech API ──
+function startWebSpeech() {
+  if (webSpeechRecognition) return
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) { showBubble('浏览器不支持 Web Speech'); return }
+  micDownTime = Date.now()
+  const recognition = new SR()
+  recognition.lang = 'zh-CN'
+  recognition.interimResults = false
+  recognition.onresult = e => {
+    const text = e.results[0]?.[0]?.transcript?.trim()
+    webSpeechRecognition = null
+    $('micBtn').classList.remove('recording')
+    if (text) {
+      $('input').value = text
+      send()
+    } else {
+      showBubble('没听清，再说一次？')
+    }
+  }
+  recognition.onerror = e => {
+    webSpeechRecognition = null
+    $('micBtn').classList.remove('recording')
+    showBubble('识别错误: ' + e.error)
+  }
+  recognition.onend = () => {
+    webSpeechRecognition = null
+    $('micBtn').classList.remove('recording')
+  }
+  webSpeechRecognition = recognition
+  recognition.start()
+  $('micBtn').classList.add('recording')
+  showBubble('说话中...')
+}
+
+// ── Whisper API ──
+async function startWhisper() {
   if (mediaRecorder) return
   micDownTime = Date.now()
+  micReleased = false
   if (!navigator.mediaDevices?.getUserMedia) {
     showBubble('需要 HTTPS 才能使用麦克风')
     return
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    if (micReleased) {
+      stream.getTracks().forEach(t => t.stop())
+      showBubble('长按说话')
+      return
+    }
     const chunks = []
     mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
     mediaRecorder.ondataavailable = e => chunks.push(e.data)
@@ -768,6 +824,19 @@ async function startRecording() {
 }
 
 function stopRecording() {
+  micReleased = true
+  if (webSpeechRecognition) {
+    const held = Date.now() - micDownTime
+    if (held < 300) {
+      webSpeechRecognition.abort()
+      webSpeechRecognition = null
+      $('micBtn').classList.remove('recording')
+      showBubble('长按说话')
+    } else {
+      webSpeechRecognition.stop()
+    }
+    return
+  }
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     mediaRecorder.stop()
   }
@@ -808,7 +877,7 @@ async function transcribeAndSend(blob) {
 // ── Init ──
 loadConfig()
 
-document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#showToolCalls,#ttsEnabled,#ttsBaseUrl,#ttsApiKey,#proxyUrl,#proxyEnabled').forEach(el => {
+document.querySelectorAll('#provider,#apiKey,#baseUrl,#model,#tavilyKey,#showToolCalls,#ttsEnabled,#webSpeech,#ttsBaseUrl,#ttsApiKey,#ttsModel,#proxyUrl,#proxyEnabled').forEach(el => {
   el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', saveConfig)
 })
 $('proxyEnabled').addEventListener('change', () => {
