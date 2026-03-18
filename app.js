@@ -261,9 +261,12 @@ function esc(s) {
 // Image proxy fallback on CORS/load error
 const PROXY = 'https://proxy.link2web.site/?url='
 function imgErr(img) {
-  if (img.dataset.proxied) { img.style.display = 'none'; return }
+  console.warn('[IMG] load failed:', img.src.slice(0, 120))
+  if (img.dataset.proxied) { img.style.display = 'none'; console.warn('[IMG] proxy also failed, hiding'); return }
   img.dataset.proxied = '1'
-  img.src = PROXY + encodeURIComponent(img.src)
+  const proxied = PROXY + encodeURIComponent(img.src)
+  console.log('[IMG] retrying via proxy:', proxied.slice(0, 120))
+  img.src = proxied
 }
 
 function renderBlock(type, data) {
@@ -662,6 +665,7 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
 
   // Show partial text immediately
   if (textParts && onToken) {
+    console.log('[LLM] response text:', textParts.slice(0, 500))
     const words = textParts.split(/(?<=\s)/)
     let acc = ''
     for (const w of words) { acc += w; onToken(acc); await new Promise(r => setTimeout(r, 15)) }
@@ -682,7 +686,9 @@ async function callLLM(prompt, onToken, isToolContinue = false) {
       const args = isAnthropic ? tc.input : JSON.parse(tc.function.arguments || '{}')
 
       if (cfg.showToolCalls) showToolLog(`${name}: ${args.query || args.url || ''}`.slice(0, 60))
+      console.log('[Tool] calling:', name, args)
       const result = await executeTool(name, args, cfg.tavilyKey)
+      console.log('[Tool] result:', name, JSON.stringify(result).slice(0, 500))
 
       if (isAnthropic) {
         history.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(result) }] })
@@ -744,6 +750,7 @@ async function send() {
 
     // Final pass — render any remaining blocks and trigger TTS once
     const { speech, blocks } = parseResponse(reply)
+    console.log('[Send] final parse:', { speech, blockCount: blocks.length, blocks: blocks.map(b => ({ type: b.type, image: b.data.image, url: b.data.url })) })
     if (blocks.length > lastBlockCount) {
       renderBlocks(blocks.slice(lastBlockCount))
     }
