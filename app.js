@@ -59,8 +59,6 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
   style: "unordered", "ordered", or "todo"
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
   Supports YouTube, Bilibili, Google Maps, and generic link previews
-- label: {"x":30,"y":45,"z":-20,"w":20,"text":"annotation text","size":14,"color":"rgba(200,169,110,0.7)"}
-  Frameless floating text — for annotations, labels, spatial context
 
 ## Canvas Commands
 
@@ -355,8 +353,8 @@ function renderBlock(type, data) {
   el.style.transform = `translateZ(40px) scale(1.06)`
 
   // Window title bar label
-  const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media', chart: 'chart', list: 'list', embed: 'embed', label: '' }[type] || type
-  const bar = type === 'label' ? '' : `<div class="win-bar"><div class="win-dot"></div><span>${esc(typeLabel)}</span></div>`
+  const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media', chart: 'chart', list: 'list', embed: 'embed' }[type] || type
+  const bar = `<div class="win-bar"><div class="win-dot"></div><span>${esc(typeLabel)}</span></div>`
 
   let body = ''
   switch (type) {
@@ -523,14 +521,6 @@ function renderBlock(type, data) {
       break
     }
 
-    case 'label':
-      // Frameless floating text — like a sticky note on the canvas
-      el.style.background = 'transparent'
-      el.style.boxShadow = 'none'
-      el.style.backdropFilter = 'none'
-      el.style.border = 'none'
-      body = `<div style="font-size:${data.size || 16}px;color:${data.color || 'rgba(200,169,110,0.8)'};font-weight:${data.bold ? '600' : '400'};text-align:${data.align || 'left'};line-height:1.5">${esc(data.text || '')}</div>`
-      break
   }
 
   el.innerHTML = bar + body
@@ -942,6 +932,7 @@ async function callLLM(prompt, onToken, onSpeech) {
     }
   })
 
+  console.log('[LLM] full response:', answer)
   return answer
 }
 
@@ -999,7 +990,7 @@ async function processSendQueue() {
 
       // Final pass — render any remaining blocks/commands and trigger TTS once
       const { speech, blocks, commands } = parseResponse(reply)
-      console.log('[Send] final parse:', { speech, blockCount: blocks.length, commands: commands.length })
+      console.log('[Send] final parse:', { speech, blockCount: blocks.length, commands: commands.length, blocks: JSON.stringify(blocks.map(b => ({ type: b.type, title: b.data.title, x: b.data.x, y: b.data.y, z: b.data.z }))), commandDetails: JSON.stringify(commands) })
       if (commands.length) executeCommands(commands)
       if (blocks.length > lastBlockCount) {
         renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
