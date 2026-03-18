@@ -121,6 +121,8 @@ function showBubble(text) {
   const bubble = $('bubble')
   bubble.textContent = text
   bubble.className = 'bubble visible'
+  console.log('[Bubble] showing:', text)
+  console.trace('[Bubble] stack')
   clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
     bubble.className = 'bubble fading'
