@@ -324,9 +324,9 @@ function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
 
-  // Position — remap to safe area (center 90% width, top 85% height)
+  // Position — remap to safe area (center 90% width, top 75% height to avoid input bar)
   if (data.x != null) el.style.left = `${5 + (data.x / 100) * 90}%`
-  if (data.y != null) el.style.top = `${5 + (data.y / 100) * 85}%`
+  if (data.y != null) el.style.top = `${5 + (data.y / 100) * 75}%`
   if (data.w) el.style.width = `${data.w}%`
   if (type === 'media' || (type === 'card' && data.image)) el.style.maxWidth = '380px'
   
@@ -597,7 +597,7 @@ function executeCommands(commands) {
             el.style.opacity = 1
             el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 0.8s, filter 0.8s, left 1s cubic-bezier(.22,1,.36,1), top 1s cubic-bezier(.22,1,.36,1)'
             if (cmd.x != null) el.style.left = `${5 + (cmd.x / 100) * 90}%`
-            if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 85}%`
+            if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 75}%`
             const z = cmd.z != null ? cmd.z : 30
             el.dataset.intraZ = z
             el.style.transform = `translateZ(${z}px) scale(1)`
