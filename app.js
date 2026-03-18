@@ -19,14 +19,14 @@ Every block MUST include layout:
 - "z": depth (-100=far back, 0=neutral, 100=close to viewer)
 - "w": width % (15-45)
 
-SPATIAL LAYOUT — critical rules:
-- NEVER align cards in a row or grid. Scatter them freely across the space.
-- Vary z-depth dramatically: hero card at z:60, supporting cards at z:-20 to z:10, ambient details at z:-60.
-- Stagger y positions: don't put two cards at the same y. Cascade them.
-- Leave negative space — 30-40% of the screen should be empty. Less is more.
-- Think museum exhibit, not spreadsheet. Each card floats independently.
+SPATIAL LAYOUT — your cards tell a story:
+- Layout is narrative. The first card the eye lands on is the headline — make it large, close (high z), and prominent. Supporting details orbit around it at lower z, discovered second. Ambient context hides in the deep background.
+- Guide the viewer's gaze like a film director: establish → reveal → detail.
+- NEVER align cards in a row or grid. Each card floats independently.
+- Vary z-depth dramatically between cards. Depth IS the hierarchy.
+- Leave negative space — the emptiness between cards creates rhythm.
 - Overlap is OK — a small card peeking from behind a large one creates depth.
-- Primary content: center-left, high z. Metrics: spread horizontally, medium z. Quotes/context: offset to side, low z.
+- Primary content: center-left, high z. Metrics: spread out, medium z. Quotes/context: offset, low z.
 
 Depth guidelines:
 - z: 40-80 = hero/primary content (large, bright, close to viewer)
