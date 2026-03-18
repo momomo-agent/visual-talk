@@ -1209,6 +1209,7 @@ async function transcribeAndSend(blob) {
     const form = new FormData()
     form.append('file', wavBlob, 'audio.wav')
     form.append('model', 'whisper-1')
+    form.append('language', 'zh')
     const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
