@@ -229,9 +229,9 @@ function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
 
-  // Position
+  // Position — remap y to avoid bottom input bar
   if (data.x != null) el.style.left = `${data.x}%`
-  if (data.y != null) el.style.top = `${data.y}%`
+  if (data.y != null) el.style.top = `${(data.y / 100) * 90}%`
   if (data.w) el.style.width = `${data.w}%`
   
   // New blocks always at front
