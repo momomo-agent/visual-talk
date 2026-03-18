@@ -703,6 +703,8 @@ function renderBlocks(blocks, offset = 0) {
     if (existing) {
       // Update content only — don't touch transform/opacity (let animations breathe)
       existing.dataset.depth = depthLevel
+      existing.dataset.blockType = type
+      existing.dataset.blockData = JSON.stringify(data)
       existing.style.zIndex = zIndex
       existing.style.filter = 'none'
       existing.classList.remove('receded')
@@ -718,6 +720,8 @@ function renderBlocks(blocks, offset = 0) {
     el.dataset.depth = depthLevel
     el.dataset.contentKey = contentKey
     el.dataset.intraZ = intraZ
+    el.dataset.blockType = type
+    el.dataset.blockData = JSON.stringify(data)
     // Keep initial transform from renderBlock (large + close) for entrance animation
     el.style.zIndex = zIndex
     el.style.transitionDelay = `${i * 0.08}s`
@@ -946,17 +950,32 @@ async function send() {
   // Capture selection context at send time
   const selCtx = window._selectedContext
   
-  // Build canvas context — tell LLM what cards exist
-  const canvasCards = [...document.querySelectorAll('#canvasSpace .v-block')].map(el => {
-    const title = el.querySelector('h2, h3, .big-label')?.textContent || ''
+  // Build canvas context — show LLM what's on screen (latest group = full data, older = titles only)
+  const allCards = [...document.querySelectorAll('#canvasSpace .v-block')]
+  const maxDepth = Math.max(...allCards.map(el => parseInt(el.dataset.depth || '0')), 0)
+  
+  const currentGroup = []
+  const olderCards = []
+  allCards.forEach(el => {
     const depth = parseInt(el.dataset.depth || '0')
-    const type = el.dataset.contentKey?.split('-')[1] || 'card'
-    return title ? `"${title}" (depth:${depth})` : null
-  }).filter(Boolean)
+    const type = el.dataset.blockType || 'card'
+    const title = el.querySelector('h2, h3, .big-label')?.textContent || ''
+    if (depth === maxDepth) {
+      try {
+        const data = JSON.parse(el.dataset.blockData || '{}')
+        currentGroup.push(`<!--vt:${type} ${JSON.stringify(data)}-->`)
+      } catch { if (title) currentGroup.push(`"${title}"`) }
+    } else {
+      if (title) olderCards.push(`"${title}" (depth:${depth})`)
+    }
+  })
   
   let fullPrompt = text
-  if (canvasCards.length) {
-    fullPrompt = `[Cards on canvas: ${canvasCards.join(', ')}]\n\n${fullPrompt}`
+  if (currentGroup.length || olderCards.length) {
+    let ctx = '[Current canvas state]\n'
+    if (currentGroup.length) ctx += `Latest cards:\n${currentGroup.join('\n')}\n`
+    if (olderCards.length) ctx += `Older (receding): ${olderCards.join(', ')}\n`
+    fullPrompt = ctx + '\n' + fullPrompt
   }
   if (selCtx) {
     fullPrompt = `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${fullPrompt}`
