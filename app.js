@@ -903,7 +903,7 @@ function renderBlocks(blocks, offset = 0) {
 
     // Intra-group z: each new card in this group is the closest.
     // Push existing cards in this group slightly back.
-    const INTRA_PUSH = 15  // px per new card within group
+    const INTRA_PUSH = 30  // px per new card within group
     const groupCount = currentRoundEls.size
     
     // Push back all existing cards in current group
@@ -1037,8 +1037,8 @@ function toggleSelect(el) {
   } else {
     el.classList.add('selected')
     selectedBlocks.add(el)
-    // Float forward — glow transitions in via CSS transition
-    el.style.transform = 'translateZ(80px) scale(1.05)'
+    // Float forward — must be above any possible intraZ
+    el.style.transform = 'translateZ(300px) scale(1.05)'
     el.style.opacity = 1
     el.style.zIndex = 999
     el.style.filter = 'none'
