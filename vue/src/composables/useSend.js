@@ -29,6 +29,10 @@ export function useSend() {
 
   function dismissBubble(delayMs = 3000) {
     clearTimeout(bubbleTimer)
+    if (delayMs <= 0) {
+      bubbleVisible.value = false
+      return
+    }
     bubbleTimer = setTimeout(() => {
       bubbleVisible.value = false
     }, delayMs)
@@ -66,29 +70,35 @@ export function useSend() {
       const { prompt, userMessage } = sendQueue.value.shift()
       isThinking.value = true
       canvas.isStreaming = true
-      canvas.beginRound()
 
-      // Create timeline node — branch from current view or active tip
+      // Always send from activeTip — viewing history doesn't change where we send
+      // This auto-returns to live view
       const parentId = timeline.getBranchPoint()
       const nodeId = timeline.branchFrom(parentId, userMessage)
 
-      // Track operations for this round
+      // Begin new visual round
+      canvas.beginRound()
+
       let pushRecorded = false
       let lastBlockCount = 0
       let lastCommandCount = 0
       let speechHandled = false
 
-      // Wrap canvas operations to record them in timeline
-      const originalAddCard = canvas.addCard.bind(canvas)
-      const originalExecuteCommand = canvas.executeCommand.bind(canvas)
-
-      // Override addCard to also record in timeline
-      function trackedAddCard(type, data, globalIndex) {
+      /**
+       * Data flow: LLM → timeline.addOperation() → canvas.addCard()
+       * Timeline is the source of truth. Canvas renders with animations.
+       */
+      function recordAndRender(type, data, globalIndex) {
+        // 1. Record push (once per round)
         if (!pushRecorded) {
           timeline.addOperation(nodeId, { op: 'push' })
           pushRecorded = true
         }
-        const cardId = originalAddCard(type, data, globalIndex)
+
+        // 2. Render on canvas (with entrance animation)
+        const cardId = canvas.addCard(type, data, globalIndex)
+
+        // 3. Record in timeline (for history replay)
         const card = canvas.cards.get(cardId)
         if (card) {
           timeline.addOperation(nodeId, {
@@ -110,35 +120,38 @@ export function useSend() {
         return cardId
       }
 
-      function trackedExecuteCommand(cmd) {
-        originalExecuteCommand(cmd)
-        if (cmd.cmd === 'move') {
-          // Find the card that was moved (by title match)
-          const target = (cmd.title || '').toLowerCase()
-          canvas.cards.forEach((card) => {
-            const title = canvas.getCardTitle?.(card) || ''
-            if (typeof title === 'string' && title.includes(target)) {
-              timeline.addOperation(nodeId, {
-                op: 'move',
-                cardId: card.id,
-                to: { x: card.x, y: card.y, z: card.z },
-              })
-            }
-          })
-        } else if (cmd.cmd === 'update') {
-          const target = (cmd.title || '').toLowerCase()
-          canvas.cards.forEach((card) => {
-            const title = canvas.getCardTitle?.(card) || ''
-            if (typeof title === 'string' && title.includes(target)) {
-              const { cmd: _, title: __, ...changes } = cmd
-              timeline.addOperation(nodeId, {
-                op: 'update',
-                cardId: card.id,
-                changes,
-              })
-            }
-          })
-        }
+      function recordAndExecuteCommand(cmd) {
+        // Find matching cards BEFORE execution (title may change after update)
+        const target = (cmd.title || '').toLowerCase()
+        const matchedIds = []
+        canvas.cards.forEach((card) => {
+          const title = canvas.getCardTitle?.(card) || ''
+          if (typeof title === 'string' && title.includes(target)) {
+            matchedIds.push(card.id)
+          }
+        })
+
+        // Execute on canvas (handles newTitle→title conversion etc.)
+        canvas.executeCommand(cmd)
+
+        // Record in timeline from card's actual state after execution
+        matchedIds.forEach((cardId) => {
+          const card = canvas.cards.get(cardId)
+          if (!card) return
+          if (cmd.cmd === 'move') {
+            timeline.addOperation(nodeId, {
+              op: 'move',
+              cardId: card.id,
+              to: { x: card.x, y: card.y, z: card.z },
+            })
+          } else if (cmd.cmd === 'update') {
+            timeline.addOperation(nodeId, {
+              op: 'update',
+              cardId: card.id,
+              changes: { ...card.data },
+            })
+          }
+        })
       }
 
       try {
@@ -152,12 +165,12 @@ export function useSend() {
           (partial) => {
             const { blocks, commands } = parseResponse(partial)
             if (commands.length > lastCommandCount) {
-              commands.slice(lastCommandCount).forEach(cmd => trackedExecuteCommand(cmd))
+              commands.slice(lastCommandCount).forEach(cmd => recordAndExecuteCommand(cmd))
               lastCommandCount = commands.length
             }
             if (blocks.length > lastBlockCount) {
               blocks.slice(lastBlockCount).forEach((b, i) => {
-                trackedAddCard(b.type, b.data, lastBlockCount + i)
+                recordAndRender(b.type, b.data, lastBlockCount + i)
               })
               lastBlockCount = blocks.length
             }
@@ -175,11 +188,11 @@ export function useSend() {
         // Final pass
         const { speech, blocks, commands } = parseResponse(reply)
         if (commands.length > lastCommandCount) {
-          commands.slice(lastCommandCount).forEach(cmd => trackedExecuteCommand(cmd))
+          commands.slice(lastCommandCount).forEach(cmd => recordAndExecuteCommand(cmd))
         }
         if (blocks.length > lastBlockCount) {
           blocks.slice(lastBlockCount).forEach((b, i) => {
-            trackedAddCard(b.type, b.data, lastBlockCount + i)
+            recordAndRender(b.type, b.data, lastBlockCount + i)
           })
         }
 

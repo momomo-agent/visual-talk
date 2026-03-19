@@ -277,20 +277,20 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Get the node ID to branch from when sending from history.
-   * Returns the currently viewed node if in history, or activeTip if live.
+   * Send always continues from the active tip — not from where you're viewing.
+   * Viewing history is just looking back, not going back.
    */
   function getBranchPoint() {
-    return viewingId.value ?? activeTip.value
+    return activeTip.value
   }
 
   /**
-   * Start a new branch from a specific node.
-   * Creates a new node as child of branchPoint.
+   * Start a new branch from activeTip.
+   * Automatically returns to live view.
    */
   function branchFrom(parentId, userMessage) {
     const newId = createNode(parentId, userMessage)
-    viewingId.value = null // go live on new branch
+    viewingId.value = null // always go live
     return newId
   }
 

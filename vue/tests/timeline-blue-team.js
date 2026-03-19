@@ -51,9 +51,17 @@
     canvasStore.greetingVisible = true
   }
 
-  function simulateRound(userMsg, cards, commands = []) {
-    const parentId = timelineStore.getBranchPoint()
-    const nodeId = timelineStore.branchFrom(parentId, userMsg)
+  function simulateRound(userMsg, cards, commands = [], fromParent = null) {
+    // If fromParent is specified, create node from that parent (explicit branch)
+    // Otherwise, use normal send flow (always from activeTip)
+    let parentId, nodeId
+    if (fromParent !== null) {
+      // Explicit branch — for testing tree structure
+      nodeId = timelineStore.createNode(fromParent, userMsg)
+    } else {
+      parentId = timelineStore.getBranchPoint()
+      nodeId = timelineStore.branchFrom(parentId, userMsg)
+    }
     
     // Record push
     timelineStore.addOperation(nodeId, { op: 'push' })
@@ -80,28 +88,32 @@
 
     // Execute commands
     commands.forEach(cmd => {
+      // Find matching cards BEFORE execution (title may change after update)
+      const target = (cmd.title || '').toLowerCase()
+      const matchedIds = []
+      canvasStore.cards.forEach(card => {
+        const title = (card.data.title || '').toLowerCase()
+        if (title.includes(target)) matchedIds.push(card.id)
+      })
+
+      // Execute on canvas (handles newTitle→title etc.)
       canvasStore.executeCommand(cmd)
-      if (cmd.cmd === 'move') {
-        canvasStore.cards.forEach(card => {
-          const title = (card.data.title || '').toLowerCase()
-          if (title.includes((cmd.title || '').toLowerCase())) {
-            timelineStore.addOperation(nodeId, {
-              op: 'move', cardId: card.id,
-              to: { x: card.x, y: card.y, z: card.z }
-            })
-          }
-        })
-      } else if (cmd.cmd === 'update') {
-        canvasStore.cards.forEach(card => {
-          const title = (card.data.title || '').toLowerCase()
-          if (title.includes((cmd.title || '').toLowerCase())) {
-            const { cmd: _, title: __, ...changes } = cmd
-            timelineStore.addOperation(nodeId, {
-              op: 'update', cardId: card.id, changes
-            })
-          }
-        })
-      }
+
+      // Record in timeline from card's actual state after execution
+      matchedIds.forEach(cardId => {
+        const card = canvasStore.cards.get(cardId)
+        if (!card) return
+        if (cmd.cmd === 'move') {
+          timelineStore.addOperation(nodeId, {
+            op: 'move', cardId: card.id,
+            to: { x: card.x, y: card.y, z: card.z }
+          })
+        } else if (cmd.cmd === 'update') {
+          timelineStore.addOperation(nodeId, {
+            op: 'update', cardId: card.id, changes: { ...card.data }
+          })
+        }
+      })
     })
 
     return nodeId
@@ -165,9 +177,8 @@
   const t2a = simulateRound('起点', [{ type: 'card', data: { title: '起点卡片', x: 50, y: 30 } }])
   const t2b = simulateRound('路线B', [{ type: 'card', data: { title: 'B内容', x: 30, y: 30 } }])
 
-  // Go back to A, branch
-  timelineStore.viewingId = t2a
-  const t2c = simulateRound('路线C', [{ type: 'card', data: { title: 'C内容', x: 70, y: 30 } }])
+  // Explicit branch from A (not normal send — that would go from activeTip)
+  const t2c = simulateRound('路线C', [{ type: 'card', data: { title: 'C内容', x: 70, y: 30 } }], [], t2a)
 
   const nodeA = timelineStore.nodes.get(t2a)
   assert(nodeA.childIds.length === 2, `A has 2 children (got ${nodeA.childIds.length})`)
@@ -197,9 +208,8 @@
   const t3b = simulateRound('分支点', [{ type: 'card', data: { title: '分支卡', x: 40, y: 30 } }])
   const t3c = simulateRound('左路', [{ type: 'card', data: { title: '左路卡', x: 20, y: 30 } }])
 
-  // Back to B, branch to D
-  timelineStore.viewingId = t3b
-  const t3d = simulateRound('右路', [{ type: 'card', data: { title: '右路卡', x: 80, y: 30 } }])
+  // Explicit branch from B to D
+  const t3d = simulateRound('右路', [{ type: 'card', data: { title: '右路卡', x: 80, y: 30 } }], [], t3b)
 
   const nodeB3 = timelineStore.nodes.get(t3b)
   assert(nodeB3.childIds.length === 2, `B has 2 children (C and D)`)
@@ -240,9 +250,8 @@
   // If move was recorded, positions should differ
   // (move ops change positions in computeCanvas)
 
-  // Branch from A (should NOT have the move)
-  timelineStore.viewingId = t4a
-  const t4c = simulateRound('无移动分支', [{ type: 'card', data: { title: 'Fresh', x: 70, y: 70 } }])
+  // Explicit branch from A (should NOT have the move)
+  const t4c = simulateRound('无移动分支', [{ type: 'card', data: { title: 'Fresh', x: 70, y: 70 } }], [], t4a)
   const cPos = getComputedCardPositions(t4c)
   assert(cPos['Fresh'] != null, `C has Fresh card`)
 
@@ -301,13 +310,11 @@
   const t8b = simulateRound('B', [{ type: 'card', data: { title: 'B', x: 30, y: 30 } }])
   const t8c = simulateRound('C', [{ type: 'card', data: { title: 'C', x: 20, y: 30 } }])
 
-  // Branch from A → D
-  timelineStore.viewingId = t8a
-  const t8d = simulateRound('D', [{ type: 'card', data: { title: 'D', x: 70, y: 30 } }])
+  // Explicit branch from A → D
+  const t8d = simulateRound('D', [{ type: 'card', data: { title: 'D', x: 70, y: 30 } }], [], t8a)
 
-  // Branch from B → E
-  timelineStore.viewingId = t8b
-  const t8e = simulateRound('E', [{ type: 'card', data: { title: 'E', x: 60, y: 60 } }])
+  // Explicit branch from B → E
+  const t8e = simulateRound('E', [{ type: 'card', data: { title: 'E', x: 60, y: 60 } }], [], t8b)
 
   // Tree should be: A→[B→[C,E], D]
   const nodeA8 = timelineStore.nodes.get(t8a)
