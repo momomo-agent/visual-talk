@@ -221,34 +221,96 @@ export const useCanvasStore = defineStore('canvas', () => {
   // ─── Full restore (for navigation) ───
 
   /**
-   * Replace canvas state with a computed snapshot from timeline.
-   * No animations — instant state swap for timeline navigation.
+   * Transition canvas to a computed snapshot from timeline.
+   * Uses contentKey-based diffing for smooth card morphing:
+   * - Matched cards: animate to new position/opacity/z
+   * - Missing from target: fade out to depth
+   * - New in target: fly in from behind
    */
   function restoreFrom(computedCards) {
-    cards.clear()
     currentRoundIds.value = new Set()
     selectedIds.value = new Set()
 
+    // Build target lookup by contentKey
+    const targetByKey = new Map()
     let maxDepth = 0
-    const targets = []
     computedCards.forEach((card) => {
       if (card.depth > maxDepth) maxDepth = card.depth
-      const targetOpacity = card.opacity ?? 1
-      const restored = reactive({ ...card, opacity: 0 })
-      cards.set(card.id, restored)
-      targets.push({ card: restored, opacity: targetOpacity })
+      if (card.contentKey) targetByKey.set(card.contentKey, card)
+    })
+
+    // Build existing lookup by contentKey
+    const existingByKey = new Map()
+    cards.forEach((card, id) => {
+      if (card.contentKey) existingByKey.set(card.contentKey, id)
+    })
+
+    // 1. Handle existing cards
+    const matchedKeys = new Set()
+    existingByKey.forEach((id, key) => {
+      const target = targetByKey.get(key)
+      if (target) {
+        // Matched — morph to target state
+        matchedKeys.add(key)
+        const card = cards.get(id)
+        if (card) {
+          card.x = target.x
+          card.y = target.y
+          card.z = target.z ?? 0
+          card.w = target.w ?? card.w
+          card.opacity = target.opacity ?? 1
+          card.scale = target.scale ?? 1
+          card.blur = target.blur ?? 0
+          card.zIndex = target.zIndex ?? 100
+          card.depth = target.depth
+          card.intraZ = target.intraZ ?? 0
+          card.type = target.type
+          card.data = { ...target.data }
+          card.pinned = target.pinned ?? false
+          card.selected = false
+          card.pointerEvents = 'auto'
+        }
+      } else {
+        // Not in target — fade out
+        const card = cards.get(id)
+        if (card) {
+          card.opacity = 0
+          card.z = -400
+          card.scale = 0.5
+          card.blur = 8
+          card.pointerEvents = 'none'
+          // Remove after transition completes
+          setTimeout(() => { cards.delete(id) }, 600)
+        }
+      }
+    })
+
+    // 2. Create new cards that don't exist yet
+    targetByKey.forEach((target, key) => {
+      if (matchedKeys.has(key)) return
+      // Fly in from behind
+      const card = reactive({
+        ...target,
+        opacity: 0,
+        z: -200,
+        scale: 0.8,
+        blur: 4,
+        selected: false,
+        pointerEvents: 'auto',
+      })
+      cards.set(target.id, card)
+      // Animate to target state after a tick
+      setTimeout(() => {
+        card.opacity = target.opacity ?? 1
+        card.z = target.z ?? 0
+        card.scale = target.scale ?? 1
+        card.blur = target.blur ?? 0
+      }, 30)
     })
 
     depthLevel.value = maxDepth
     currentRoundDepth.value = maxDepth
-    greetingVisible.value = false
-
-    // Fade in after a tick (CSS transition handles the animation)
-    setTimeout(() => {
-      targets.forEach(({ card, opacity }) => {
-        card.opacity = opacity
-      })
-    }, 30)
+    greetingVisible.value = computedCards.size === 0 && cards.size === 0
   }
 
   // ─── Begin new round ───
