@@ -19,21 +19,31 @@ export function useTimeline() {
   let scrollAccumX = 0
   let scrollAccumY = 0
   let scrollTimer = null
+  let bubbleHideTimer = null
+
+  function showTimelineBubble() {
+    isScrollingTimeline.value = true
+    clearTimeout(bubbleHideTimer)
+    bubbleHideTimer = setTimeout(() => {
+      isScrollingTimeline.value = false
+    }, 3000)
+  }
 
   function navigateAndRestore(direction) {
     const moved = timeline.navigate(direction)
     if (!moved) return false
 
+    // Clear selection when navigating timeline
+    canvas.clearSelection()
+
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {
       if (timeline.isLive) {
-        // Back to live — restore from timeline to pick up any
-        // operations that happened while we were viewing history
-        // (e.g. streaming continued in background)
         timeline.restoreToNode(timeline.activeTip)
         isScrollingTimeline.value = false
+        clearTimeout(bubbleHideTimer)
       } else {
-        isScrollingTimeline.value = true
+        showTimelineBubble()
         timeline.restoreToNode(viewId)
       }
     }

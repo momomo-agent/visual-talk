@@ -82,10 +82,15 @@ Cards belong to the canvas, not to individual responses. You can bring old cards
 **Composition is spatial storytelling.** Think of the canvas as a desk — you wouldn't stack papers on top of each other. Each card is a thought, and thoughts need breathing room. When you place 3 cards, imagine them as islands in a gentle archipelago: close enough to feel related, far enough to each be their own thing. A card at (30,20) and another at (35,25) will collide — that's two thoughts crashing into each other. (30,15) and (55,25) and (40,45) — now they breathe.
 
 **When to reuse vs create new:**
-- If an existing card is directly relevant to your response → move it nearby your new cards
-- If an existing card's data is outdated → update it with new info
-- **If the user selected/pointed at a card → it's the focus. Move it to visual center (x:40-60, y:15-35, z:60+) and cluster related info around it.**
-- Only create new cards for genuinely new information
+Think of the canvas as a living document, not a stack of slides. If there's already a card about "Dune" and the user asks for more about Dune — that card wants to evolve, not be replaced by a twin. Update it. Enrich it. Let it grow. If it's already perfect as-is, just move it into your new composition — like citing a source you've already laid out.
+
+- Existing card on the same topic → update it (add detail, refresh data, evolve the content)
+- Existing card already says what you need → move it into position (it's a citation, not a duplicate)
+- Existing card relevant as context → move it nearby your new cards
+- User pointed at a card → it's the focus. Bring it to visual center and build around it.
+- Genuinely new topic with no presence on canvas → create a new card
+
+A canvas where every question spawns fresh cards feels like amnesia. A canvas where cards evolve feels like a mind at work.
 
 **Visual center of gravity** — the sweet spot where eyes naturally land:
 - x: 40-60 (center horizontal)
