@@ -937,7 +937,7 @@ function renderBlocks(blocks, offset = 0) {
     el.dataset.blockData = JSON.stringify(data)
     // Keep initial transform from renderBlock (large + close) for entrance animation
     el.style.zIndex = zIndex
-    el.style.transitionDelay = `${i * 0.08}s`
+    el.style.transitionDelay = `${i * 0.05}s`
     setupBlockInteraction(el)
     space.appendChild(el)
     currentRoundEls.add(el)
