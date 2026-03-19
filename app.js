@@ -643,6 +643,17 @@ let currentRoundDepth = -1
 let currentRoundEls = new Set()
 const selectedBlocks = new Set()
 
+// Get a card's display title from DOM or stored data
+function getCardTitle(el) {
+  const dom = el.querySelector('h2, h3, .big-label')?.textContent?.trim() || ''
+  if (dom) return dom.toLowerCase()
+  // Fallback: check stored blockData for title/caption/text/content
+  try {
+    const d = JSON.parse(el.dataset.blockData || '{}')
+    return (d.title || d.caption || d.text || d.content || d.code?.slice(0, 30) || '').toLowerCase()
+  } catch { return '' }
+}
+
 // ── Canvas commands (move/update) ──
 function executeCommands(commands) {
   const space = $('canvasSpace')
@@ -655,7 +666,7 @@ function executeCommands(commands) {
         const blocks = [...space.querySelectorAll('.v-block')]
         const target = (cmd.title || '').toLowerCase()
         blocks.forEach(el => {
-          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
+          const title = getCardTitle(el)
           if (title.includes(target)) {
             // Promote to current group
             el.dataset.depth = depthLevel
@@ -679,7 +690,7 @@ function executeCommands(commands) {
         const blocks = [...space.querySelectorAll('.v-block')]
         const target = (cmd.title || '').toLowerCase()
         blocks.forEach(el => {
-          const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
+          const title = getCardTitle(el)
           if (title.includes(target)) {
             el.dataset.depth = depthLevel
             el.dataset.pinned = '1'
