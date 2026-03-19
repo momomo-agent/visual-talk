@@ -698,8 +698,6 @@ function getCardTitle(el) {
 // ── Canvas commands (move/update) ──
 function executeCommands(commands) {
   const space = $('canvasSpace')
-  // Commands also start a new round — push old blocks back
-  pushOldBlocks()
   for (const cmd of commands) {
     switch (cmd.cmd) {
       case 'move': {
