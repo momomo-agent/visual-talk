@@ -1094,6 +1094,7 @@ function pushOldBlocks() {
   const space = $('canvasSpace')
   space.querySelectorAll('.v-block').forEach(old => {
     if (currentRoundEls.has(old)) return
+    if (old.dataset.timelineHidden === '1') return  // don't touch hidden timeline cards
     const d = depthLevel - parseInt(old.dataset.depth || '0')
     if (d <= 0) return
     applyDepth(old, d)
@@ -1109,7 +1110,7 @@ function applyDepth(el, d) {
   el.style.zIndex = Math.max(1, 50 - d * 20)
   el.style.filter = d >= 1 ? `blur(${d * 4}px)` : 'none'
   el.style.pointerEvents = 'auto'
-  if (o <= 0) el.remove()
+  if (o <= 0 && !el.dataset.timelineHidden) el.remove()
 }
 
 function renderBlocks(blocks, offset = 0) {
