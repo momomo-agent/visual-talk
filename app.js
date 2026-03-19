@@ -601,7 +601,7 @@ function executeCommands(commands) {
             if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 75}%`
             const z = cmd.z != null ? cmd.z : 30
             el.dataset.intraZ = z
-            el.dataset.pinned = '1'  // Don't push back when new cards arrive
+            el.dataset.pinned = '1'  // Stay in current group (don't recede to old rounds)
             el.style.transform = `translateZ(${z}px) scale(1)`
             el.style.zIndex = 100 + Math.floor(z / 10)
           }
@@ -698,9 +698,8 @@ function renderBlocks(blocks, offset = 0) {
     const INTRA_PUSH = 15  // px per new card within group
     const groupCount = currentRoundEls.size
     
-    // Push back all existing cards in current group (skip pinned/moved cards)
+    // Push back all existing cards in current group
     currentRoundEls.forEach(sibling => {
-      if (sibling.dataset.pinned) return  // moved/updated cards stay put
       const curZ = parseFloat(sibling.dataset.intraZ) || 0
       const pushed = curZ - INTRA_PUSH
       sibling.dataset.intraZ = pushed
