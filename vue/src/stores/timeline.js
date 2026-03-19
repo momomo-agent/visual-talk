@@ -145,14 +145,15 @@ export const useTimelineStore = defineStore('timeline', () => {
           }
           case 'create': {
             const c = op.card
+            const data = c.data || {}
             cards.set(c.id, {
               id: c.id,
               type: c.type,
-              data: { ...c.data },
-              x: c.x,
-              y: c.y,
+              data: { ...data },
+              x: c.x ?? (data.x != null ? 5 + (data.x / 100) * 90 : 50),
+              y: c.y ?? (data.y != null ? 5 + (data.y / 100) * 75 : 30),
               z: c.z ?? 0,
-              w: c.w ?? 25,
+              w: c.w ?? data.w ?? 25,
               depth: depthLevel,
               opacity: 1,
               scale: 1,
