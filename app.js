@@ -890,8 +890,10 @@ function renderBlocks(blocks, offset = 0) {
       existing.classList.remove('receded')
       currentRoundEls.add(existing)
       const updated = renderBlock(type, data)
-      if (existing.innerHTML !== updated.innerHTML) {
-        existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
+      const oldBody = existing.querySelector('.win-body')
+      const newBody = updated.querySelector('.win-body')
+      if (oldBody && newBody && existing.innerHTML !== updated.innerHTML) {
+        oldBody.replaceWith(newBody)
       }
       return
     }
@@ -945,8 +947,6 @@ function renderBlocks(blocks, offset = 0) {
         }, { once: true })
       })
     })
-    // Safety: force visible after 600ms in case rAF/transition fails
-    setTimeout(() => { if (el.style.opacity !== '1') el.style.opacity = 1 }, 600)
   })
 }
 
