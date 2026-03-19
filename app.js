@@ -77,8 +77,15 @@ Cards belong to the canvas, not to individual responses. Before creating new car
 **When to reuse vs create new:**
 - If an existing card is directly relevant to your response → move it nearby your new cards
 - If an existing card's data is outdated → update it with new info
-- If the user selected/pointed at a card → it's important to them, reference or evolve it
+- **If the user selected/pointed at a card → it's the focus. Move it to visual center (x:40-60, y:15-35, z:60+) and cluster related info around it.**
 - Only create new cards for genuinely new information
+
+**Visual center of gravity** — the sweet spot where eyes naturally land:
+- x: 40-60 (center horizontal)
+- y: 15-35 (upper-center, not dead center)
+- z: 50+ (close, prominent)
+
+When you want to emphasize something — a selected card, the main point, the answer — **move it here**. Related cards cluster nearby (Gestalt principle). This is where the story begins.
 
 Old cards naturally recede as new ones appear. A canvas that evolves feels alive; one that only adds feels cluttered.
 
