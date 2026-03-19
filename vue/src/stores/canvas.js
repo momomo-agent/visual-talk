@@ -2,8 +2,19 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { nextId } from '../lib/id.js'
 
+/**
+ * Canvas Store — Pure View Layer
+ * 
+ * Canvas is a derived view of timeline state. It receives operations
+ * from the timeline store and renders them with animations.
+ * 
+ * Two modes:
+ * 1. Incremental: applyOperation(op) — for streaming (fast, animated)
+ * 2. Full restore: restoreFrom(computedCards) — for navigation (instant)
+ * 
+ * Canvas never generates its own state. Timeline is the source of truth.
+ */
 export const useCanvasStore = defineStore('canvas', () => {
-  // cards: Map<string, CardState>
   const cards = reactive(new Map())
   const depthLevel = ref(0)
   const currentRoundDepth = ref(-1)
@@ -11,6 +22,9 @@ export const useCanvasStore = defineStore('canvas', () => {
   const selectedIds = ref(new Set())
   const greetingVisible = ref(true)
   const isStreaming = ref(false)
+
+  // Card ID counter for new cards during streaming
+  let streamCardCounter = 0
 
   function getCardTitle(card) {
     const d = card.data
@@ -27,9 +41,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     card.zIndex = Math.max(1, 50 - d * 20)
     card.blur = d >= 1 ? d * 4 : 0
     card.pointerEvents = 'auto'
-    if (o <= 0) {
-      cards.delete(card.id)
-    }
+    if (o <= 0) cards.delete(card.id)
   }
 
   function pushOldBlocks() {
@@ -37,7 +49,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     depthLevel.value++
     currentRoundDepth.value = depthLevel.value
 
-    // Preserve any cards already in current round (from move/update)
     const preserved = new Set(currentRoundIds.value)
     currentRoundIds.value = preserved
     preserved.forEach(id => {
@@ -45,7 +56,6 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (card) card.depth = depthLevel.value
     })
 
-    // Promote selected cards
     selectedIds.value.forEach(id => {
       const card = cards.get(id)
       if (card) {
@@ -56,7 +66,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     })
     clearSelection()
 
-    // Push old blocks back
     cards.forEach((card) => {
       if (currentRoundIds.value.has(card.id)) return
       const d = depthLevel.value - (card.depth || 0)
@@ -65,140 +74,180 @@ export const useCanvasStore = defineStore('canvas', () => {
     })
   }
 
-  function addCard(type, data, globalIndex) {
-    greetingVisible.value = false
-    pushOldBlocks()
+  // ─── Incremental apply (for streaming) ───
 
-    const contentKey = `r${depthLevel.value}-${globalIndex}`
-
-    // Check for existing card with same key (streaming update)
-    let existingId = null
-    cards.forEach((card) => {
-      if (card.contentKey === contentKey) existingId = card.id
-    })
-
-    if (existingId) {
-      const card = cards.get(existingId)
-      if (card) {
-        card.type = type
-        card.data = { ...data }
-        card.depth = depthLevel.value
-        card.blur = 0
-        currentRoundIds.value.add(existingId)
+  /**
+   * Apply a single operation to the canvas with animations.
+   * Called by timeline store when a new operation is added during streaming.
+   * Returns the card ID for 'create' operations.
+   */
+  function applyOperation(op) {
+    switch (op.op) {
+      case 'push': {
+        greetingVisible.value = false
+        pushOldBlocks()
+        break
       }
-      return existingId
-    }
-
-    // Push existing cards in current group back
-    const INTRA_PUSH = 30
-    const groupCount = currentRoundIds.value.size
-
-    currentRoundIds.value.forEach(sibId => {
-      const sib = cards.get(sibId)
-      if (!sib || selectedIds.value.has(sibId)) return
-      const curZ = sib.intraZ || 0
-      const pushed = curZ - INTRA_PUSH
-      sib.intraZ = pushed
-      sib.z = pushed
-      sib.scale = 1
-      sib.opacity = 1
-      sib.zIndex = 100 + Math.floor(pushed / 10)
-    })
-
-    // New card at front
-    const llmZ = data.z || 0
-    let maxGroupZ = 0
-    currentRoundIds.value.forEach(sibId => {
-      const sib = cards.get(sibId)
-      if (sib) {
-        const sz = sib.intraZ || 0
-        if (sz > maxGroupZ) maxGroupZ = sz
-      }
-    })
-    const intraZ = Math.max(llmZ, maxGroupZ + INTRA_PUSH, groupCount * INTRA_PUSH)
-
-    const id = nextId()
-    const card = reactive({
-      id,
-      type,
-      data: { ...data },
-      // Position — remap to safe area
-      x: data.x != null ? 5 + (data.x / 100) * 90 : 50,
-      y: data.y != null ? 5 + (data.y / 100) * 75 : 30,
-      z: 40, // entrance: start close
-      w: data.w || 25,
-      depth: depthLevel.value,
-      opacity: 0,
-      scale: 1.06,
-      blur: 0,
-      zIndex: 100 + Math.floor(intraZ / 10),
-      selected: false,
-      pinned: false,
-      intraZ,
-      contentKey,
-      entranceDelay: globalIndex * 0.05,
-      // final z to settle into after entrance
-      _targetZ: intraZ,
-    })
-
-    cards.set(id, card)
-    currentRoundIds.value.add(id)
-
-    // Trigger entrance animation after a brief delay
-    // Use setTimeout instead of rAF for Vue reactivity compatibility
-    const delay = Math.max(10, globalIndex * 50)
-    setTimeout(() => {
-      card.z = intraZ
-      card.scale = 1
-      card.opacity = 1
-      // Clear entrance delay after animation completes
-      setTimeout(() => { card.entranceDelay = 0 }, 1200)
-    }, delay)
-
-    return id
-  }
-
-  function executeCommand(cmd) {
-    if (cmd.cmd === 'move') {
-      const target = (cmd.title || '').toLowerCase()
-      cards.forEach((card) => {
-        const title = getCardTitle(card)
-        if (title.includes(target)) {
-          card.depth = depthLevel.value
-          currentRoundIds.value.add(card.id)
-          card.blur = 0
-          card.opacity = 1
-          card.pinned = true
-          if (cmd.x != null) card.x = 5 + (cmd.x / 100) * 90
-          if (cmd.y != null) card.y = 5 + (cmd.y / 100) * 75
-          const z = cmd.z != null ? cmd.z : 30
-          card.intraZ = z
-          card.z = z
-          card.scale = 1
-          card.zIndex = 100 + Math.floor(z / 10)
+      case 'create': {
+        greetingVisible.value = false
+        // Don't push again if already pushed this round
+        if (currentRoundDepth.value !== depthLevel.value) {
+          pushOldBlocks()
         }
-      })
-    } else if (cmd.cmd === 'update') {
-      const target = (cmd.title || '').toLowerCase()
-      cards.forEach((card) => {
-        const title = getCardTitle(card)
-        if (title.includes(target)) {
-          card.depth = depthLevel.value
-          card.pinned = true
-          currentRoundIds.value.add(card.id)
-          card.blur = 0
-          card.opacity = 1
-          // Apply updates
-          const { cmd: _, title: __, ...updates } = cmd
-          if (updates.newTitle) {
-            updates.title = updates.newTitle
-            delete updates.newTitle
+
+        const c = op.card
+        const globalIndex = op.globalIndex ?? 0
+        const contentKey = c.contentKey || `r${depthLevel.value}-${globalIndex}`
+
+        // Check for existing card (streaming update of same block)
+        let existingId = null
+        cards.forEach((card) => {
+          if (card.contentKey === contentKey) existingId = card.id
+        })
+
+        if (existingId) {
+          const card = cards.get(existingId)
+          if (card) {
+            card.type = c.type
+            card.data = { ...c.data }
+            card.depth = depthLevel.value
+            card.blur = 0
+            currentRoundIds.value.add(existingId)
           }
-          Object.assign(card.data, updates)
+          return existingId
         }
-      })
+
+        // Push siblings back in z
+        const INTRA_PUSH = 30
+        const groupCount = currentRoundIds.value.size
+
+        currentRoundIds.value.forEach(sibId => {
+          const sib = cards.get(sibId)
+          if (!sib || selectedIds.value.has(sibId)) return
+          const curZ = sib.intraZ || 0
+          const pushed = curZ - INTRA_PUSH
+          sib.intraZ = pushed
+          sib.z = pushed
+          sib.scale = 1
+          sib.opacity = 1
+          sib.zIndex = 100 + Math.floor(pushed / 10)
+        })
+
+        const llmZ = c.data?.z || 0
+        let maxGroupZ = 0
+        currentRoundIds.value.forEach(sibId => {
+          const sib = cards.get(sibId)
+          if (sib) {
+            const sz = sib.intraZ || 0
+            if (sz > maxGroupZ) maxGroupZ = sz
+          }
+        })
+        const intraZ = Math.max(llmZ, maxGroupZ + INTRA_PUSH, groupCount * INTRA_PUSH)
+
+        const id = c.id || nextId()
+        const data = c.data || {}
+        const card = reactive({
+          id,
+          type: c.type,
+          data: { ...data },
+          x: data.x != null ? 5 + (data.x / 100) * 90 : 50,
+          y: data.y != null ? 5 + (data.y / 100) * 75 : 30,
+          z: 40,
+          w: data.w || c.w || 25,
+          depth: depthLevel.value,
+          opacity: 0,
+          scale: 1.06,
+          blur: 0,
+          zIndex: 100 + Math.floor(intraZ / 10),
+          selected: false,
+          pinned: false,
+          intraZ,
+          contentKey,
+          entranceDelay: globalIndex * 0.05,
+          _targetZ: intraZ,
+        })
+
+        cards.set(id, card)
+        currentRoundIds.value.add(id)
+
+        const delay = Math.max(10, globalIndex * 50)
+        setTimeout(() => {
+          card.z = intraZ
+          card.scale = 1
+          card.opacity = 1
+          setTimeout(() => { card.entranceDelay = 0 }, 1200)
+        }, delay)
+
+        return id
+      }
+      case 'move': {
+        const card = cards.get(op.cardId)
+        if (card && op.to) {
+          card.depth = depthLevel.value
+          currentRoundIds.value.add(card.id)
+          card.blur = 0
+          card.opacity = 1
+          card.pinned = true
+          if (op.to.x != null) card.x = op.to.x
+          if (op.to.y != null) card.y = op.to.y
+          if (op.to.z != null) {
+            card.intraZ = op.to.z
+            card.z = op.to.z
+          }
+          card.scale = 1
+          card.zIndex = 100 + Math.floor((card.intraZ || 0) / 10)
+        }
+        break
+      }
+      case 'update': {
+        const card = cards.get(op.cardId)
+        if (card && op.changes) {
+          card.depth = depthLevel.value
+          card.pinned = true
+          currentRoundIds.value.add(card.id)
+          card.blur = 0
+          card.opacity = 1
+          Object.assign(card.data, op.changes)
+        }
+        break
+      }
+      case 'remove': {
+        cards.delete(op.cardId)
+        break
+      }
     }
   }
+
+  // ─── Full restore (for navigation) ───
+
+  /**
+   * Replace canvas state with a computed snapshot from timeline.
+   * No animations — instant state swap for timeline navigation.
+   */
+  function restoreFrom(computedCards) {
+    cards.clear()
+    currentRoundIds.value = new Set()
+    selectedIds.value = new Set()
+
+    let maxDepth = 0
+    computedCards.forEach((card) => {
+      if (card.depth > maxDepth) maxDepth = card.depth
+      cards.set(card.id, reactive({ ...card }))
+    })
+
+    depthLevel.value = maxDepth
+    currentRoundDepth.value = maxDepth
+    greetingVisible.value = false
+  }
+
+  // ─── Begin new round ───
+
+  function beginRound() {
+    currentRoundDepth.value = -1
+    currentRoundIds.value = new Set()
+  }
+
+  // ─── Selection ───
 
   function toggleSelect(id) {
     const card = cards.get(id)
@@ -230,6 +279,8 @@ export const useCanvasStore = defineStore('canvas', () => {
     })
     selectedIds.value.clear()
   }
+
+  // ─── Context for LLM ───
 
   function getSelectedContext() {
     const texts = []
@@ -275,11 +326,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
-  function beginRound() {
-    currentRoundDepth.value = -1
-    currentRoundIds.value = new Set()
-  }
-
   return {
     cards,
     depthLevel,
@@ -288,15 +334,14 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedIds,
     greetingVisible,
     isStreaming,
-    pushOldBlocks,
-    addCard,
-    executeCommand,
+    applyOperation,
+    restoreFrom,
+    beginRound,
     toggleSelect,
     clearSelection,
     getSelectedContext,
     getCanvasContext,
     updateCardPosition,
-    beginRound,
     getCardTitle,
   }
 })

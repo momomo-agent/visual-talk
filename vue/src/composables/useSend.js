@@ -5,6 +5,16 @@ import { useTimelineStore } from '../stores/timeline.js'
 import { useLLM } from './useLLM.js'
 import { parseResponse } from '../lib/parser.js'
 
+/**
+ * useSend — Orchestrates the send flow
+ * 
+ * Data flow:
+ *   User input → LLM streaming → timeline.addOperation()
+ *                                         ↓ (auto-notify)
+ *                                 canvas.applyOperation()
+ * 
+ * useSend ONLY writes to timeline. Canvas is derived automatically.
+ */
 export function useSend() {
   const sendQueue = ref([])
   const sendProcessing = ref(false)
@@ -42,9 +52,8 @@ export function useSend() {
     if (!text?.trim()) return
 
     const canvas = useCanvasStore()
-    const configStore = useConfigStore()
 
-    // Build canvas context
+    // Build context from current canvas state
     const selCtx = canvas.getSelectedContext()
     const canvasCtx = canvas.getCanvasContext()
 
@@ -72,11 +81,10 @@ export function useSend() {
       canvas.isStreaming = true
 
       // Always send from activeTip — viewing history doesn't change where we send
-      // This auto-returns to live view
       const parentId = timeline.getBranchPoint()
       const nodeId = timeline.branchFrom(parentId, userMessage)
 
-      // Begin new visual round
+      // Prepare canvas for new round
       canvas.beginRound()
 
       let pushRecorded = false
@@ -84,93 +92,79 @@ export function useSend() {
       let lastCommandCount = 0
       let speechHandled = false
 
-      /**
-       * Data flow: LLM → timeline.addOperation() → canvas.addCard()
-       * Timeline is the source of truth. Canvas renders with animations.
-       */
-      function recordAndRender(type, data, globalIndex) {
-        // 1. Record push (once per round)
-        if (!pushRecorded) {
-          timeline.addOperation(nodeId, { op: 'push' })
-          pushRecorded = true
-        }
-
-        // 2. Render on canvas (with entrance animation)
-        const cardId = canvas.addCard(type, data, globalIndex)
-
-        // 3. Record in timeline (for history replay)
-        const card = canvas.cards.get(cardId)
-        if (card) {
-          timeline.addOperation(nodeId, {
-            op: 'create',
-            card: {
-              id: card.id,
-              type: card.type,
-              data: { ...card.data },
-              x: card.x,
-              y: card.y,
-              z: card._targetZ ?? card.z,
-              w: card.w,
-              zIndex: card.zIndex,
-              intraZ: card.intraZ,
-              contentKey: card.contentKey,
-            },
-          })
-        }
-        return cardId
-      }
-
-      function recordAndExecuteCommand(cmd) {
-        // Find matching cards BEFORE execution (title may change after update)
-        const target = (cmd.title || '').toLowerCase()
-        const matchedIds = []
-        canvas.cards.forEach((card) => {
-          const title = canvas.getCardTitle?.(card) || ''
-          if (typeof title === 'string' && title.includes(target)) {
-            matchedIds.push(card.id)
-          }
-        })
-
-        // Execute on canvas (handles newTitle→title conversion etc.)
-        canvas.executeCommand(cmd)
-
-        // Record in timeline from card's actual state after execution
-        matchedIds.forEach((cardId) => {
-          const card = canvas.cards.get(cardId)
-          if (!card) return
-          if (cmd.cmd === 'move') {
-            timeline.addOperation(nodeId, {
-              op: 'move',
-              cardId: card.id,
-              to: { x: card.x, y: card.y, z: card.z },
-            })
-          } else if (cmd.cmd === 'update') {
-            timeline.addOperation(nodeId, {
-              op: 'update',
-              cardId: card.id,
-              changes: { ...card.data },
-            })
-          }
-        })
-      }
+      // Card ID tracking for commands (need to find cards BEFORE command execution)
+      let globalCardIndex = 0
 
       try {
         const cfg = configStore.getConfig()
-        if (!cfg.apiKey) {
-          return null
-        }
+        if (!cfg.apiKey) return null
 
         const reply = await callLLM(prompt,
-          // onToken
+          // onToken — streaming callback
           (partial) => {
             const { blocks, commands } = parseResponse(partial)
+
+            // Process new commands
             if (commands.length > lastCommandCount) {
-              commands.slice(lastCommandCount).forEach(cmd => recordAndExecuteCommand(cmd))
+              commands.slice(lastCommandCount).forEach(cmd => {
+                // Find matching cards BEFORE the operation changes titles
+                const target = (cmd.title || '').toLowerCase()
+                const matchedIds = []
+                canvas.cards.forEach((card) => {
+                  const title = canvas.getCardTitle?.(card) || ''
+                  if (typeof title === 'string' && title.includes(target)) {
+                    matchedIds.push(card.id)
+                  }
+                })
+
+                if (cmd.cmd === 'move') {
+                  matchedIds.forEach(cardId => {
+                    const x = cmd.x != null ? 5 + (cmd.x / 100) * 90 : undefined
+                    const y = cmd.y != null ? 5 + (cmd.y / 100) * 75 : undefined
+                    const z = cmd.z ?? 30
+                    timeline.addOperation(nodeId, {
+                      op: 'move',
+                      cardId,
+                      to: { x, y, z },
+                    })
+                  })
+                } else if (cmd.cmd === 'update') {
+                  const { cmd: _, title: __, ...rawChanges } = cmd
+                  // Handle newTitle → title conversion
+                  if (rawChanges.newTitle) {
+                    rawChanges.title = rawChanges.newTitle
+                    delete rawChanges.newTitle
+                  }
+                  matchedIds.forEach(cardId => {
+                    timeline.addOperation(nodeId, {
+                      op: 'update',
+                      cardId,
+                      changes: rawChanges,
+                    })
+                  })
+                }
+              })
               lastCommandCount = commands.length
             }
+
+            // Process new blocks
             if (blocks.length > lastBlockCount) {
               blocks.slice(lastBlockCount).forEach((b, i) => {
-                recordAndRender(b.type, b.data, lastBlockCount + i)
+                const idx = lastBlockCount + i
+                if (!pushRecorded) {
+                  timeline.addOperation(nodeId, { op: 'push' })
+                  pushRecorded = true
+                }
+                // Write to timeline — canvas updates automatically via addOperation
+                timeline.addOperation(nodeId, {
+                  op: 'create',
+                  globalIndex: idx,
+                  card: {
+                    type: b.type,
+                    data: { ...b.data },
+                    contentKey: `r${canvas.depthLevel}-${idx}`,
+                  },
+                })
               })
               lastBlockCount = blocks.length
             }
@@ -185,14 +179,53 @@ export function useSend() {
 
         if (!reply) continue
 
-        // Final pass
+        // Final pass — catch any remaining blocks/commands
         const { speech, blocks, commands } = parseResponse(reply)
+
         if (commands.length > lastCommandCount) {
-          commands.slice(lastCommandCount).forEach(cmd => recordAndExecuteCommand(cmd))
+          commands.slice(lastCommandCount).forEach(cmd => {
+            const target = (cmd.title || '').toLowerCase()
+            const matchedIds = []
+            canvas.cards.forEach((card) => {
+              const title = canvas.getCardTitle?.(card) || ''
+              if (typeof title === 'string' && title.includes(target)) {
+                matchedIds.push(card.id)
+              }
+            })
+
+            if (cmd.cmd === 'move') {
+              matchedIds.forEach(cardId => {
+                const x = cmd.x != null ? 5 + (cmd.x / 100) * 90 : undefined
+                const y = cmd.y != null ? 5 + (cmd.y / 100) * 75 : undefined
+                const z = cmd.z ?? 30
+                timeline.addOperation(nodeId, { op: 'move', cardId, to: { x, y, z } })
+              })
+            } else if (cmd.cmd === 'update') {
+              const { cmd: _, title: __, ...rawChanges } = cmd
+              if (rawChanges.newTitle) { rawChanges.title = rawChanges.newTitle; delete rawChanges.newTitle }
+              matchedIds.forEach(cardId => {
+                timeline.addOperation(nodeId, { op: 'update', cardId, changes: rawChanges })
+              })
+            }
+          })
         }
+
         if (blocks.length > lastBlockCount) {
           blocks.slice(lastBlockCount).forEach((b, i) => {
-            recordAndRender(b.type, b.data, lastBlockCount + i)
+            const idx = lastBlockCount + i
+            if (!pushRecorded) {
+              timeline.addOperation(nodeId, { op: 'push' })
+              pushRecorded = true
+            }
+            timeline.addOperation(nodeId, {
+              op: 'create',
+              globalIndex: idx,
+              card: {
+                type: b.type,
+                data: { ...b.data },
+                contentKey: `r${canvas.depthLevel}-${idx}`,
+              },
+            })
           })
         }
 

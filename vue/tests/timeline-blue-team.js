@@ -54,41 +54,34 @@
   function simulateRound(userMsg, cards, commands = [], fromParent = null) {
     // If fromParent is specified, create node from that parent (explicit branch)
     // Otherwise, use normal send flow (always from activeTip)
-    let parentId, nodeId
+    let nodeId
     if (fromParent !== null) {
-      // Explicit branch — for testing tree structure
       nodeId = timelineStore.createNode(fromParent, userMsg)
     } else {
-      parentId = timelineStore.getBranchPoint()
+      const parentId = timelineStore.getBranchPoint()
       nodeId = timelineStore.branchFrom(parentId, userMsg)
     }
     
-    // Record push
+    // Prepare canvas for new round
+    canvasStore.beginRound()
+
+    // All writes go through timeline only — canvas auto-updates via addOperation
     timelineStore.addOperation(nodeId, { op: 'push' })
     
-    // Create cards
-    canvasStore.beginRound()
     cards.forEach((c, i) => {
-      const cardId = canvasStore.addCard(c.type, c.data, i)
-      const card = canvasStore.cards.get(cardId)
-      if (card) {
-        timelineStore.addOperation(nodeId, {
-          op: 'create',
-          card: {
-            id: card.id,
-            type: card.type,
-            data: { ...card.data },
-            x: card.x, y: card.y, z: card._targetZ ?? card.z,
-            w: card.w, zIndex: card.zIndex, intraZ: card.intraZ,
-            contentKey: card.contentKey,
-          }
-        })
-      }
+      timelineStore.addOperation(nodeId, {
+        op: 'create',
+        globalIndex: i,
+        card: {
+          type: c.type,
+          data: { ...c.data },
+          contentKey: `r${canvasStore.depthLevel}-${i}`,
+        },
+      })
     })
 
-    // Execute commands
+    // Execute commands — find matching cards BEFORE operation changes titles
     commands.forEach(cmd => {
-      // Find matching cards BEFORE execution (title may change after update)
       const target = (cmd.title || '').toLowerCase()
       const matchedIds = []
       canvasStore.cards.forEach(card => {
@@ -96,24 +89,24 @@
         if (title.includes(target)) matchedIds.push(card.id)
       })
 
-      // Execute on canvas (handles newTitle→title etc.)
-      canvasStore.executeCommand(cmd)
-
-      // Record in timeline from card's actual state after execution
-      matchedIds.forEach(cardId => {
-        const card = canvasStore.cards.get(cardId)
-        if (!card) return
-        if (cmd.cmd === 'move') {
+      if (cmd.cmd === 'move') {
+        matchedIds.forEach(cardId => {
+          const x = cmd.x != null ? 5 + (cmd.x / 100) * 90 : undefined
+          const y = cmd.y != null ? 5 + (cmd.y / 100) * 75 : undefined
+          const z = cmd.z ?? 30
           timelineStore.addOperation(nodeId, {
-            op: 'move', cardId: card.id,
-            to: { x: card.x, y: card.y, z: card.z }
+            op: 'move', cardId, to: { x, y, z }
           })
-        } else if (cmd.cmd === 'update') {
+        })
+      } else if (cmd.cmd === 'update') {
+        const { cmd: _, title: __, ...rawChanges } = cmd
+        if (rawChanges.newTitle) { rawChanges.title = rawChanges.newTitle; delete rawChanges.newTitle }
+        matchedIds.forEach(cardId => {
           timelineStore.addOperation(nodeId, {
-            op: 'update', cardId: card.id, changes: { ...card.data }
+            op: 'update', cardId, changes: rawChanges
           })
-        }
-      })
+        })
+      }
     })
 
     return nodeId
@@ -374,7 +367,8 @@
   // Add late operation to same node
   timelineStore.addOperation(t10a, {
     op: 'create',
-    card: { id: 'late-card', type: 'card', data: { title: 'Late', x: 30, y: 30 }, x: 30, y: 30, z: 0, w: 25, zIndex: 100, intraZ: 0 }
+    globalIndex: 1,
+    card: { type: 'card', data: { title: 'Late', x: 30, y: 30 }, contentKey: 'r1-late' }
   })
 
   const cached2 = timelineStore.computeCanvas(t10a)

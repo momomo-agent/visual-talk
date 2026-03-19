@@ -63,8 +63,28 @@ export const useTimelineStore = defineStore('timeline', () => {
     const node = nodes.get(nodeId)
     if (!node) return
     node.operations.push(operation)
-    // Invalidate cache for this node and all descendants
     invalidateFrom(nodeId)
+
+    // If this is the live node, incrementally apply to canvas
+    if (nodeId === activeTip.value && viewingId.value == null) {
+      const canvas = useCanvasStore()
+      const result = canvas.applyOperation(operation)
+      // For create operations, record the generated card ID back into the operation
+      // so computeCanvas can reconstruct the same card identity
+      if (operation.op === 'create' && result != null && operation.card) {
+        operation.card.id = result
+        // Also capture the card's computed position/z values
+        const card = canvas.cards.get(result)
+        if (card) {
+          operation.card.x = card.x
+          operation.card.y = card.y
+          operation.card.z = card._targetZ ?? card.z
+          operation.card.w = card.w
+          operation.card.zIndex = card.zIndex
+          operation.card.intraZ = card.intraZ
+        }
+      }
+    }
   }
 
   function invalidateFrom(nodeId) {
@@ -299,20 +319,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function restoreToNode(nodeId) {
     const canvas = useCanvasStore()
     const computedCanvas = computeCanvas(nodeId)
-
-    // Clear current canvas and replace with computed state
-    canvas.cards.clear()
-    canvas.currentRoundIds = new Set()
-
-    let maxDepth = 0
-    computedCanvas.forEach((card) => {
-      if (card.depth > maxDepth) maxDepth = card.depth
-      canvas.cards.set(card.id, reactive({ ...card }))
-    })
-
-    canvas.depthLevel = maxDepth
-    canvas.currentRoundDepth = maxDepth
-    canvas.greetingVisible = false
+    canvas.restoreFrom(computedCanvas)
   }
 
   // --- Bubble display info ---
