@@ -63,6 +63,8 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 - chart: {"x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
   chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
+  Multi-series (line/column/bar): use "series" instead of "items":
+  {"chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10},{"label":"Q2","value":15}]},{"name":"Samsung","items":[{"label":"Q1","value":8},{"label":"Q2","value":12}]}]}
 - list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
   style: "unordered", "ordered", or "todo"
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
@@ -376,14 +378,10 @@ function renderBlock(type, data) {
   if (type === 'media' || (type === 'card' && data.image)) el.style.maxWidth = '380px'
   
   // New blocks always at front
-  el.style.transform = `translateZ(0px) scale(1)`
-  el.style.opacity = 1
-  el.style.zIndex = 100
-  el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1s cubic-bezier(.22,1,.36,1), filter 0.8s, box-shadow 0.6s, left 1s cubic-bezier(.22,1,.36,1), top 1s cubic-bezier(.22,1,.36,1)'
-
-  // Entrance animation — starts slightly large and close, settles gently
-  el.style.opacity = 0
   el.style.transform = `translateZ(40px) scale(1.06)`
+  el.style.opacity = 0
+  el.style.zIndex = 100
+  el.style.transition = 'transform 1.2s cubic-bezier(.22,1,.36,1), opacity 0.6s ease-out, filter 0.8s, box-shadow 0.6s, left 1s cubic-bezier(.22,1,.36,1), top 1s cubic-bezier(.22,1,.36,1)'
 
   // Window title bar label
   const typeLabel = { card: 'card', metric: 'data', steps: 'timeline', columns: 'compare', callout: 'quote', code: 'code', markdown: 'note', media: 'media', chart: 'chart', list: 'list', embed: 'embed' }[type] || type
@@ -459,10 +457,14 @@ function renderBlock(type, data) {
 
     case 'chart': {
       // Pure CSS/SVG charts: bar, column, pie, donut, line
-      const items = data.items || []
-      const maxVal = Math.max(...items.map(d => parseFloat(d.value) || 0), 1)
+      // Support both single series (items) and multi-series (series)
+      const series = data.series || (data.items?.length ? [{ name: '', items: data.items }] : [])
+      const allValues = series.flatMap(s => (s.items || []).map(d => parseFloat(d.value) || 0))
+      const maxVal = Math.max(...allValues, 1)
       const chartType = data.chartType || 'bar'
       const colors = ['#c8a96e','#8a7a60','#e8856a','#6aad8e','#7a9ec8','#b87acc','#d4a85c','#5cb8b2','#c76a6a','#8aae5c']
+      const items = series[0]?.items || []
+      const isMulti = series.length > 1
       
       if (chartType === 'pie' || chartType === 'donut') {
         // SVG pie/donut chart
@@ -505,34 +507,65 @@ function renderBlock(type, data) {
           <svg viewBox="0 0 140 140" style="width:100%;max-height:140px">${slices}</svg>
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:6px">${legend}</div></div>`
       } else if (chartType === 'line') {
-        // SVG line chart with HTML labels below (like column chart)
+        // SVG line chart — supports multi-series
         const gradId = 'ag' + Math.random().toString(36).slice(2, 8)
         const w = 280, h = 100, padL = 10, padR = 10, padT = 15, padB = 5
         const pw = w - padL - padR, ph = h - padT - padB
-        const points = items.map((d, i) => {
-          const x = padL + (items.length > 1 ? (i / (items.length - 1)) * pw : pw / 2)
-          const y = padT + ph - ((parseFloat(d.value) || 0) / maxVal) * ph
-          return { x, y, label: d.label, value: d.value }
-        })
-        const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
-        const dots = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#c8a96e"><title>${esc(p.label || '')}: ${p.value}</title></circle>`).join('')
-        const valLabels = points.map(p => `<text x="${p.x}" y="${p.y - 6}" text-anchor="middle" font-size="8" fill="#8a7a60">${p.value}</text>`).join('')
-        // HTML labels row — flex like column chart
-        const htmlLabels = items.map(d => 
-          `<span style="flex:1;text-align:center;font-size:9px;color:#6a5a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.label || '')}</span>`
+        const absMax = Math.max(...allValues.map(Math.abs), 1)
+        const labels = items.map(d => d.label)
+        
+        const lines = series.map((s, si) => {
+          const sItems = s.items || []
+          const pts = sItems.map((d, i) => {
+            const x = padL + (sItems.length > 1 ? (i / (sItems.length - 1)) * pw : pw / 2)
+            const y = padT + ph - ((parseFloat(d.value) || 0) / absMax) * ph
+            return { x, y, value: d.value }
+          })
+          const color = colors[si % colors.length]
+          const polyline = pts.map(p => `${p.x},${p.y}`).join(' ')
+          const dots = pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${color}"><title>${esc(s.name || '')}: ${p.value}</title></circle>`).join('')
+          const valLabels = isMulti ? '' : pts.map(p => `<text x="${p.x}" y="${p.y - 6}" text-anchor="middle" font-size="8" fill="#8a7a60">${p.value}</text>`).join('')
+          return `<polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+            ${!isMulti ? `<polyline points="${padL},${padT + ph} ${polyline} ${padL + pw},${padT + ph}" fill="url(#${gradId})" opacity="0.15"/>` : ''}
+            ${dots}${valLabels}`
+        }).join('')
+        
+        const htmlLabels = labels.map(l => 
+          `<span style="flex:1;text-align:center;font-size:9px;color:#6a5a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l || '')}</span>`
         ).join('')
+        const legend = isMulti ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:4px">${series.map((s, i) => 
+          `<div style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:2px;background:${colors[i % colors.length]};border-radius:1px"></span><span style="font-size:10px;color:#6a5a4a">${esc(s.name || '')}</span></div>`
+        ).join('')}</div>` : ''
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
           <svg viewBox="0 0 ${w} ${h}" style="width:100%">
-            <polyline points="${polyline}" fill="none" stroke="#c8a96e" stroke-width="2" stroke-linejoin="round"/>
-            <polyline points="${padL},${padT + ph} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${padL + pw},${padT + ph}" fill="url(#${gradId})" opacity="0.15"/>
             <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
-            ${dots}${valLabels}
+            ${lines}
           </svg>
-          <div style="display:flex;gap:0;padding:2px 0 0">${htmlLabels}</div></div>`
+          <div style="display:flex;gap:0;padding:2px 0 0">${htmlLabels}</div>${legend}</div>`
       } else if (chartType === 'column') {
-        const hasNeg = items.some(d => (parseFloat(d.value) || 0) < 0)
-        const absMax = Math.max(...items.map(d => Math.abs(parseFloat(d.value) || 0)), 1)
-        if (hasNeg) {
+        const absMax = Math.max(...allValues.map(Math.abs), 1)
+        const hasNeg = allValues.some(v => v < 0)
+        const labels = items.map(d => d.label)
+        if (isMulti) {
+          // Grouped column chart
+          const legend = `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:4px">${series.map((s, i) => 
+            `<div style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${colors[i % colors.length]}"></span><span style="font-size:10px;color:#6a5a4a">${esc(s.name || '')}</span></div>`
+          ).join('')}</div>`
+          body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+            <div style="display:flex;align-items:flex-end;gap:4px;height:160px;padding:8px 0">
+              ${labels.map((label, li) => {
+                const bars = series.map((s, si) => {
+                  const val = parseFloat(s.items?.[li]?.value) || 0
+                  const pct = (Math.abs(val) / absMax) * 100
+                  return `<div style="flex:1;height:${pct}%;background:${colors[si % colors.length]};border-radius:2px;min-height:2px;transition:height 0.6s" title="${esc(s.name || '')}: ${val}"></div>`
+                }).join('')
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
+                  <div style="flex:1;width:100%;display:flex;align-items:flex-end;gap:1px">${bars}</div>
+                  <span style="font-size:9px;color:#6a5a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(label || '')}</span>
+                </div>`
+              }).join('')}
+            </div>${legend}</div>`
+        } else if (hasNeg) {
           // Bidirectional column chart — positive up, negative down
           body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
             <div style="display:flex;gap:8px;height:160px;padding:8px 0">
@@ -568,22 +601,49 @@ function renderBlock(type, data) {
         }
       } else {
         // Horizontal bar chart
-        const absMax = Math.max(...items.map(d => Math.abs(parseFloat(d.value) || 0)), 1)
-        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
-          <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
-            ${items.map(d => {
-              const val = parseFloat(d.value) || 0
-              const pct = (Math.abs(val) / absMax) * 100
-              const color = val < 0 ? 'linear-gradient(90deg,#e8856a,#c76a6a)' : 'linear-gradient(90deg,#c8a96e,#8a7a60)'
-              return `<div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:11px;color:#6a5a4a;min-width:60px;text-align:right">${esc(d.label || '')}</span>
-                <div style="flex:1;height:18px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
-                  <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.6s"></div>
-                </div>
-                <span style="font-size:11px;color:#8a7a60;min-width:35px">${esc(String(d.value))}</span>
-              </div>`
-            }).join('')}
-          </div></div>`
+        const absMax = Math.max(...allValues.map(Math.abs), 1)
+        const labels = items.map(d => d.label)
+        if (isMulti) {
+          // Grouped horizontal bar chart
+          const legend = `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:4px">${series.map((s, i) => 
+            `<div style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${colors[i % colors.length]}"></span><span style="font-size:10px;color:#6a5a4a">${esc(s.name || '')}</span></div>`
+          ).join('')}</div>`
+          body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+            <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0">
+              ${labels.map((label, li) => {
+                const bars = series.map((s, si) => {
+                  const val = parseFloat(s.items?.[li]?.value) || 0
+                  const pct = (Math.abs(val) / absMax) * 100
+                  return `<div style="display:flex;align-items:center;gap:4px">
+                    <div style="flex:1;height:12px;background:rgba(0,0,0,0.04);border-radius:2px;overflow:hidden">
+                      <div style="width:${pct}%;height:100%;background:${colors[si % colors.length]};border-radius:2px;transition:width 0.6s"></div>
+                    </div>
+                    <span style="font-size:10px;color:#8a7a60;min-width:25px">${val}</span>
+                  </div>`
+                }).join('')
+                return `<div>
+                  <span style="font-size:11px;color:#6a5a4a">${esc(label || '')}</span>
+                  <div style="display:flex;flex-direction:column;gap:2px;padding-top:2px">${bars}</div>
+                </div>`
+              }).join('')}
+            </div>${legend}</div>`
+        } else {
+          body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+            <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
+              ${items.map(d => {
+                const val = parseFloat(d.value) || 0
+                const pct = (Math.abs(val) / absMax) * 100
+                const color = val < 0 ? 'linear-gradient(90deg,#e8856a,#c76a6a)' : 'linear-gradient(90deg,#c8a96e,#8a7a60)'
+                return `<div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:11px;color:#6a5a4a;min-width:60px;text-align:right">${esc(d.label || '')}</span>
+                  <div style="flex:1;height:18px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
+                    <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.6s"></div>
+                  </div>
+                  <span style="font-size:11px;color:#8a7a60;min-width:35px">${esc(String(d.value))}</span>
+                </div>`
+              }).join('')}
+            </div></div>`
+        }
       }
       break
     }
@@ -885,6 +945,8 @@ function renderBlocks(blocks, offset = 0) {
         }, { once: true })
       })
     })
+    // Safety: force visible after 600ms in case rAF/transition fails
+    setTimeout(() => { if (el.style.opacity !== '1') el.style.opacity = 1 }, 600)
   })
 }
 
@@ -1222,6 +1284,14 @@ $('micBtn').addEventListener('touchstart', startRecording)
 $('micBtn').addEventListener('touchend', stopRecording)
 
 async function startRecording() {
+  // Stop any playing TTS and hide bubble immediately
+  if (currentAudio) {
+    try { currentAudio.pause() } catch {}
+    currentAudio = null
+  }
+  clearTimeout(bubbleTimer)
+  $('bubble').className = 'bubble'
+  
   const cfg = getConfig()
   if (cfg.webSpeech) return startWebSpeech()
   return startWhisper()
