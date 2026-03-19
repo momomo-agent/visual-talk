@@ -1191,6 +1191,16 @@ document.addEventListener('wheel', e => {
   }
 }, { passive: false })
 
+// ── Timeline keyboard (ArrowUp/Down) ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+  if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
+  if (timeline.length < 2) return
+  e.preventDefault()
+  const direction = e.key === 'ArrowUp' ? 1 : -1  // Up = forward in time, Down = back
+  scrollTimeline(direction)
+})
+
 // ── LLM Call (via agentic-claw) ──
 let claw = null
 let clawConfigKey = null
