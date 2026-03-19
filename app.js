@@ -1344,13 +1344,13 @@ async function send() {
   const text = input.value.trim()
   if (!text) return
 
-  // If viewing history, return to live state first
-  if (timelinePos !== -1 && timeline.length > 0) {
-    restoreCanvas(timeline.length - 1)
-    timelinePos = -1
+  // If viewing history, stay on current canvas — new response grows from here
+  // The canvas state the user sees IS the context for the new message
+  if (timelinePos !== -1) {
     isScrollingTimeline = false
     hideTimelineIndicator()
   }
+  timelinePos = -1
 
   unlockAudio()
   input.value = ''
@@ -1359,7 +1359,7 @@ async function send() {
   const selCtx = window._selectedContext
   
   // Build canvas context — show LLM what's on screen (latest group = full data, older = titles only)
-  const allCards = [...document.querySelectorAll('#canvasSpace .v-block')]
+  const allCards = [...document.querySelectorAll('#canvasSpace .v-block')].filter(el => el.dataset.timelineHidden !== '1')
   const maxDepth = Math.max(...allCards.map(el => parseInt(el.dataset.depth || '0')), 0)
   
   const currentGroup = []
