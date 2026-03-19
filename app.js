@@ -80,6 +80,8 @@ Cards belong to the canvas, not to individual responses. You can bring old cards
 
 **Don't move cards just to rearrange.** Move only when the old card meaningfully participates in your new response — as the focus, as evidence, or as context. If it's not adding to the story, let it recede naturally.
 
+**Cards you don't mention don't need commands.** If a card is no longer relevant, just leave it alone — it will naturally fade into the background as new cards appear. No need to move or update it.
+
 **When to reuse vs create new:**
 - If an existing card is directly relevant to your response → move it nearby your new cards
 - If an existing card's data is outdated → update it with new info
