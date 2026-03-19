@@ -804,7 +804,7 @@ function renderBlocks(blocks, offset = 0) {
   const space = $('canvasSpace')
   $('greeting').classList.add('hidden')
 
-  // Push old blocks back (once per send round)
+  // Push old blocks back (once per send round) — only if there are genuinely new blocks
   pushOldBlocks()
 
   // Render new blocks — reuse existing if content matches
@@ -1171,6 +1171,17 @@ async function processSendQueue() {
       if (commands.length > lastCommandCount) executeCommands(commands.slice(lastCommandCount))
       if (blocks.length > lastBlockCount) {
         renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
+      }
+
+      // If commands touched some cards but no new blocks were rendered,
+      // check if we need to push untouched cards back
+      if (currentRoundEls.size > 0 && currentRoundDepth !== depthLevel) {
+        const allCards = [...$('canvasSpace').querySelectorAll('.v-block')]
+        const untouched = allCards.filter(el => !currentRoundEls.has(el))
+        if (untouched.length > 0) {
+          // Some cards were NOT updated this round — push them back
+          pushOldBlocks()
+        }
       }
 
       // TTS fallback: only if speech wasn't already handled
