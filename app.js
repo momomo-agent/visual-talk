@@ -813,15 +813,17 @@ function restoreCanvas(index) {
     existingMap.set(el.dataset.contentKey, el)
   })
   
-  // 1. Cards that exist in both: animate to target state
-  // 2. Cards only in target: create and fade in
-  // 3. Cards only in DOM: fade out to background
+  console.log(`[Timeline] restore ${index}: target ${targetMap.size} cards, existing ${existingMap.size} DOM elements`)
+  
+  // Track what we did
+  let matched = 0, hidden = 0, created = 0
   
   // Handle existing cards
   existingMap.forEach((el, key) => {
     const target = targetMap.get(key)
     el.style.transition = TRANSITION
     if (target) {
+      matched++
       // Animate to target state
       el.style.left = target.x
       el.style.top = target.y
@@ -839,6 +841,7 @@ function restoreCanvas(index) {
         el.innerHTML = target.html
       }
     } else {
+      hidden++
       // Not in this snapshot — fade out to far away
       el.style.opacity = '0'
       el.style.transform = 'translateZ(-400px) scale(0.5)'
@@ -851,6 +854,7 @@ function restoreCanvas(index) {
   // Create new cards that don't exist in DOM yet
   targetMap.forEach((card, key) => {
     if (existingMap.has(key)) return
+    created++
     // Create element directly — don't use renderBlock (it sets opacity:0 and entrance styles)
     const el = document.createElement('div')
     el.className = 'v-block'
@@ -881,6 +885,7 @@ function restoreCanvas(index) {
       })
     })
   })
+  console.log(`[Timeline] restore result: matched=${matched}, hidden=${hidden}, created=${created}`)
 }
 
 // Timeline navigation — tree-based
