@@ -248,6 +248,7 @@ const cardStyle = computed(() => {
     zIndex: c.zIndex,
     filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',
     pointerEvents: c.pointerEvents || 'auto',
+    transitionDelay: c.entranceDelay > 0 ? `${c.entranceDelay}s` : '0s',
   }
 })
 

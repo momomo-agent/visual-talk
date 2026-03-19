@@ -135,7 +135,7 @@ export const useCanvasStore = defineStore('canvas', () => {
       pinned: false,
       intraZ,
       contentKey,
-      entranceDelay: 0,
+      entranceDelay: globalIndex * 0.05,
       // final z to settle into after entrance
       _targetZ: intraZ,
     })
@@ -143,14 +143,16 @@ export const useCanvasStore = defineStore('canvas', () => {
     cards.set(id, card)
     currentRoundIds.value.add(id)
 
-    // Trigger entrance animation (next tick)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        card.z = intraZ
-        card.scale = 1
-        card.opacity = 1
-      })
-    })
+    // Trigger entrance animation after a brief delay
+    // Use setTimeout instead of rAF for Vue reactivity compatibility
+    const delay = Math.max(10, globalIndex * 50)
+    setTimeout(() => {
+      card.z = intraZ
+      card.scale = 1
+      card.opacity = 1
+      // Clear entrance delay after animation completes
+      setTimeout(() => { card.entranceDelay = 0 }, 1200)
+    }, delay)
 
     return id
   }
