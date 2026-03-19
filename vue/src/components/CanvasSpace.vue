@@ -5,7 +5,7 @@
         v-for="[id, card] in cards"
         :key="id"
         :card="card"
-        @toggle-select="toggleSelect(id, $event)"
+        @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
       />
     </div>

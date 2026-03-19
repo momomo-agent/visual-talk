@@ -230,14 +230,25 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedIds.value = new Set()
 
     let maxDepth = 0
+    const targets = []
     computedCards.forEach((card) => {
       if (card.depth > maxDepth) maxDepth = card.depth
-      cards.set(card.id, reactive({ ...card }))
+      const targetOpacity = card.opacity ?? 1
+      const restored = reactive({ ...card, opacity: 0 })
+      cards.set(card.id, restored)
+      targets.push({ card: restored, opacity: targetOpacity })
     })
 
     depthLevel.value = maxDepth
     currentRoundDepth.value = maxDepth
     greetingVisible.value = false
+
+    // Fade in after a tick (CSS transition handles the animation)
+    setTimeout(() => {
+      targets.forEach(({ card, opacity }) => {
+        card.opacity = opacity
+      })
+    }, 30)
   }
 
   // ─── Begin new round ───
@@ -249,7 +260,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   // ─── Selection ───
 
-  function toggleSelect(id) {
+  function toggleSelect(id, opts) {
+    const multi = opts?.multi ?? false
+    if (!multi) {
+      // Single click — clear others first, then toggle this one
+      clearSelection()
+    }
     const card = cards.get(id)
     if (!card) return
     if (card.selected) {

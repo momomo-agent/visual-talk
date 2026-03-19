@@ -97,7 +97,10 @@ export function useSend() {
 
       try {
         const cfg = configStore.getConfig()
-        if (!cfg.apiKey) return null
+        if (!cfg.apiKey) {
+          showBubble('请先配置 API Key ⚙️', 3000)
+          return 'need-config'
+        }
 
         const reply = await callLLM(prompt,
           // onToken — streaming callback

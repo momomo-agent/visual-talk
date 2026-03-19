@@ -131,14 +131,18 @@ body {
 .config-overlay {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(10,10,8,0.8); backdrop-filter: blur(8px);
-  display: none; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s;
 }
-.config-overlay.open { display: flex; }
+.config-overlay.open { opacity: 1; visibility: visible; }
 
 .config-box {
   background: rgba(28,24,18,0.95); border: 1px solid rgba(196,168,130,0.08);
   border-radius: 10px; padding: 24px; width: 340px;
+  transform: scale(0.95); transition: transform 0.3s ease;
 }
+.config-overlay.open .config-box { transform: scale(1); }
 .config-box .field { margin-bottom: 12px; }
 .config-box label {
   font-size: 10px; color: rgba(196,168,130,0.3); display: block;
