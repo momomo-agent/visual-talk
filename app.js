@@ -933,7 +933,24 @@ function scrollTimeline(direction) {
   clearSelection()
   updateSelectionContext()
   restoreCanvas(timelinePos)
-  showTimelineIndicator(timelinePos)
+  
+  const node = timeline[timelinePos]
+  const isLeaf = node.children.length === 0
+  
+  if (isLeaf && timelinePos === activeBranchTip) {
+    // At the tip of the active branch — show briefly then fade
+    showTimelineIndicator(timelinePos)
+    // After 3s, exit history mode
+    setTimeout(() => {
+      if (timelinePos === newPos) {
+        timelinePos = -1
+        isScrollingTimeline = false
+        hideTimelineIndicator()
+      }
+    }, 3000)
+  } else {
+    showTimelineIndicator(timelinePos)
+  }
 }
 
 function showTimelineIndicator(pos) {
@@ -1466,8 +1483,14 @@ async function processSendQueue() {
     const { prompt, branchFrom } = sendQueue.shift()
     
     // If branching from history, set activeBranchTip so snapshotCanvas gets correct parent
+    // Also reset depthLevel to match the viewed snapshot's depth
     if (branchFrom >= 0) {
       activeBranchTip = branchFrom
+      // Reset depth so old cards from the historical snapshot don't get pushed too far
+      const snap = timeline[branchFrom]
+      if (snap) {
+        depthLevel = snap.depth
+      }
     }
     
     showThinking()
