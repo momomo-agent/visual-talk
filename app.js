@@ -1242,17 +1242,6 @@ async function processSendQueue() {
         renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
       }
 
-      // If commands touched some cards but no new blocks were rendered,
-      // check if we need to push untouched cards back
-      if (currentRoundEls.size > 0 && currentRoundDepth !== depthLevel) {
-        const allCards = [...$('canvasSpace').querySelectorAll('.v-block')]
-        const untouched = allCards.filter(el => !currentRoundEls.has(el))
-        if (untouched.length > 0) {
-          // Some cards were NOT updated this round — push them back
-          pushOldBlocks()
-        }
-      }
-
       // TTS fallback: only if speech wasn't already handled
       if (speech && !speechHandled) {
         showBubble(speech)
