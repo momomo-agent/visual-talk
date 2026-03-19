@@ -70,10 +70,15 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 ## Canvas Commands
 
-Cards belong to the canvas, not to individual responses. Before creating new cards, check what's already on screen — reuse and evolve existing cards when they're relevant.
+Cards belong to the canvas, not to individual responses. You can bring old cards forward when they serve your new response.
 
-- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — bring an old card forward to join your new composition. It flies to the new position and becomes part of the current group.
-- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — update a card's content and bring it forward.
+- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
+  - An old card IS the answer (user asks "tell me more about X" → move X to center)
+  - An old card provides context for new cards (move it nearby as a reference)
+  - You want to show contrast or evolution (old data next to new data)
+- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — change a card's content in place (e.g. update a metric value).
+
+**Don't move cards just to rearrange.** Move only when the old card meaningfully participates in your new response — as the focus, as evidence, or as context. If it's not adding to the story, let it recede naturally.
 
 **When to reuse vs create new:**
 - If an existing card is directly relevant to your response → move it nearby your new cards
