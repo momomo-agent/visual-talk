@@ -141,9 +141,14 @@ const timelineBubbleText = computed(() => {
 const timelineBubbleVisible = computed(() => isScrollingTimeline.value && !!timelineBubbleText.value)
 
 // Wire TTS into speech — watch bubbleText changes to trigger TTS
-watch(bubbleText, (text) => {
+watch(bubbleText, async (text) => {
   if (text && !isScrollingTimeline.value && !sttRecording.value) {
-    tts.playTTS(text)
+    const played = await tts.playTTS(text)
+    // If TTS didn't play (disabled or error), auto-dismiss after 3s
+    if (!played) {
+      dismissBubble(3000)
+    }
+    // If TTS played, onPlaybackEnd will dismissBubble
   }
 })
 

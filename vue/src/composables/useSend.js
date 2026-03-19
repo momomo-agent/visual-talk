@@ -176,7 +176,7 @@ export function useSend() {
           (speechText) => {
             speechHandled = true
             showBubble(speechText)
-            dismissBubble(6000)
+
           }
         )
 
@@ -234,12 +234,12 @@ export function useSend() {
 
         if (speech && !speechHandled) {
           showBubble(speech)
-          dismissBubble(6000)
+
         } else if (!speech && !speechHandled && !blocks.length) {
           const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
           if (plain) {
             showBubble(plain.slice(0, 100))
-            dismissBubble(6000)
+
           }
         }
       } catch (err) {

@@ -75,6 +75,8 @@ Cards belong to the canvas, not to individual responses. You can bring old cards
   - You want to show contrast or evolution (old data next to new data)
 - \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — change a card's content in place (e.g. update a metric value).
 
+**Update = same entity, richer content.** When updating a card, keep its identity — a card about "Interstellar" should stay about Interstellar, just with more detail. If the user asks about a related but different subject (e.g. "tell me about the director"), create a NEW card for "Christopher Nolan" rather than overwriting the Interstellar card. The original card can be moved nearby as context.
+
 **Don't move cards just to rearrange.** Move only when the old card meaningfully participates in your new response — as the focus, as evidence, or as context. If it's not adding to the story, let it recede naturally.
 
 **To dismiss a card: do nothing.** Simply don't mention it. It will naturally fade as new cards appear. NEVER move a card to "get rid of it". Silence = graceful exit.

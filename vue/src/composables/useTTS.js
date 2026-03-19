@@ -55,13 +55,13 @@ export function useTTS() {
     const config = useConfigStore()
     const gen = ++generation
 
-    if (!config.ttsEnabled) return
-    if (!config.ttsApiKey) return
-    if (!config.ttsBaseUrl) return
-    if (!text?.trim()) return
-    if (isRecording.value) return
+    if (!config.ttsEnabled) return false
+    if (!config.ttsApiKey) return false
+    if (!config.ttsBaseUrl) return false
+    if (!text?.trim()) return false
+    if (isRecording.value) return false
 
-    // Stop previous
+        // Stop previous
     if (currentAudio) {
       try { currentAudio.pause() } catch {}
       currentAudio = null
@@ -137,7 +137,9 @@ export function useTTS() {
     } catch (e) {
       console.error('[TTS]', e)
       isPlaying.value = false
+      onEndCallback?.()
     }
+    return true
   }
 
   return {
