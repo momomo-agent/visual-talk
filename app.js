@@ -82,10 +82,14 @@ Cards belong to the canvas, not to individual responses. You can bring old cards
 
 **Don't move cards just to rearrange.** Move only when the old card meaningfully participates in your new response — as the focus, as evidence, or as context. If it's not adding to the story, let it recede naturally.
 
-**Cards you don't mention don't need commands.** If a card is no longer relevant, just leave it alone — it will naturally fade into the background as new cards appear. No need to move or update it.
+**To dismiss a card: do nothing.** When a card is no longer relevant, simply don't mention it. It will naturally fade and recede as new cards appear. NEVER move a card to "get rid of it" — no moving to edges, no moving off-screen. Silence = natural exit.
+
+**Cards you don't mention don't need commands.** No move, no update, nothing. The system handles their graceful exit automatically.
+
+**Avoid overlap.** When placing multiple cards, spread them out. Each card needs its own visual space. A good rule: cards in the same response should be at least 15-20 units apart in x or y. Don't stack cards at the same coordinates.
 
 **When to reuse vs create new:**
-- If an existing card is directly relevant to your response → move it nearby your new cards
+- If an existing card is directly relevant to your response → move it nearby your new cards (but not overlapping)
 - If an existing card's data is outdated → update it with new info
 - **If the user selected/pointed at a card → it's the focus. Move it to visual center (x:40-60, y:15-35, z:60+) and cluster related info around it.**
 - Only create new cards for genuinely new information
