@@ -21,17 +21,16 @@ export function useTimeline() {
   let scrollTimer = null
 
   function navigateAndRestore(direction) {
-    // Block navigation during active LLM streaming
-    if (canvas.isStreaming) return false
-    
     const moved = timeline.navigate(direction)
     if (!moved) return false
 
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {
       if (timeline.isLive) {
-        // Back to live — restore active tip state
-        // Canvas is already live, just clear viewing
+        // Back to live — restore from timeline to pick up any
+        // operations that happened while we were viewing history
+        // (e.g. streaming continued in background)
+        timeline.restoreToNode(timeline.activeTip)
         isScrollingTimeline.value = false
       } else {
         isScrollingTimeline.value = true
