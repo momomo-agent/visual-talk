@@ -769,7 +769,8 @@ function snapshotCanvas(userMessage) {
     opacity: el.style.opacity,
     transform: el.style.transform,
     filter: el.style.filter,
-    zIndex: el.style.zIndex
+    zIndex: el.style.zIndex,
+    html: el.innerHTML  // preserve exact rendered content (including updates)
   }))
   timeline.push({ depth: depthLevel, cards, userMessage, timestamp: Date.now() })
   console.log('[Timeline] snapshot', timeline.length, 'cards:', cards.length)
@@ -779,27 +780,100 @@ function restoreCanvas(index) {
   const snap = timeline[index]
   if (!snap) return
   const space = $('canvasSpace')
-  // Remove all current cards
-  space.querySelectorAll('.v-block').forEach(el => el.remove())
-  currentRoundEls = new Set()
-  // Re-render from snapshot
-  snap.cards.forEach(card => {
+  const TRANSITION = 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.5s ease, filter 0.5s ease, left 0.6s cubic-bezier(.22,1,.36,1), top 0.6s cubic-bezier(.22,1,.36,1), width 0.4s ease'
+  
+  // Build lookup of target cards by contentKey
+  const targetMap = new Map()
+  snap.cards.forEach(card => targetMap.set(card.contentKey, card))
+  
+  // Build lookup of existing DOM cards
+  const existingMap = new Map()
+  space.querySelectorAll('.v-block').forEach(el => {
+    existingMap.set(el.dataset.contentKey, el)
+  })
+  
+  // 1. Cards that exist in both: animate to target state
+  // 2. Cards only in target: create and fade in
+  // 3. Cards only in DOM: fade out to background
+  
+  // Handle existing cards
+  existingMap.forEach((el, key) => {
+    const target = targetMap.get(key)
+    el.style.transition = TRANSITION
+    if (target) {
+      // Animate to target state
+      el.style.left = target.x
+      el.style.top = target.y
+      el.style.width = target.w
+      el.style.opacity = target.opacity
+      el.style.transform = target.transform
+      el.style.filter = target.filter
+      el.style.zIndex = target.zIndex
+      el.dataset.intraZ = target.z
+      el.dataset.depth = target.depth
+      // Update content if changed (e.g. update command)
+      if (el.innerHTML !== target.html) {
+        el.innerHTML = target.html
+      }
+    } else {
+      // Not in this snapshot — fade out to far away
+      el.style.opacity = '0'
+      el.style.transform = 'translateZ(-400px) scale(0.5)'
+      el.style.filter = 'blur(8px)'
+      el.style.pointerEvents = 'none'
+      el.dataset.timelineHidden = '1'
+    }
+  })
+  
+  // Bring back hidden cards that exist in target
+  existingMap.forEach((el, key) => {
+    if (el.dataset.timelineHidden === '1' && targetMap.has(key)) {
+      const target = targetMap.get(key)
+      el.style.transition = TRANSITION
+      el.style.left = target.x
+      el.style.top = target.y
+      el.style.width = target.w
+      el.style.opacity = target.opacity
+      el.style.transform = target.transform
+      el.style.filter = target.filter
+      el.style.zIndex = target.zIndex
+      el.style.pointerEvents = 'auto'
+      delete el.dataset.timelineHidden
+      if (el.innerHTML !== target.html) {
+        el.innerHTML = target.html
+      }
+    }
+  })
+  
+  // Create new cards that don't exist in DOM yet
+  targetMap.forEach((card, key) => {
+    if (existingMap.has(key)) return
     const el = renderBlock(card.type, card.data)
     el.dataset.contentKey = card.contentKey
     el.dataset.depth = card.depth
     el.dataset.intraZ = card.z
     el.dataset.blockType = card.type
     el.dataset.blockData = JSON.stringify(card.data)
+    el.innerHTML = card.html
+    // Start invisible, then animate in
     el.style.left = card.x
     el.style.top = card.y
     el.style.width = card.w
-    el.style.opacity = card.opacity
-    el.style.transform = card.transform
-    el.style.filter = card.filter
+    el.style.opacity = '0'
+    el.style.transform = 'translateZ(-200px) scale(0.8)'
+    el.style.filter = 'blur(4px)'
     el.style.zIndex = card.zIndex
-    el.style.transition = 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.4s, filter 0.4s'
     setupBlockInteraction(el)
     space.appendChild(el)
+    // Animate in next frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.transition = TRANSITION
+        el.style.opacity = card.opacity
+        el.style.transform = card.transform
+        el.style.filter = card.filter
+      })
+    })
   })
 }
 
