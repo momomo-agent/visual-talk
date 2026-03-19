@@ -65,6 +65,7 @@ export function useSend() {
     while (sendQueue.value.length > 0) {
       const { prompt, userMessage } = sendQueue.value.shift()
       isThinking.value = true
+      canvas.isStreaming = true
       canvas.beginRound()
 
       // Create timeline node — branch from current view or active tip
@@ -197,6 +198,7 @@ export function useSend() {
         console.error(err)
       } finally {
         isThinking.value = false
+        canvas.isStreaming = false
       }
     }
     sendProcessing.value = false

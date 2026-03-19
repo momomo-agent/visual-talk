@@ -21,6 +21,9 @@ export function useTimeline() {
   let scrollTimer = null
 
   function navigateAndRestore(direction) {
+    // Block navigation during active LLM streaming
+    if (canvas.isStreaming) return false
+    
     const moved = timeline.navigate(direction)
     if (!moved) return false
 

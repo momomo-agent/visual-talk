@@ -11,7 +11,7 @@ import { useConfigStore } from '../stores/config.js'
  * Push-to-talk: mousedown → start, mouseup → stop
  * Spacebar shortcut when input not focused
  */
-export function useSTT({ onResult, onError, onStart, onStop, tts }) {
+export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStart, onThinkingEnd }) {
   const isRecording = ref(false)
 
   let mediaRecorder = null
@@ -64,6 +64,8 @@ export function useSTT({ onResult, onError, onStart, onStop, tts }) {
     const recognition = new SR()
     recognition.lang = 'zh-CN'
     recognition.interimResults = false
+    // Show "说话中..." for Web Speech mode
+    onStart?.('说话中...')
 
     recognition.onresult = e => {
       const text = e.results[0]?.[0]?.transcript?.trim()
@@ -168,11 +170,13 @@ export function useSTT({ onResult, onError, onStart, onStop, tts }) {
 
   async function transcribe(blob) {
     const config = useConfigStore()
-    if (!config.ttsBaseUrl || !config.ttsApiKey) {
+    const baseUrl = tts?.cleanUrl ? tts.cleanUrl(config.ttsBaseUrl) : (config.ttsBaseUrl || '')
+    if (!baseUrl || !config.ttsApiKey) {
       onError?.('请先配置 TTS Base URL 和 API Key')
       return
     }
 
+    onThinkingStart?.()
     try {
       const wavBlob = await webmToWav(blob)
       const form = new FormData()
@@ -180,23 +184,26 @@ export function useSTT({ onResult, onError, onStart, onStop, tts }) {
       form.append('model', 'whisper-1')
       form.append('language', 'zh')
 
-      const res = await fetch(`${config.ttsBaseUrl}/v1/audio/transcriptions`, {
+      const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
         body: form,
       })
 
-      if (!res.ok) { onError?.('识别失败: ' + res.status); return }
+      if (!res.ok) { onThinkingEnd?.(); onError?.('识别失败: ' + res.status); return }
       const ct = res.headers.get('content-type') || ''
-      if (!ct.includes('json')) { onError?.('识别服务不可用'); return }
+      if (!ct.includes('json')) { onThinkingEnd?.(); onError?.('识别服务不可用'); return }
 
       const { text } = await res.json()
       if (text?.trim()) {
+        // thinking stays — send() will manage it
         onResult?.(text.trim())
       } else {
+        onThinkingEnd?.()
         onError?.('没听清，再说一次？')
       }
     } catch (e) {
+      onThinkingEnd?.()
       onError?.('识别错误: ' + e.message)
     }
   }

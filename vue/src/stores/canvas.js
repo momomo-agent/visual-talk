@@ -10,6 +10,7 @@ export const useCanvasStore = defineStore('canvas', () => {
   const currentRoundIds = ref(new Set())
   const selectedIds = ref(new Set())
   const greetingVisible = ref(true)
+  const isStreaming = ref(false)
 
   function getCardTitle(card) {
     const d = card.data
@@ -286,6 +287,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     currentRoundIds,
     selectedIds,
     greetingVisible,
+    isStreaming,
     pushOldBlocks,
     addCard,
     executeCommand,

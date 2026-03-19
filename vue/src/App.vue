@@ -8,6 +8,7 @@
   <InputBar
     ref="inputBar"
     :recording="sttRecording"
+    :mic-active="spaceDown"
     @send="handleSend"
     @mic-down="startRecording"
     @mic-up="stopRecording"
@@ -42,14 +43,19 @@ const configOpen = ref(false)
 const inputBar = ref(null)
 const configStore = useConfigStore()
 const timeline = useTimelineStore()
+let lastInputWasVoice = false
 
 // TTS
 const tts = useTTS()
 
+// Wire TTS → bubble dismissal (original behavior: bubble fades 3s after TTS ends)
+tts.onPlaybackEnd(() => {
+  dismissBubble(3000)
+})
+
 // Send — with TTS integration
 const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismissBubble } = useSend()
 
-// Override useSend's onSpeech to also trigger TTS
 const originalSend = send
 async function handleSend(text) {
   if (!configStore.apiKey) {
@@ -61,39 +67,62 @@ async function handleSend(text) {
 }
 
 // STT
-const { isRecording: sttRecording, startRecording, stopRecording } = useSTT({
+const { isRecording: sttRecording, startRecording: rawStartRecording, stopRecording: rawStopRecording } = useSTT({
   tts,
   onResult: (text) => {
+    lastInputWasVoice = true
     handleSend(text)
   },
   onError: (msg) => {
     showBubble(msg, 3000)
   },
-  onStart: () => {
-    showBubble('松开发送...')
+  onStart: (label) => {
+    // Clear any existing bubble immediately, then show recording label
+    dismissBubble(0)
+    showBubble(label || '松开发送...')
   },
   onStop: () => {
-    // Bubble dismissed naturally
+    // Immediately clear "松开发送" bubble
+    bubbleVisible.value = false
+  },
+  onThinkingStart: () => {
+    isThinking.value = true
+  },
+  onThinkingEnd: () => {
+    isThinking.value = false
   },
 })
 
+// Wrap start/stop to handle bubble clearing (matches original)
+function startRecording() {
+  // Clear bubble and stop TTS before recording
+  bubbleVisible.value = false
+  rawStartRecording()
+}
+
+function stopRecording() {
+  // Immediately clear recording bubble
+  bubbleVisible.value = false
+  rawStopRecording()
+}
+
 // Spacebar = push-to-talk (when not typing)
-let spaceDown = false
+const spaceDown = ref(false)
 
 function handleKeyDown(e) {
   if (e.key !== ' ' || e.repeat) return
   if (document.activeElement?.matches('input, textarea, select')) return
   if (configOpen.value) return
   e.preventDefault()
-  spaceDown = true
+  spaceDown.value = true
   startRecording()
 }
 
 function handleKeyUp(e) {
   if (e.key !== ' ') return
-  if (!spaceDown) return
+  if (!spaceDown.value) return
   e.preventDefault()
-  spaceDown = false
+  spaceDown.value = false
   stopRecording()
 }
 
@@ -115,6 +144,16 @@ const timelineBubbleVisible = computed(() => isScrollingTimeline.value && !!time
 watch(bubbleText, (text) => {
   if (text && !isScrollingTimeline.value && !sttRecording.value) {
     tts.playTTS(text)
+  }
+})
+
+// After send completes, focus input only if not voice input
+watch(isThinking, (thinking, wasThinkin) => {
+  if (wasThinkin && !thinking && !lastInputWasVoice) {
+    inputBar.value?.focus?.()
+  }
+  if (wasThinkin && !thinking) {
+    lastInputWasVoice = false
   }
 })
 

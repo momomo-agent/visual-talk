@@ -180,6 +180,13 @@ body {
   background: rgba(232,133,106,0.15); border-color: rgba(232,133,106,0.3);
   color: #e8856a;
 }
+.voice-chip.previewing {
+  animation: voice-pulse 0.6s ease-in-out;
+}
+@keyframes voice-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
 
 /* ── Responsive ── */
 @media (max-width: 640px) {

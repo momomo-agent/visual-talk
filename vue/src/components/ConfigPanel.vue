@@ -61,8 +61,8 @@
             v-for="v in voices"
             :key="v"
             class="voice-chip"
-            :class="{ active: config.ttsVoice === v }"
-            @click="config.ttsVoice = v"
+            :class="{ active: config.ttsVoice === v, previewing: previewingVoice === v }"
+            @click="selectVoice(v)"
           >{{ v }}</button>
         </div>
       </div>
@@ -83,7 +83,9 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
+import { useTTS } from '../composables/useTTS.js'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -91,5 +93,15 @@ defineProps({
 defineEmits(['update:open'])
 
 const config = useConfigStore()
+const tts = useTTS()
 const voices = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer']
+const previewingVoice = ref('')
+
+function selectVoice(v) {
+  config.ttsVoice = v
+  // Preview: speak a short sample
+  previewingVoice.value = v
+  setTimeout(() => { previewingVoice.value = '' }, 600)
+  tts.playTTS('Hello, this is ' + v)
+}
 </script>

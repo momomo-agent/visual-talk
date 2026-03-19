@@ -9,6 +9,7 @@ import { useConfigStore } from '../stores/config.js'
  * - AudioContext decode with Audio element fallback
  * - Retry with backoff for intermittent CORS
  * - Skips playback while user is recording
+ * - Calls onEnd callback when playback finishes (for bubble dismissal)
  */
 export function useTTS() {
   const isPlaying = ref(false)
@@ -16,6 +17,7 @@ export function useTTS() {
   let currentAudio = null
   let audioCtx = null
   let generation = 0
+  let onEndCallback = null
 
   // External flag — set by useSTT when recording
   const isRecording = ref(false)
@@ -39,6 +41,16 @@ export function useTTS() {
     isPlaying.value = false
   }
 
+  /** Set callback for when playback ends (used for bubble dismissal) */
+  function onPlaybackEnd(cb) {
+    onEndCallback = cb
+  }
+
+  function cleanUrl(url) {
+    if (!url) return ''
+    return url.trim().replace(/\/+$/, '').replace(/\/v1$/, '')
+  }
+
   async function playTTS(text) {
     const config = useConfigStore()
     const gen = ++generation
@@ -56,7 +68,8 @@ export function useTTS() {
     }
 
     try {
-      const ttsUrl = `${config.ttsBaseUrl}/v1/audio/speech`
+      const baseUrl = cleanUrl(config.ttsBaseUrl)
+      const ttsUrl = `${baseUrl}/v1/audio/speech`
       const headers = {
         'Authorization': `Bearer ${config.ttsApiKey}`,
         'Content-Type': 'application/json',
@@ -100,7 +113,7 @@ export function useTTS() {
         source.buffer = audioBuffer
         source.connect(ctx.destination)
         source.start(0)
-        source.onended = () => { currentAudio = null; isPlaying.value = false }
+        source.onended = () => { currentAudio = null; isPlaying.value = false; onEndCallback?.() }
         currentAudio = { pause: () => { try { source.stop() } catch {} } }
       } catch {
         // Fallback: Audio element
@@ -112,6 +125,7 @@ export function useTTS() {
           URL.revokeObjectURL(blobUrl)
           currentAudio = null
           isPlaying.value = false
+          onEndCallback?.()
         }
         audio.onerror = () => {
           URL.revokeObjectURL(blobUrl)
@@ -130,6 +144,8 @@ export function useTTS() {
     playTTS,
     stopTTS,
     unlockAudio,
+    onPlaybackEnd,
+    cleanUrl,
     isPlaying,
     isRecording, // shared with useSTT
     generation: () => generation,
