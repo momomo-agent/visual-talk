@@ -1255,7 +1255,7 @@ document.addEventListener('keydown', e => {
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   if (timeline.length < 2) return
   e.preventDefault()
-  const direction = e.key === 'ArrowUp' ? 1 : -1  // Up = forward, Down = back in time
+  const direction = e.key === 'ArrowUp' ? -1 : 1  // Up = back in time, Down = forward
   scrollTimeline(direction)
 })
 
@@ -1448,13 +1448,13 @@ async function processSendQueue() {
           playTTS(plain.slice(0, 100))
         }
       }
+      // Snapshot canvas state for timeline (only on successful reply)
+      snapshotCanvas(prompt.split('\n').pop() || prompt.slice(0, 50))
     } catch (err) {
       showBubble(`Error: ${err.message}`, 5000)
       console.error(err)
     } finally {
       hideThinking()
-      // Snapshot canvas state for timeline
-      snapshotCanvas(prompt.split('\n').pop() || prompt.slice(0, 50))
     }
   }
   sendProcessing = false
