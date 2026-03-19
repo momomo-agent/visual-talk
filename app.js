@@ -808,9 +808,10 @@ function scrollTimeline(delta) {
   if (timeline.length < 2) return
   
   const maxPos = timeline.length - 1
-  const newPos = Math.max(0, Math.min(maxPos, (timelinePos === -1 ? maxPos : timelinePos) - delta))
+  const curPos = timelinePos === -1 ? maxPos : timelinePos
+  const newPos = Math.max(0, Math.min(maxPos, curPos + delta))
   
-  if (Math.round(newPos) === Math.round(timelinePos === -1 ? maxPos : timelinePos)) return
+  if (newPos === curPos) return
   
   timelinePos = Math.round(newPos)
   isScrollingTimeline = true
@@ -1185,7 +1186,7 @@ document.addEventListener('wheel', e => {
   scrollAccum += e.deltaY
   
   if (Math.abs(scrollAccum) > SCROLL_THRESHOLD) {
-    const direction = scrollAccum > 0 ? -1 : 1  // scroll down = go back in time
+    const direction = scrollAccum > 0 ? -1 : 1  // scroll down = go back in time (negative delta)
     scrollTimeline(direction)
     scrollAccum = 0
   }
@@ -1197,7 +1198,7 @@ document.addEventListener('keydown', e => {
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
   if (timeline.length < 2) return
   e.preventDefault()
-  const direction = e.key === 'ArrowUp' ? 1 : -1  // Up = forward in time, Down = back
+  const direction = e.key === 'ArrowUp' ? 1 : -1  // Up = forward, Down = back in time
   scrollTimeline(direction)
 })
 
