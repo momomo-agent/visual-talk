@@ -25,9 +25,12 @@ const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
 const spaceRef = ref(null)
 
+const emit = defineEmits(['click-canvas'])
+
 function handleBgClick(e) {
   if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
   clearSelection()
+  emit('click-canvas')
 }
 
 function onMouseMove(e) {

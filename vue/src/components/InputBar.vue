@@ -8,7 +8,14 @@
       v-model="inputText"
       @keydown="onKeyDown"
     />
-    <button class="mic-btn" @mousedown="$emit('mic-down')" @mouseup="$emit('mic-up')">
+    <button
+      class="mic-btn"
+      :class="{ recording: recording }"
+      @mousedown.prevent="$emit('mic-down')"
+      @mouseup.prevent="$emit('mic-up')"
+      @touchstart.prevent="$emit('mic-down')"
+      @touchend.prevent="$emit('mic-up')"
+    >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
         <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -22,6 +29,9 @@
 <script setup>
 import { ref } from 'vue'
 
+const props = defineProps({
+  recording: { type: Boolean, default: false },
+})
 const emit = defineEmits(['send', 'mic-down', 'mic-up'])
 
 const inputText = ref('')
@@ -38,5 +48,8 @@ function onKeyDown(e) {
   }
 }
 
-defineExpose({ focus: () => inputRef.value?.focus() })
+function focus() { inputRef.value?.focus() }
+function blur() { inputRef.value?.blur() }
+
+defineExpose({ focus, blur })
 </script>

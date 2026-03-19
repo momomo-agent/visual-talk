@@ -105,3 +105,15 @@
 @media (max-width: 640px) {
   .v-block { max-width: 90vw; }
 }
+
+/* Mic recording state */
+.mic-btn.recording {
+  background: rgba(232,133,106,0.2);
+  border-color: rgba(232,133,106,0.4);
+  color: rgba(232,133,106,0.8);
+  animation: pulse-mic 1.5s ease-in-out infinite;
+}
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
