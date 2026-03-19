@@ -577,9 +577,11 @@ let currentRoundDepth = -1
 let currentRoundEls = new Set()
 const selectedBlocks = new Set()
 
-// ── Canvas commands (clear/remove/move/update) ──
+// ── Canvas commands (move/update) ──
 function executeCommands(commands) {
   const space = $('canvasSpace')
+  // Commands also start a new round — push old blocks back
+  pushOldBlocks()
   for (const cmd of commands) {
     switch (cmd.cmd) {
       case 'move': {
