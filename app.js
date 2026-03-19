@@ -378,6 +378,12 @@ function imgErr(img) {
   }
 }
 
+// Unified item text extraction — items can be strings or objects with text/title/label
+function itemText(it) {
+  if (typeof it === 'string') return it
+  return it.text || it.title || it.label || ''
+}
+
 function renderBlock(type, data) {
   const el = document.createElement('div')
   el.className = 'v-block'
@@ -408,7 +414,7 @@ function renderBlock(type, data) {
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
         ${(data.tags||[]).length ? `<div class="tags">${data.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${data.progress != null ? `<div class="progress-track"><div class="progress-bar" style="width:${data.progress}%"></div></div>` : ''}
-        ${(data.items||[]).map(it => `<div class="list-item">${esc(typeof it === 'string' ? it : (it.text || it.title || it.label || JSON.stringify(it)))}</div>`).join('')}
+        ${(data.items||[]).map(it => `<div class="list-item">${esc(itemText(it))}</div>`).join('')}
         ${data.footer ? `<div class="footer">${esc(data.footer)}</div>` : ''}
         </div>`
       break
@@ -436,7 +442,7 @@ function renderBlock(type, data) {
         <div class="cols" style="grid-template-columns:repeat(${cols.length},1fr)">
           ${cols.map(c => `<div class="col">
             ${c.name ? `<h4>${esc(c.name)}</h4>` : ''}
-            ${(c.items||[]).map(it => `<div class="col-item">${esc(it)}</div>`).join('')}
+            ${(c.items||[]).map(it => `<div class="col-item">${esc(itemText(it))}</div>`).join('')}
           </div>`).join('')}
         </div></div>`
       break
@@ -663,7 +669,7 @@ function renderBlock(type, data) {
       const style = data.style || 'unordered' // unordered, ordered, todo
       const items = data.items || []
       const listItems = items.map((it, idx) => {
-        const text = typeof it === 'string' ? it : it.text || it.title || ''
+        const text = itemText(it)
         const done = typeof it === 'object' && it.done
         if (style === 'todo') {
           return `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
