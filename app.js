@@ -514,28 +514,55 @@ function renderBlock(type, data) {
             ${dots}${labels}
           </svg></div>`
       } else if (chartType === 'column') {
-        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
-          <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:8px 0">
-            ${items.map(d => {
-              const pct = ((parseFloat(d.value) || 0) / maxVal) * 100
-              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
-                <span style="font-size:10px;color:#8a7a60">${esc(String(d.value))}</span>
-                <div style="flex:1;width:100%;display:flex;align-items:flex-end">
-                  <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px;min-height:4px;transition:height 0.6s"></div>
-                </div>
-                <span style="font-size:9px;color:#6a5a4a">${esc(d.label || '')}</span>
-              </div>`
-            }).join('')}
-          </div></div>`
+        const hasNeg = items.some(d => (parseFloat(d.value) || 0) < 0)
+        const absMax = Math.max(...items.map(d => Math.abs(parseFloat(d.value) || 0)), 1)
+        if (hasNeg) {
+          // Bidirectional column chart — positive up, negative down
+          body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+            <div style="display:flex;gap:8px;height:160px;padding:8px 0">
+              ${items.map(d => {
+                const val = parseFloat(d.value) || 0
+                const pct = (Math.abs(val) / absMax) * 50  // 50% max each direction
+                const isNeg = val < 0
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;height:100%">
+                  <span style="font-size:10px;color:#8a7a60;${isNeg ? 'order:3' : ''}">${esc(String(d.value))}</span>
+                  <div style="flex:1;width:100%;display:flex;flex-direction:column;justify-content:center">
+                    <div style="width:100%;height:${isNeg ? 0 : pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px 3px 0 0;min-height:${isNeg ? 0 : 2}px;transition:height 0.6s;align-self:flex-end"></div>
+                    <div style="width:100%;height:1px;background:rgba(138,122,96,0.3)"></div>
+                    <div style="width:100%;height:${isNeg ? pct : 0}%;background:linear-gradient(180deg,#e8856a,#c76a6a);border-radius:0 0 3px 3px;min-height:${isNeg ? 2 : 0}px;transition:height 0.6s"></div>
+                  </div>
+                  <span style="font-size:9px;color:#6a5a4a">${esc(d.label || '')}</span>
+                </div>`
+              }).join('')}
+            </div></div>`
+        } else {
+          body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+            <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:8px 0">
+              ${items.map(d => {
+                const pct = ((parseFloat(d.value) || 0) / absMax) * 100
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
+                  <span style="font-size:10px;color:#8a7a60">${esc(String(d.value))}</span>
+                  <div style="flex:1;width:100%;display:flex;align-items:flex-end">
+                    <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px;min-height:4px;transition:height 0.6s"></div>
+                  </div>
+                  <span style="font-size:9px;color:#6a5a4a">${esc(d.label || '')}</span>
+                </div>`
+              }).join('')}
+            </div></div>`
+        }
       } else {
+        // Horizontal bar chart
+        const absMax = Math.max(...items.map(d => Math.abs(parseFloat(d.value) || 0)), 1)
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
           <div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">
             ${items.map(d => {
-              const pct = ((parseFloat(d.value) || 0) / maxVal) * 100
+              const val = parseFloat(d.value) || 0
+              const pct = (Math.abs(val) / absMax) * 100
+              const color = val < 0 ? 'linear-gradient(90deg,#e8856a,#c76a6a)' : 'linear-gradient(90deg,#c8a96e,#8a7a60)'
               return `<div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:11px;color:#6a5a4a;min-width:60px;text-align:right">${esc(d.label || '')}</span>
                 <div style="flex:1;height:18px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">
-                  <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#c8a96e,#8a7a60);border-radius:3px;transition:width 0.6s"></div>
+                  <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.6s"></div>
                 </div>
                 <span style="font-size:11px;color:#8a7a60;min-width:35px">${esc(String(d.value))}</span>
               </div>`
