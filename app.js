@@ -378,11 +378,6 @@ function imgErr(img) {
   }
 }
 
-// Unified item text extraction — items can be strings or objects with text/title/label
-function itemText(it) {
-  if (typeof it === 'string') return it
-  return it.text || it.title || it.label || ''
-}
 
 function renderBlock(type, data) {
   const el = document.createElement('div')
@@ -414,7 +409,7 @@ function renderBlock(type, data) {
         ${data.sub ? `<div class="sub">${esc(data.sub)}</div>` : ''}
         ${(data.tags||[]).length ? `<div class="tags">${data.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         ${data.progress != null ? `<div class="progress-track"><div class="progress-bar" style="width:${data.progress}%"></div></div>` : ''}
-        ${(data.items||[]).map(it => `<div class="list-item">${esc(itemText(it))}</div>`).join('')}
+        ${(data.items||[]).map(it => `<div class="list-item">${esc(it)}</div>`).join('')}
         ${data.footer ? `<div class="footer">${esc(data.footer)}</div>` : ''}
         </div>`
       break
@@ -442,7 +437,7 @@ function renderBlock(type, data) {
         <div class="cols" style="grid-template-columns:repeat(${cols.length},1fr)">
           ${cols.map(c => `<div class="col">
             ${c.name ? `<h4>${esc(c.name)}</h4>` : ''}
-            ${(c.items||[]).map(it => `<div class="col-item">${esc(itemText(it))}</div>`).join('')}
+            ${(c.items||[]).map(it => `<div class="col-item">${esc(it)}</div>`).join('')}
           </div>`).join('')}
         </div></div>`
       break
@@ -669,7 +664,7 @@ function renderBlock(type, data) {
       const style = data.style || 'unordered' // unordered, ordered, todo
       const items = data.items || []
       const listItems = items.map((it, idx) => {
-        const text = itemText(it)
+        const text = typeof it === 'string' ? it : (it.text || '')
         const done = typeof it === 'object' && it.done
         if (style === 'todo') {
           return `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
@@ -753,7 +748,22 @@ function parseResponse(text) {
       try { commands.push({ cmd: 'update', ...JSON.parse(m[2]) }) } catch {}
       continue
     }
-    try { blocks.push({ type: m[1], data: JSON.parse(m[2]) }) } catch {}
+    try {
+      const data = JSON.parse(m[2])
+      // Normalize items to string arrays — LLM sometimes sends objects
+      if (Array.isArray(data.items)) {
+        data.items = data.items.map(it => typeof it === 'string' ? it : (it.text || it.title || it.label || ''))
+      }
+      // Normalize column items too
+      if (Array.isArray(data.cols)) {
+        data.cols.forEach(c => {
+          if (Array.isArray(c.items)) {
+            c.items = c.items.map(it => typeof it === 'string' ? it : (it.text || it.title || it.label || ''))
+          }
+        })
+      }
+      blocks.push({ type: m[1], data })
+    } catch {}
   }
   return { speech: speech ? speech[1].trim() : null, blocks, commands }
 }
