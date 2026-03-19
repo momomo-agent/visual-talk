@@ -709,9 +709,15 @@ function renderBlocks(blocks, offset = 0) {
       sibling.style.zIndex = 100 + Math.floor(pushed / 10)
     })
     
-    // New card gets the front position
+    // New card gets the front position — always in front of everything in this group
     const llmZ = data.z || 0
-    const intraZ = Math.max(llmZ, groupCount * INTRA_PUSH)
+    // Find the max z in current group (including pinned/moved cards)
+    let maxGroupZ = 0
+    currentRoundEls.forEach(sibling => {
+      const sz = parseFloat(sibling.dataset.intraZ) || 0
+      if (sz > maxGroupZ) maxGroupZ = sz
+    })
+    const intraZ = Math.max(llmZ, maxGroupZ + INTRA_PUSH, groupCount * INTRA_PUSH)
     const zIndex = 100 + Math.floor(intraZ / 10)
 
     if (existing) {
