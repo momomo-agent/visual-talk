@@ -128,6 +128,11 @@ body {
 .v-block .md-body a { color: #8a5a20; }
 .v-block .md-body strong { color: #3a2a18; }
 .v-block .md-body hr { border: none; border-top: 1px solid rgba(180,150,110,0.15); margin: 14px 0; }
+.v-block .md-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+.v-block .md-body th { text-align: left; padding: 6px 8px; border-bottom: 2px solid rgba(180,150,110,0.25); color: #3a2a18; font-weight: 600; white-space: nowrap; }
+.v-block .md-body td { padding: 5px 8px; border-bottom: 1px solid rgba(180,150,110,0.1); color: #5a4a38; white-space: nowrap; }
+.v-block .md-body tr:last-child td { border-bottom: none; }
+.v-block .md-body tbody tr:hover { background: rgba(180,150,110,0.05); }
 
 .v-block .quote { color: #4a3a28; font-size: 15px; line-height: 1.7; font-style: italic; font-weight: 300; }
 .v-block .attribution { color: #8a7a60; font-size: 11px; margin-top: 6px; }
