@@ -642,12 +642,17 @@ function pushOldBlocks() {
   // Update preserved cards to new depth level
   preserved.forEach(el => { el.dataset.depth = depthLevel })
 
-  // Clear selection when new response arrives
+  // Promote selected cards to current group before clearing selection
+  selectedBlocks.forEach(el => {
+    el.dataset.depth = depthLevel
+    el.dataset.pinned = '1'
+    currentRoundEls.add(el)
+  })
   clearSelection()
   updateSelectionContext()
 
   const space = $('canvasSpace')
-  space.querySelectorAll('.v-block:not(.selected)').forEach(old => {
+  space.querySelectorAll('.v-block').forEach(old => {
     if (currentRoundEls.has(old)) return
     const d = depthLevel - parseInt(old.dataset.depth || '0')
     if (d <= 0) return
