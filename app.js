@@ -934,13 +934,6 @@ function scrollTimeline(direction) {
   updateSelectionContext()
   restoreCanvas(timelinePos)
   showTimelineIndicator(timelinePos)
-  
-  // If we navigated to the active branch tip, exit history mode
-  if (timelinePos === activeBranchTip) {
-    timelinePos = -1
-    isScrollingTimeline = false
-    hideTimelineIndicator()
-  }
 }
 
 function showTimelineIndicator(pos) {
