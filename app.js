@@ -492,9 +492,9 @@ function renderBlock(type, data) {
           <svg viewBox="0 0 140 140" style="width:100%;max-height:140px">${slices}</svg>
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:6px">${legend}</div></div>`
       } else if (chartType === 'line') {
-        // SVG line chart
+        // SVG line chart with HTML labels below (like column chart)
         const gradId = 'ag' + Math.random().toString(36).slice(2, 8)
-        const w = 280, h = 140, padL = 10, padR = 10, padT = 15, padB = 45
+        const w = 280, h = 100, padL = 10, padR = 10, padT = 15, padB = 5
         const pw = w - padL - padR, ph = h - padT - padB
         const points = items.map((d, i) => {
           const x = padL + (items.length > 1 ? (i / (items.length - 1)) * pw : pw / 2)
@@ -503,21 +503,19 @@ function renderBlock(type, data) {
         })
         const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
         const dots = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#c8a96e"><title>${esc(p.label || '')}: ${p.value}</title></circle>`).join('')
-        // Show labels: if many points, only first/last; rotate if >4
-        const showAll = items.length <= 4
-        const labels = points.map((p, i) => {
-          if (!showAll && i !== 0 && i !== points.length - 1) return ''
-          return `<text x="${p.x}" y="${h - 4}" text-anchor="${i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}" font-size="9" fill="#6a5a4a" transform="rotate(-30,${p.x},${h - 4})">${esc(p.label || '')}</text>`
-        }).join('')
-        // Value labels on dots
         const valLabels = points.map(p => `<text x="${p.x}" y="${p.y - 6}" text-anchor="middle" font-size="8" fill="#8a7a60">${p.value}</text>`).join('')
+        // HTML labels row — flex like column chart
+        const htmlLabels = items.map(d => 
+          `<span style="flex:1;text-align:center;font-size:9px;color:#6a5a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.label || '')}</span>`
+        ).join('')
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
           <svg viewBox="0 0 ${w} ${h}" style="width:100%">
             <polyline points="${polyline}" fill="none" stroke="#c8a96e" stroke-width="2" stroke-linejoin="round"/>
             <polyline points="${padL},${padT + ph} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${padL + pw},${padT + ph}" fill="url(#${gradId})" opacity="0.15"/>
             <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
-            ${dots}${valLabels}${labels}
-          </svg></div>`
+            ${dots}${valLabels}
+          </svg>
+          <div style="display:flex;gap:0;padding:2px 0 0">${htmlLabels}</div></div>`
       } else if (chartType === 'column') {
         const hasNeg = items.some(d => (parseFloat(d.value) || 0) < 0)
         const absMax = Math.max(...items.map(d => Math.abs(parseFloat(d.value) || 0)), 1)
