@@ -127,6 +127,10 @@ body {
 .v-block .md-body code { background: rgba(180,150,110,0.1); padding: 1px 4px; border-radius: 2px; font-size: 12px; }
 .v-block .md-body a { color: #8a5a20; }
 .v-block .md-body strong { color: #3a2a18; }
+.v-block .md-body ul, .v-block .md-body ol { padding-left: 1.4em; }
+.v-block .md-body li { margin-bottom: 2px; }
+.v-block ul, .v-block ol { padding-left: 1.4em; }
+.v-block li { margin-bottom: 2px; }
 .v-block .md-body hr { border: none; border-top: 1px solid rgba(180,150,110,0.15); margin: 14px 0; }
 .v-block .md-body table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
 .v-block .md-body th { text-align: left; padding: 6px 8px; border-bottom: 2px solid rgba(180,150,110,0.25); color: #3a2a18; font-weight: 600; white-space: nowrap; }
