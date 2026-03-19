@@ -504,13 +504,15 @@ function renderBlock(type, data) {
           </svg></div>`
       } else if (chartType === 'column') {
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
-          <div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0">
+          <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:8px 0">
             ${items.map(d => {
               const pct = ((parseFloat(d.value) || 0) / maxVal) * 100
-              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-                <span style="font-size:11px;color:#8a7a60">${esc(String(d.value))}</span>
-                <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px;min-height:4px;transition:height 0.6s"></div>
-                <span style="font-size:10px;color:#6a5a4a">${esc(d.label || '')}</span>
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
+                <span style="font-size:10px;color:#8a7a60">${esc(String(d.value))}</span>
+                <div style="flex:1;width:100%;display:flex;align-items:flex-end">
+                  <div style="width:100%;height:${pct}%;background:linear-gradient(180deg,#c8a96e,#8a7a60);border-radius:3px;min-height:4px;transition:height 0.6s"></div>
+                </div>
+                <span style="font-size:9px;color:#6a5a4a">${esc(d.label || '')}</span>
               </div>`
             }).join('')}
           </div></div>`
@@ -673,10 +675,20 @@ function executeCommands(commands) {
             currentRoundEls.add(el)
             el.style.filter = 'none'
             el.style.opacity = 1
-            if (cmd.newTitle) { const h = el.querySelector('h2, h3'); if (h) h.textContent = cmd.newTitle }
-            if (cmd.sub) { const s = el.querySelector('.sub'); if (s) s.textContent = cmd.sub }
-            if (cmd.footer) { const f = el.querySelector('.footer'); if (f) f.textContent = cmd.footer }
-            if (cmd.value) { const v = el.querySelector('.big-num'); if (v) v.textContent = cmd.value }
+            // Merge update fields into stored block data and re-render
+            const blockType = el.dataset.blockType || 'card'
+            let blockData = {}
+            try { blockData = JSON.parse(el.dataset.blockData || '{}') } catch {}
+            // Apply updates (newTitle→title, plus any other fields like chartType, items, etc.)
+            const { cmd: _, title: __, ...updates } = cmd
+            if (updates.newTitle) { updates.title = updates.newTitle; delete updates.newTitle }
+            Object.assign(blockData, updates)
+            el.dataset.blockData = JSON.stringify(blockData)
+            // Re-render the block body
+            const updated = renderBlock(blockType, blockData)
+            const oldBody = el.querySelector('.win-body')
+            const newBody = updated.querySelector('.win-body')
+            if (oldBody && newBody) oldBody.replaceWith(newBody)
           }
         })
         break
