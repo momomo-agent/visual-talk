@@ -1289,11 +1289,15 @@ $('micBtn').addEventListener('touchstart', startRecording)
 $('micBtn').addEventListener('touchend', stopRecording)
 
 async function startRecording() {
-  // Stop any playing TTS and hide bubble immediately
+  // User is speaking — AI shuts up immediately
+  // 1. Stop any playing audio
   if (currentAudio) {
     try { currentAudio.pause() } catch {}
     currentAudio = null
   }
+  // 2. Cancel any in-flight TTS requests (they'll see stale generation)
+  ttsGeneration++
+  // 3. Hide bubble
   clearTimeout(bubbleTimer)
   $('bubble').className = 'bubble'
   
