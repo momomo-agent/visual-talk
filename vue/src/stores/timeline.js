@@ -302,7 +302,9 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Viewing history is just looking back, not going back.
    */
   function getBranchPoint() {
-    return activeTip.value
+    // If viewing a historical node, branch from there (fork the timeline)
+    // Otherwise, continue from the active tip
+    return viewingId.value ?? activeTip.value
   }
 
   /**
