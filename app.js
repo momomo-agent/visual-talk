@@ -228,6 +228,9 @@ async function playTTS(text) {
   if (!config.ttsBaseUrl) { console.log('[TTS] no base URL'); return }
   if (!text?.trim()) { console.log('[TTS] empty text'); return }
   
+  // Don't play TTS while user is recording — it would feed back into the mic
+  if (mediaRecorder && mediaRecorder.state === 'recording') { console.log('[TTS] skipped — user recording'); return }
+  
   // Stop previous audio
   if (currentAudio) {
     try { currentAudio.pause() } catch {}
