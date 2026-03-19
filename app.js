@@ -693,6 +693,21 @@ function renderBlocks(blocks, offset = 0) {
       if (old.dataset.contentKey === contentKey) existing = old
     })
 
+    // If this card already exists (streaming update), just refresh content — no z changes
+    if (existing) {
+      existing.dataset.depth = depthLevel
+      existing.dataset.blockType = type
+      existing.dataset.blockData = JSON.stringify(data)
+      existing.style.filter = 'none'
+      existing.classList.remove('receded')
+      currentRoundEls.add(existing)
+      const updated = renderBlock(type, data)
+      if (existing.innerHTML !== updated.innerHTML) {
+        existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
+      }
+      return
+    }
+
     // Intra-group z: each new card in this group is the closest.
     // Push existing cards in this group slightly back.
     const INTRA_PUSH = 15  // px per new card within group
@@ -718,22 +733,6 @@ function renderBlocks(blocks, offset = 0) {
     })
     const intraZ = Math.max(llmZ, maxGroupZ + INTRA_PUSH, groupCount * INTRA_PUSH)
     const zIndex = 100 + Math.floor(intraZ / 10)
-
-    if (existing) {
-      // Update content only — don't touch transform/opacity (let animations breathe)
-      existing.dataset.depth = depthLevel
-      existing.dataset.blockType = type
-      existing.dataset.blockData = JSON.stringify(data)
-      existing.style.zIndex = zIndex
-      existing.style.filter = 'none'
-      existing.classList.remove('receded')
-      currentRoundEls.add(existing)
-      const updated = renderBlock(type, data)
-      if (existing.innerHTML !== updated.innerHTML) {
-        existing.querySelector('.win-body')?.replaceWith(updated.querySelector('.win-body') || updated)
-      }
-      return
-    }
 
     const el = renderBlock(type, data)
     el.dataset.depth = depthLevel
