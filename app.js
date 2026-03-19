@@ -1414,6 +1414,10 @@ async function startWhisper() {
 
 function stopRecording() {
   micReleased = true
+  // Immediately dismiss the "松开发送" bubble
+  clearTimeout(bubbleTimer)
+  $('bubble').className = 'bubble'
+  $('micBtn').classList.remove('recording')
   if (webSpeechRecognition) {
     const held = Date.now() - micDownTime
     if (held < 300) {
