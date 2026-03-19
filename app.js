@@ -752,13 +752,14 @@ let currentRoundDepth = -1
 let currentRoundEls = new Set()
 
 // ── Historical timeline ──
-// Each entry: { depth, cards: [{ type, data, x, y, z, w, contentKey }], userMessage }
+// Each entry: { depth, cards, userMessage, timestamp, parentIndex, children[], lastChildIndex }
 const timeline = []
-let timelinePos = -1  // -1 = live (latest), 0..n = viewing history
+let timelinePos = -1  // -1 = live (latest node on active branch), index = viewing specific node
 let isScrollingTimeline = false
+let activeBranchTip = -1  // the tip of the currently active branch
 
 function snapshotCanvas(userMessage) {
-  const cards = [...$('canvasSpace').querySelectorAll('.v-block')].map(el => ({
+  const cards = [...$('canvasSpace').querySelectorAll('.v-block')].filter(el => el.dataset.timelineHidden !== '1').map(el => ({
     type: el.dataset.blockType || 'card',
     data: JSON.parse(el.dataset.blockData || '{}'),
     x: el.style.left,
@@ -771,10 +772,29 @@ function snapshotCanvas(userMessage) {
     transform: el.style.transform,
     filter: el.style.filter,
     zIndex: el.style.zIndex,
-    html: el.innerHTML  // preserve exact rendered content (including updates)
+    html: el.innerHTML
   }))
-  timeline.push({ depth: depthLevel, cards, userMessage, timestamp: Date.now() })
-  console.log('[Timeline] snapshot', timeline.length, 'cards:', cards.length)
+  
+  // Determine parent: if viewing history, parent = that node; otherwise parent = current tip
+  const parentIndex = timelinePos !== -1 ? timelinePos : (activeBranchTip >= 0 ? activeBranchTip : -1)
+  const newIndex = timeline.length
+  
+  const entry = { 
+    depth: depthLevel, cards, userMessage, timestamp: Date.now(),
+    parentIndex,
+    children: [],
+    lastChildIndex: -1  // remembers which child was last visited
+  }
+  timeline.push(entry)
+  
+  // Register as child of parent
+  if (parentIndex >= 0 && timeline[parentIndex]) {
+    timeline[parentIndex].children.push(newIndex)
+    timeline[parentIndex].lastChildIndex = newIndex
+  }
+  
+  activeBranchTip = newIndex
+  console.log('[Timeline] snapshot', newIndex, 'parent:', parentIndex, 'cards:', cards.length)
 }
 
 function restoreCanvas(index) {
@@ -863,41 +883,84 @@ function restoreCanvas(index) {
   })
 }
 
-// Timeline scroll — interpolate between snapshots
-function scrollTimeline(delta) {
-  if (timeline.length < 2) return
+// Timeline navigation — tree-based
+// up/down = parent/child, left/right = siblings
+function scrollTimeline(direction) {
+  // direction: 'up' (to parent), 'down' (to child), 'left', 'right'
+  if (timeline.length < 1) return
   
-  const maxPos = timeline.length - 1
-  const curPos = timelinePos === -1 ? maxPos : timelinePos
-  const newPos = Math.max(0, Math.min(maxPos, curPos + delta))
+  const curPos = timelinePos === -1 ? activeBranchTip : timelinePos
+  if (curPos < 0 || curPos >= timeline.length) return
+  const cur = timeline[curPos]
+  let newPos = -1
   
-  if (newPos === curPos) return
+  if (direction === 'up') {
+    // Go to parent (back in time)
+    if (cur.parentIndex >= 0) {
+      newPos = cur.parentIndex
+    }
+  } else if (direction === 'down') {
+    // Go to child (forward in time) — use lastChildIndex or first child
+    if (cur.children.length > 0) {
+      newPos = cur.lastChildIndex >= 0 ? cur.lastChildIndex : cur.children[0]
+    }
+  } else if (direction === 'left' || direction === 'right') {
+    // Switch between siblings
+    if (cur.parentIndex < 0) return  // root has no siblings
+    const parent = timeline[cur.parentIndex]
+    const siblings = parent.children
+    if (siblings.length < 2) return  // no branches
+    const myIdx = siblings.indexOf(curPos)
+    if (myIdx < 0) return
+    if (direction === 'left' && myIdx > 0) {
+      newPos = siblings[myIdx - 1]
+    } else if (direction === 'right' && myIdx < siblings.length - 1) {
+      newPos = siblings[myIdx + 1]
+    }
+  }
   
-  timelinePos = Math.round(newPos)
+  if (newPos < 0 || newPos === curPos) return
+  
+  timelinePos = newPos
   isScrollingTimeline = true
+  
+  // Remember this choice so parent's down-arrow returns here
+  const entry = timeline[newPos]
+  if (entry.parentIndex >= 0) {
+    timeline[entry.parentIndex].lastChildIndex = newPos
+  }
   
   clearSelection()
   updateSelectionContext()
-  
   restoreCanvas(timelinePos)
+  showTimelineIndicator(timelinePos)
   
-  // Show timeline indicator
-  showTimelineIndicator(timelinePos, maxPos)
-  
-  // If back to latest, exit history mode
-  if (timelinePos === maxPos) {
+  // If we navigated to the active branch tip, exit history mode
+  if (timelinePos === activeBranchTip) {
     timelinePos = -1
     isScrollingTimeline = false
     hideTimelineIndicator()
   }
 }
 
-function showTimelineIndicator(pos, max) {
+function showTimelineIndicator(pos) {
   const snap = timeline[pos]
   const time = new Date(snap.timestamp)
   const timeStr = `${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}`
   const label = snap.userMessage || ''
-  const text = label ? `${timeStr}\n${label.slice(0, 40)}` : timeStr
+  
+  // Check for siblings (branches)
+  let leftArrow = ''
+  let rightArrow = ''
+  if (snap.parentIndex >= 0) {
+    const siblings = timeline[snap.parentIndex].children
+    const myIdx = siblings.indexOf(pos)
+    if (myIdx > 0) leftArrow = '‹ '
+    if (myIdx < siblings.length - 1) rightArrow = ' ›'
+  }
+  
+  const msg = label ? label.slice(0, 30) : ''
+  const text = `${timeStr}\n${leftArrow}${msg}${rightArrow}`
   showBubble(text)
 }
 
@@ -1232,31 +1295,40 @@ document.addEventListener('click', e => {
 })
 
 // ── Timeline scroll (mouse wheel / trackpad) ──
-let scrollAccum = 0
+let scrollAccumY = 0
+let scrollAccumX = 0
 const SCROLL_THRESHOLD = 80
 
 document.addEventListener('wheel', e => {
   if (e.target.closest('.input-bar') || e.target.closest('.config-overlay')) return
-  if (timeline.length < 2) return
+  if (timeline.length < 1) return
   
   e.preventDefault()
-  scrollAccum += e.deltaY
+  scrollAccumY += e.deltaY
+  scrollAccumX += e.deltaX
   
-  if (Math.abs(scrollAccum) > SCROLL_THRESHOLD) {
-    const direction = scrollAccum > 0 ? -1 : 1  // scroll down = go back in time (negative delta)
-    scrollTimeline(direction)
-    scrollAccum = 0
+  // Vertical = up/down in tree
+  if (Math.abs(scrollAccumY) > SCROLL_THRESHOLD) {
+    scrollTimeline(scrollAccumY > 0 ? 'up' : 'down')
+    scrollAccumY = 0
+    scrollAccumX = 0
+  }
+  // Horizontal = left/right between siblings
+  if (Math.abs(scrollAccumX) > SCROLL_THRESHOLD) {
+    scrollTimeline(scrollAccumX > 0 ? 'right' : 'left')
+    scrollAccumX = 0
+    scrollAccumY = 0
   }
 }, { passive: false })
 
-// ── Timeline keyboard (ArrowUp/Down) ──
+// ── Timeline keyboard (Arrow keys) ──
 document.addEventListener('keydown', e => {
-  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return
   if (document.activeElement === $('input') || $('configOverlay').classList.contains('open')) return
-  if (timeline.length < 2) return
+  if (timeline.length < 1) return
   e.preventDefault()
-  const direction = e.key === 'ArrowUp' ? -1 : 1  // Up = back in time, Down = forward
-  scrollTimeline(direction)
+  const dirMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
+  scrollTimeline(dirMap[e.key])
 })
 
 // ── LLM Call (via agentic-claw) ──
@@ -1344,9 +1416,11 @@ async function send() {
   const text = input.value.trim()
   if (!text) return
 
-  // If viewing history, stay on current canvas — new response grows from here
-  // The canvas state the user sees IS the context for the new message
+  // If viewing history, new response grows from this canvas state
+  // Save the branch point so snapshotCanvas knows the parent
+  let branchFrom = -1
   if (timelinePos !== -1) {
+    branchFrom = timelinePos
     isScrollingTimeline = false
     hideTimelineIndicator()
   }
@@ -1389,14 +1463,20 @@ async function send() {
     fullPrompt = `[User is pointing at these items on screen:\n${selCtx}\n]\n\n${fullPrompt}`
   }
 
-  sendQueue.push(fullPrompt)
+  sendQueue.push({ prompt: fullPrompt, branchFrom })
   if (!sendProcessing) processSendQueue()
 }
 
 async function processSendQueue() {
   sendProcessing = true
   while (sendQueue.length > 0) {
-    const prompt = sendQueue.shift()
+    const { prompt, branchFrom } = sendQueue.shift()
+    
+    // If branching from history, set activeBranchTip so snapshotCanvas gets correct parent
+    if (branchFrom >= 0) {
+      activeBranchTip = branchFrom
+    }
+    
     showThinking()
     currentRoundDepth = -1
     currentRoundEls = new Set()
