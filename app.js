@@ -767,7 +767,7 @@ function snapshotCanvas(userMessage) {
     w: el.style.width,
     contentKey: el.dataset.contentKey,
     depth: parseInt(el.dataset.depth || '0'),
-    opacity: el.style.opacity,
+    opacity: (parseFloat(el.style.opacity) || 0) > 0.01 ? el.style.opacity : '1',
     transform: el.style.transform,
     filter: el.style.filter,
     zIndex: el.style.zIndex,
