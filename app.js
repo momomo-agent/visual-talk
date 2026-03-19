@@ -749,6 +749,104 @@ function parseResponse(text) {
 let depthLevel = 0
 let currentRoundDepth = -1
 let currentRoundEls = new Set()
+
+// ── Historical timeline ──
+// Each entry: { depth, cards: [{ type, data, x, y, z, w, contentKey }], userMessage }
+const timeline = []
+let timelinePos = -1  // -1 = live (latest), 0..n = viewing history
+let isScrollingTimeline = false
+
+function snapshotCanvas(userMessage) {
+  const cards = [...$('canvasSpace').querySelectorAll('.v-block')].map(el => ({
+    type: el.dataset.blockType || 'card',
+    data: JSON.parse(el.dataset.blockData || '{}'),
+    x: el.style.left,
+    y: el.style.top,
+    z: parseFloat(el.dataset.intraZ) || 0,
+    w: el.style.width,
+    contentKey: el.dataset.contentKey,
+    depth: parseInt(el.dataset.depth || '0'),
+    opacity: el.style.opacity,
+    transform: el.style.transform,
+    filter: el.style.filter,
+    zIndex: el.style.zIndex
+  }))
+  timeline.push({ depth: depthLevel, cards, userMessage, timestamp: Date.now() })
+  console.log('[Timeline] snapshot', timeline.length, 'cards:', cards.length)
+}
+
+function restoreCanvas(index) {
+  const snap = timeline[index]
+  if (!snap) return
+  const space = $('canvasSpace')
+  // Remove all current cards
+  space.querySelectorAll('.v-block').forEach(el => el.remove())
+  currentRoundEls = new Set()
+  // Re-render from snapshot
+  snap.cards.forEach(card => {
+    const el = renderBlock(card.type, card.data)
+    el.dataset.contentKey = card.contentKey
+    el.dataset.depth = card.depth
+    el.dataset.intraZ = card.z
+    el.dataset.blockType = card.type
+    el.dataset.blockData = JSON.stringify(card.data)
+    el.style.left = card.x
+    el.style.top = card.y
+    el.style.width = card.w
+    el.style.opacity = card.opacity
+    el.style.transform = card.transform
+    el.style.filter = card.filter
+    el.style.zIndex = card.zIndex
+    el.style.transition = 'transform 0.6s cubic-bezier(.22,1,.36,1), opacity 0.4s, filter 0.4s'
+    setupBlockInteraction(el)
+    space.appendChild(el)
+  })
+}
+
+// Timeline scroll — interpolate between snapshots
+function scrollTimeline(delta) {
+  if (timeline.length < 2) return
+  
+  const maxPos = timeline.length - 1
+  const newPos = Math.max(0, Math.min(maxPos, (timelinePos === -1 ? maxPos : timelinePos) - delta))
+  
+  if (Math.round(newPos) === Math.round(timelinePos === -1 ? maxPos : timelinePos)) return
+  
+  timelinePos = Math.round(newPos)
+  isScrollingTimeline = true
+  
+  restoreCanvas(timelinePos)
+  
+  // Show timeline indicator
+  showTimelineIndicator(timelinePos, maxPos)
+  
+  // If back to latest, exit history mode
+  if (timelinePos === maxPos) {
+    timelinePos = -1
+    isScrollingTimeline = false
+    hideTimelineIndicator()
+  }
+}
+
+function showTimelineIndicator(pos, max) {
+  let indicator = document.getElementById('timelineIndicator')
+  if (!indicator) {
+    indicator = document.createElement('div')
+    indicator.id = 'timelineIndicator'
+    indicator.style.cssText = 'position:fixed;top:50px;left:50%;transform:translateX(-50%);background:rgba(30,25,20,0.8);color:#c8a96e;padding:6px 16px;border-radius:20px;font-size:12px;z-index:9999;backdrop-filter:blur(10px);transition:opacity 0.3s;pointer-events:none;'
+    document.body.appendChild(indicator)
+  }
+  const snap = timeline[pos]
+  const time = new Date(snap.timestamp)
+  const label = snap.userMessage ? `"${snap.userMessage.slice(0, 30)}${snap.userMessage.length > 30 ? '...' : ''}"` : ''
+  indicator.textContent = `${pos + 1} / ${max + 1}  ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}  ${label}`
+  indicator.style.opacity = 1
+}
+
+function hideTimelineIndicator() {
+  const indicator = document.getElementById('timelineIndicator')
+  if (indicator) indicator.style.opacity = 0
+}
 const selectedBlocks = new Set()
 
 // Get a card's display title from DOM or stored data
@@ -1075,6 +1173,24 @@ document.addEventListener('click', e => {
   updateSelectionContext()
 })
 
+// ── Timeline scroll (mouse wheel / trackpad) ──
+let scrollAccum = 0
+const SCROLL_THRESHOLD = 80
+
+document.addEventListener('wheel', e => {
+  if (e.target.closest('.input-bar') || e.target.closest('.config-overlay')) return
+  if (timeline.length < 2) return
+  
+  e.preventDefault()
+  scrollAccum += e.deltaY
+  
+  if (Math.abs(scrollAccum) > SCROLL_THRESHOLD) {
+    const direction = scrollAccum > 0 ? -1 : 1  // scroll down = go back in time
+    scrollTimeline(direction)
+    scrollAccum = 0
+  }
+}, { passive: false })
+
 // ── LLM Call (via agentic-claw) ──
 let claw = null
 let clawConfigKey = null
@@ -1159,6 +1275,14 @@ async function send() {
   const input = $('input')
   const text = input.value.trim()
   if (!text) return
+
+  // If viewing history, return to live state first
+  if (timelinePos !== -1 && timeline.length > 0) {
+    restoreCanvas(timeline.length - 1)
+    timelinePos = -1
+    isScrollingTimeline = false
+    hideTimelineIndicator()
+  }
 
   unlockAudio()
   input.value = ''
@@ -1261,6 +1385,8 @@ async function processSendQueue() {
       console.error(err)
     } finally {
       hideThinking()
+      // Snapshot canvas state for timeline
+      snapshotCanvas(prompt.split('\n').pop() || prompt.slice(0, 50))
     }
   }
   sendProcessing = false
