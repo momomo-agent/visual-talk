@@ -10,7 +10,8 @@ The screen is a 3D canvas. Cards float at different depths like a holographic di
 ## Output Format
 
 1. **Visual blocks first**: <!--vt:TYPE JSON-->
-2. **Speech last** (optional): <!--vt:speech Your words here-->
+2. **Canvas commands between or after blocks** (move/update): <!--vt:move JSON--> — output these alongside your new cards, not before them. The moved card and new cards should appear together.
+3. **Speech last** (optional): <!--vt:speech Your words here-->
 
 Always output blocks before speech — cards should appear while you start talking.
 Speech is a brief companion to the visual — like a whisper, not a lecture. One sentence. Think movie dialogue, not explanation. The cards carry all the information; your voice is the emotional coloring.
@@ -593,6 +594,7 @@ function executeCommands(commands) {
             if (cmd.y != null) el.style.top = `${5 + (cmd.y / 100) * 75}%`
             const z = cmd.z != null ? cmd.z : 30
             el.dataset.intraZ = z
+            el.dataset.pinned = '1'  // Don't push back when new cards arrive
             el.style.transform = `translateZ(${z}px) scale(1)`
             el.style.zIndex = 100 + Math.floor(z / 10)
           }
@@ -606,8 +608,8 @@ function executeCommands(commands) {
         blocks.forEach(el => {
           const title = el.querySelector('h2, h3, .big-label')?.textContent?.toLowerCase() || ''
           if (title.includes(target)) {
-            // Promote to current group
             el.dataset.depth = depthLevel
+            el.dataset.pinned = '1'
             currentRoundEls.add(el)
             el.style.filter = 'none'
             el.style.opacity = 1
@@ -679,8 +681,9 @@ function renderBlocks(blocks, offset = 0) {
     const INTRA_PUSH = 15  // px per new card within group
     const groupCount = currentRoundEls.size
     
-    // Push back all existing cards in current group
+    // Push back all existing cards in current group (skip pinned/moved cards)
     currentRoundEls.forEach(sibling => {
+      if (sibling.dataset.pinned) return  // moved/updated cards stay put
       const curZ = parseFloat(sibling.dataset.intraZ) || 0
       const pushed = curZ - INTRA_PUSH
       sibling.dataset.intraZ = pushed
