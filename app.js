@@ -454,36 +454,47 @@ function renderBlock(type, data) {
       if (chartType === 'pie' || chartType === 'donut') {
         // SVG pie/donut chart
         const total = items.reduce((s, d) => s + (parseFloat(d.value) || 0), 0) || 1
-        const r = 60, cx = 75, cy = 75
-        const innerR = chartType === 'donut' ? 35 : 0
+        const r = 55, cx = 70, cy = 70
+        const innerR = chartType === 'donut' ? 30 : 0
         let cumAngle = -90
-        const slices = items.map((d, i) => {
-          const val = parseFloat(d.value) || 0
-          const angle = (val / total) * 360
-          const startAngle = cumAngle
-          cumAngle += angle
-          const endAngle = cumAngle
-          const startRad = (startAngle * Math.PI) / 180
-          const endRad = (endAngle * Math.PI) / 180
-          const largeArc = angle > 180 ? 1 : 0
-          const x1 = cx + r * Math.cos(startRad), y1 = cy + r * Math.sin(startRad)
-          const x2 = cx + r * Math.cos(endRad), y2 = cy + r * Math.sin(endRad)
+        let slices = ''
+        if (items.length === 1) {
+          // Single item = full circle
           if (innerR > 0) {
-            const ix1 = cx + innerR * Math.cos(startRad), iy1 = cy + innerR * Math.sin(startRad)
-            const ix2 = cx + innerR * Math.cos(endRad), iy2 = cy + innerR * Math.sin(endRad)
-            return `<path d="M${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
+            slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[0]}" stroke-width="${r - innerR}" opacity="0.85"><title>${esc(items[0].label || '')}: ${items[0].value}</title></circle>`
+          } else {
+            slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colors[0]}" opacity="0.85"><title>${esc(items[0].label || '')}: ${items[0].value}</title></circle>`
           }
-          return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
-        }).join('')
+        } else {
+          slices = items.map((d, i) => {
+            const val = parseFloat(d.value) || 0
+            const angle = (val / total) * 360
+            const startAngle = cumAngle
+            cumAngle += angle
+            const endAngle = cumAngle
+            const startRad = (startAngle * Math.PI) / 180
+            const endRad = (endAngle * Math.PI) / 180
+            const largeArc = angle > 180 ? 1 : 0
+            const x1 = cx + r * Math.cos(startRad), y1 = cy + r * Math.sin(startRad)
+            const x2 = cx + r * Math.cos(endRad), y2 = cy + r * Math.sin(endRad)
+            if (innerR > 0) {
+              const ix1 = cx + innerR * Math.cos(startRad), iy1 = cy + innerR * Math.sin(startRad)
+              const ix2 = cx + innerR * Math.cos(endRad), iy2 = cy + innerR * Math.sin(endRad)
+              return `<path d="M${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
+            }
+            return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
+          }).join('')
+        }
         const legend = items.map((d, i) => 
           `<div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0"></span><span style="font-size:11px;color:#6a5a4a">${esc(d.label || '')} ${d.value}</span></div>`
         ).join('')
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
-          <svg viewBox="0 0 150 150" style="width:100%;max-height:140px">${slices}</svg>
+          <svg viewBox="0 0 140 140" style="width:100%;max-height:140px">${slices}</svg>
           <div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:6px">${legend}</div></div>`
       } else if (chartType === 'line') {
         // SVG line chart
-        const w = 240, h = 100, pad = 25
+        const gradId = 'ag' + Math.random().toString(36).slice(2, 8)
+        const w = 240, h = 120, pad = 25
         const pw = w - pad * 2, ph = h - pad * 2
         const points = items.map((d, i) => {
           const x = pad + (items.length > 1 ? (i / (items.length - 1)) * pw : pw / 2)
@@ -498,8 +509,8 @@ function renderBlock(type, data) {
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
           <svg viewBox="0 0 ${w} ${h}" style="width:100%">
             <polyline points="${polyline}" fill="none" stroke="#c8a96e" stroke-width="2" stroke-linejoin="round"/>
-            <polyline points="${pad},${pad + ph} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${pad + pw},${pad + ph}" fill="url(#areaGrad)" opacity="0.15"/>
-            <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
+            <polyline points="${pad},${pad + ph} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${pad + pw},${pad + ph}" fill="url(#${gradId})" opacity="0.15"/>
+            <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
             ${dots}${labels}
           </svg></div>`
       } else if (chartType === 'column') {
