@@ -621,19 +621,19 @@ function renderBlock(type, data) {
       // YouTube
       const ytMatch = embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/)
       if (ytMatch) {
-        embedContent = `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px" allowfullscreen></iframe>`
+        embedContent = `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:8px 8px 0 0;display:block" allowfullscreen></iframe>`
       }
       // Bilibili
       else if (embedUrl.includes('bilibili.com/video/')) {
         const bvMatch = embedUrl.match(/(BV[\w]+)/)
         if (bvMatch) {
-          embedContent = `<iframe src="https://player.bilibili.com/player.html?bvid=${bvMatch[1]}&page=1" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px" allowfullscreen></iframe>`
+          embedContent = `<iframe src="https://player.bilibili.com/player.html?bvid=${bvMatch[1]}&page=1" style="width:100%;aspect-ratio:16/9;border:none;border-radius:8px 8px 0 0;display:block" allowfullscreen></iframe>`
         }
       }
       // Map (Google Maps embed)
       else if (embedUrl.includes('maps') || data.type === 'map') {
         const q = encodeURIComponent(data.query || data.title || '')
-        embedContent = `<iframe src="https://maps.google.com/maps?q=${q}&output=embed" style="width:100%;height:200px;border:none;border-radius:4px"></iframe>`
+        embedContent = `<iframe src="https://maps.google.com/maps?q=${q}&output=embed" style="width:100%;height:200px;border:none;border-radius:8px 8px 0 0;display:block"></iframe>`
       }
       // Generic link preview
       else {
@@ -644,7 +644,7 @@ function renderBlock(type, data) {
           <div style="font-size:11px;color:#a09080;margin-top:4px">${esc(new URL(embedUrl).hostname)}</div>
         </a>`
       }
-      body = `<div class="win-body">${embedContent}${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
+      body = `${embedContent}<div class="win-body">${data.caption ? `<div class="footer">${esc(data.caption)}</div>` : ''}</div>`
       break
     }
 
