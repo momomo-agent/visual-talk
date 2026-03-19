@@ -630,7 +630,12 @@ function pushOldBlocks() {
   if (currentRoundDepth === depthLevel) return
   depthLevel++
   currentRoundDepth = depthLevel
-  currentRoundEls = new Set()
+  
+  // Preserve any cards already added by move/update commands this round
+  const preserved = new Set(currentRoundEls)
+  currentRoundEls = preserved
+  // Update preserved cards to new depth level
+  preserved.forEach(el => { el.dataset.depth = depthLevel })
 
   // Clear selection when new response arrives
   clearSelection()
@@ -991,13 +996,17 @@ async function processSendQueue() {
     currentRoundDepth = -1
 
     let lastBlockCount = 0
+    let lastCommandCount = 0
     let speechHandled = false
     try {
       const reply = await callLLM(prompt,
-        // onToken: render blocks as they stream in
+        // onToken: render blocks and execute commands as they stream in
         (partial) => {
           const { blocks, commands } = parseResponse(partial)
-          if (commands.length) executeCommands(commands)
+          if (commands.length > lastCommandCount) {
+            executeCommands(commands.slice(lastCommandCount))
+            lastCommandCount = commands.length
+          }
           if (blocks.length > lastBlockCount) {
             renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
             lastBlockCount = blocks.length
@@ -1016,7 +1025,7 @@ async function processSendQueue() {
       // Final pass — render any remaining blocks/commands and trigger TTS once
       const { speech, blocks, commands } = parseResponse(reply)
       console.log('[Send] final parse:', { speech, blockCount: blocks.length, commands: commands.length, blocks: JSON.stringify(blocks.map(b => ({ type: b.type, title: b.data.title, x: b.data.x, y: b.data.y, z: b.data.z }))), commandDetails: JSON.stringify(commands) })
-      if (commands.length) executeCommands(commands)
+      if (commands.length > lastCommandCount) executeCommands(commands.slice(lastCommandCount))
       if (blocks.length > lastBlockCount) {
         renderBlocks(blocks.slice(lastBlockCount), lastBlockCount)
       }
