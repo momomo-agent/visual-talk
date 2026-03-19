@@ -293,5 +293,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     getCanvasContext,
     updateCardPosition,
     beginRound,
+    getCardTitle,
   }
 })
