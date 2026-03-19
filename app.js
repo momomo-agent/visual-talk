@@ -1006,6 +1006,7 @@ async function processSendQueue() {
     const prompt = sendQueue.shift()
     showThinking()
     currentRoundDepth = -1
+    currentRoundEls = new Set()
 
     let lastBlockCount = 0
     let lastCommandCount = 0
