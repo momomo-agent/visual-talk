@@ -184,6 +184,7 @@ let bubbleTimer = null
 
 function showBubble(text, duration) {
   const bubble = $('bubble')
+  bubble.style.whiteSpace = 'pre-line'
   bubble.textContent = text
   bubble.className = 'bubble visible'
   clearTimeout(bubbleTimer)
@@ -889,23 +890,17 @@ function scrollTimeline(delta) {
 }
 
 function showTimelineIndicator(pos, max) {
-  let indicator = document.getElementById('timelineIndicator')
-  if (!indicator) {
-    indicator = document.createElement('div')
-    indicator.id = 'timelineIndicator'
-    indicator.style.cssText = 'position:fixed;top:50px;left:50%;transform:translateX(-50%);background:rgba(30,25,20,0.8);color:#c8a96e;padding:6px 16px;border-radius:20px;font-size:12px;z-index:9999;backdrop-filter:blur(10px);transition:opacity 0.3s;pointer-events:none;'
-    document.body.appendChild(indicator)
-  }
   const snap = timeline[pos]
   const time = new Date(snap.timestamp)
-  const label = snap.userMessage ? `"${snap.userMessage.slice(0, 30)}${snap.userMessage.length > 30 ? '...' : ''}"` : ''
-  indicator.textContent = `${pos + 1} / ${max + 1}  ${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}  ${label}`
-  indicator.style.opacity = 1
+  const timeStr = `${time.getHours()}:${String(time.getMinutes()).padStart(2, '0')}`
+  const label = snap.userMessage || ''
+  const text = label ? `${timeStr}\n${label.slice(0, 40)}` : timeStr
+  showBubble(text)
 }
 
 function hideTimelineIndicator() {
-  const indicator = document.getElementById('timelineIndicator')
-  if (indicator) indicator.style.opacity = 0
+  clearTimeout(bubbleTimer)
+  $('bubble').className = 'bubble'
 }
 const selectedBlocks = new Set()
 
