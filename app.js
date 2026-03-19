@@ -62,7 +62,7 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
 - media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 - chart: {"x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
-  chartType: "bar" (horizontal) or "column" (vertical)
+  chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
 - list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
   style: "unordered", "ordered", or "todo"
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
@@ -445,11 +445,64 @@ function renderBlock(type, data) {
       break
 
     case 'chart': {
-      // Pure CSS bar/column chart
+      // Pure CSS/SVG charts: bar, column, pie, donut, line
       const items = data.items || []
       const maxVal = Math.max(...items.map(d => parseFloat(d.value) || 0), 1)
-      const chartType = data.chartType || 'bar' // bar or column
-      if (chartType === 'column') {
+      const chartType = data.chartType || 'bar'
+      const colors = ['#c8a96e','#8a7a60','#e8856a','#6aad8e','#7a9ec8','#b87acc','#d4a85c','#5cb8b2','#c76a6a','#8aae5c']
+      
+      if (chartType === 'pie' || chartType === 'donut') {
+        // SVG pie/donut chart
+        const total = items.reduce((s, d) => s + (parseFloat(d.value) || 0), 0) || 1
+        const r = 60, cx = 75, cy = 75
+        const innerR = chartType === 'donut' ? 35 : 0
+        let cumAngle = -90
+        const slices = items.map((d, i) => {
+          const val = parseFloat(d.value) || 0
+          const angle = (val / total) * 360
+          const startAngle = cumAngle
+          cumAngle += angle
+          const endAngle = cumAngle
+          const startRad = (startAngle * Math.PI) / 180
+          const endRad = (endAngle * Math.PI) / 180
+          const largeArc = angle > 180 ? 1 : 0
+          const x1 = cx + r * Math.cos(startRad), y1 = cy + r * Math.sin(startRad)
+          const x2 = cx + r * Math.cos(endRad), y2 = cy + r * Math.sin(endRad)
+          if (innerR > 0) {
+            const ix1 = cx + innerR * Math.cos(startRad), iy1 = cy + innerR * Math.sin(startRad)
+            const ix2 = cx + innerR * Math.cos(endRad), iy2 = cy + innerR * Math.sin(endRad)
+            return `<path d="M${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} L${ix2},${iy2} A${innerR},${innerR} 0 ${largeArc},0 ${ix1},${iy1}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
+          }
+          return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
+        }).join('')
+        const legend = items.map((d, i) => 
+          `<div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0"></span><span style="font-size:11px;color:#6a5a4a">${esc(d.label || '')} ${d.value}</span></div>`
+        ).join('')
+        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+          <svg viewBox="0 0 150 150" style="width:100%;max-height:140px">${slices}</svg>
+          <div style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-top:6px">${legend}</div></div>`
+      } else if (chartType === 'line') {
+        // SVG line chart
+        const w = 240, h = 100, pad = 25
+        const pw = w - pad * 2, ph = h - pad * 2
+        const points = items.map((d, i) => {
+          const x = pad + (items.length > 1 ? (i / (items.length - 1)) * pw : pw / 2)
+          const y = pad + ph - ((parseFloat(d.value) || 0) / maxVal) * ph
+          return { x, y, label: d.label, value: d.value }
+        })
+        const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
+        const dots = points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#c8a96e"><title>${esc(p.label || '')}: ${p.value}</title></circle>`).join('')
+        const labels = points.filter((_, i) => i === 0 || i === points.length - 1 || items.length <= 6).map(p => 
+          `<text x="${p.x}" y="${h - 4}" text-anchor="middle" font-size="9" fill="#6a5a4a">${esc(p.label || '')}</text>`
+        ).join('')
+        body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
+          <svg viewBox="0 0 ${w} ${h}" style="width:100%">
+            <polyline points="${polyline}" fill="none" stroke="#c8a96e" stroke-width="2" stroke-linejoin="round"/>
+            <polyline points="${pad},${pad + ph} ${points.map(p => `${p.x},${p.y}`).join(' ')} ${pad + pw},${pad + ph}" fill="url(#areaGrad)" opacity="0.15"/>
+            <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
+            ${dots}${labels}
+          </svg></div>`
+      } else if (chartType === 'column') {
         body = `<div class="win-body">${data.title ? `<h3>${esc(data.title)}</h3>` : ''}
           <div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0">
             ${items.map(d => {
