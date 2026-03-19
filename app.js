@@ -805,12 +805,14 @@ function restoreCanvas(index) {
       el.style.left = target.x
       el.style.top = target.y
       el.style.width = target.w
-      el.style.opacity = target.opacity
+      el.style.opacity = target.opacity || '1'
       el.style.transform = target.transform
-      el.style.filter = target.filter
+      el.style.filter = target.filter || 'none'
       el.style.zIndex = target.zIndex
+      el.style.pointerEvents = 'auto'
       el.dataset.intraZ = target.z
       el.dataset.depth = target.depth
+      delete el.dataset.timelineHidden
       // Update content if changed (e.g. update command)
       if (el.innerHTML !== target.html) {
         el.innerHTML = target.html
@@ -825,30 +827,12 @@ function restoreCanvas(index) {
     }
   })
   
-  // Bring back hidden cards that exist in target
-  existingMap.forEach((el, key) => {
-    if (el.dataset.timelineHidden === '1' && targetMap.has(key)) {
-      const target = targetMap.get(key)
-      el.style.transition = TRANSITION
-      el.style.left = target.x
-      el.style.top = target.y
-      el.style.width = target.w
-      el.style.opacity = target.opacity
-      el.style.transform = target.transform
-      el.style.filter = target.filter
-      el.style.zIndex = target.zIndex
-      el.style.pointerEvents = 'auto'
-      delete el.dataset.timelineHidden
-      if (el.innerHTML !== target.html) {
-        el.innerHTML = target.html
-      }
-    }
-  })
-  
   // Create new cards that don't exist in DOM yet
   targetMap.forEach((card, key) => {
     if (existingMap.has(key)) return
-    const el = renderBlock(card.type, card.data)
+    // Create element directly — don't use renderBlock (it sets opacity:0 and entrance styles)
+    const el = document.createElement('div')
+    el.className = 'v-block'
     el.dataset.contentKey = card.contentKey
     el.dataset.depth = card.depth
     el.dataset.intraZ = card.z
@@ -856,6 +840,7 @@ function restoreCanvas(index) {
     el.dataset.blockData = JSON.stringify(card.data)
     el.innerHTML = card.html
     // Start invisible, then animate in
+    el.style.position = 'absolute'
     el.style.left = card.x
     el.style.top = card.y
     el.style.width = card.w
@@ -869,9 +854,9 @@ function restoreCanvas(index) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.style.transition = TRANSITION
-        el.style.opacity = card.opacity
+        el.style.opacity = card.opacity || '1'
         el.style.transform = card.transform
-        el.style.filter = card.filter
+        el.style.filter = card.filter || 'none'
       })
     })
   })
