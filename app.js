@@ -876,6 +876,9 @@ function scrollTimeline(delta) {
   timelinePos = Math.round(newPos)
   isScrollingTimeline = true
   
+  clearSelection()
+  updateSelectionContext()
+  
   restoreCanvas(timelinePos)
   
   // Show timeline indicator
