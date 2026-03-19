@@ -908,6 +908,8 @@ function renderBlocks(blocks, offset = 0) {
     
     // Push back all existing cards in current group
     currentRoundEls.forEach(sibling => {
+      // Don't touch selected cards — they stay at z:999
+      if (sibling.classList.contains('selected')) return
       const curZ = parseFloat(sibling.dataset.intraZ) || 0
       const pushed = curZ - INTRA_PUSH
       sibling.dataset.intraZ = pushed
@@ -1038,7 +1040,7 @@ function toggleSelect(el) {
     // Float forward — glow transitions in via CSS transition
     el.style.transform = 'translateZ(80px) scale(1.05)'
     el.style.opacity = 1
-    el.style.zIndex = 200
+    el.style.zIndex = 999
     el.style.filter = 'none'
     // Start breathing animation after glow transition completes
     setTimeout(() => el.classList.add('glow-breathe'), 500)
