@@ -176,15 +176,26 @@ function getConfig() {
 // ── Bubble (top-left, no auto-fade) ──
 let bubbleTimer = null
 
-function showBubble(text) {
+function showBubble(text, duration) {
   const bubble = $('bubble')
   bubble.textContent = text
   bubble.className = 'bubble visible'
   clearTimeout(bubbleTimer)
+  if (duration) {
+    bubbleTimer = setTimeout(() => {
+      bubble.className = 'bubble fading'
+      setTimeout(() => { bubble.className = 'bubble' }, 500)
+    }, duration)
+  }
+  // If no duration, bubble stays until dismissBubble() is called
+}
+
+function dismissBubble(delayMs = 3000) {
+  clearTimeout(bubbleTimer)
   bubbleTimer = setTimeout(() => {
-    bubble.className = 'bubble fading'
-    setTimeout(() => { bubble.className = 'bubble' }, 500)
-  }, 8000)
+    $('bubble').className = 'bubble fading'
+    setTimeout(() => { $('bubble').className = 'bubble' }, 500)
+  }, delayMs)
 }
 
 // ── TTS ──
@@ -273,7 +284,7 @@ async function playTTS(text) {
       source.buffer = audioBuffer
       source.connect(ctx.destination)
       source.start(0)
-      source.onended = () => { console.log('[TTS] playback ended'); currentAudio = null }
+      source.onended = () => { console.log('[TTS] playback ended'); currentAudio = null; dismissBubble(3000) }
       currentAudio = { pause: () => { try { source.stop() } catch {} } }
       console.log('[TTS] playing via AudioContext')
     } catch (decodeErr) {
@@ -282,7 +293,7 @@ async function playTTS(text) {
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
       const blobUrl = URL.createObjectURL(blob)
       const audio = new Audio(blobUrl)
-      audio.onended = () => { URL.revokeObjectURL(blobUrl); currentAudio = null; console.log('[TTS] ended (Audio)') }
+      audio.onended = () => { URL.revokeObjectURL(blobUrl); currentAudio = null; console.log('[TTS] ended (Audio)'); dismissBubble(3000) }
       audio.onerror = (e) => { console.error('[TTS] Audio element error:', e); URL.revokeObjectURL(blobUrl) }
       await audio.play()
       currentAudio = audio
@@ -1177,7 +1188,7 @@ async function processSendQueue() {
         }
       }
     } catch (err) {
-      showBubble(`Error: ${err.message}`)
+      showBubble(`Error: ${err.message}`, 5000)
       console.error(err)
     } finally {
       hideThinking()
@@ -1209,7 +1220,7 @@ async function startRecording() {
 function startWebSpeech() {
   if (webSpeechRecognition) return
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SR) { showBubble('浏览器不支持 Web Speech'); return }
+  if (!SR) { showBubble('浏览器不支持 Web Speech', 4000); return }
   micDownTime = Date.now()
   const recognition = new SR()
   recognition.lang = 'zh-CN'
@@ -1224,13 +1235,13 @@ function startWebSpeech() {
       lastInputWasVoice = true
       send()
     } else {
-      showBubble('没听清，再说一次？')
+      showBubble('没听清，再说一次？', 3000)
     }
   }
   recognition.onerror = e => {
     webSpeechRecognition = null
     $('micBtn').classList.remove('recording')
-    showBubble('识别错误: ' + e.error)
+    showBubble('识别错误: ' + e.error, 4000)
   }
   recognition.onend = () => {
     webSpeechRecognition = null
@@ -1282,14 +1293,14 @@ async function startWhisper() {
   micDownTime = Date.now()
   micReleased = false
   if (!navigator.mediaDevices?.getUserMedia) {
-    showBubble('需要 HTTPS 才能使用麦克风')
+    showBubble('需要 HTTPS 才能使用麦克风', 4000)
     return
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     if (micReleased) {
       stream.getTracks().forEach(t => t.stop())
-      showBubble('长按说话')
+      showBubble('长按说话', 3000)
       return
     }
     const chunks = []
@@ -1301,7 +1312,7 @@ async function startWhisper() {
       mediaRecorder = null
       $('micBtn').classList.remove('recording')
       if (held < 300) {
-        showBubble('长按说话')
+        showBubble('长按说话', 3000)
         return
       }
       const blob = new Blob(chunks, { type: 'audio/webm' })
@@ -1311,7 +1322,7 @@ async function startWhisper() {
     $('micBtn').classList.add('recording')
     showBubble('松开发送...')
   } catch (e) {
-    showBubble('麦克风不可用: ' + e.message)
+    showBubble('麦克风不可用: ' + e.message, 4000)
   }
 }
 
@@ -1323,7 +1334,7 @@ function stopRecording() {
       webSpeechRecognition.abort()
       webSpeechRecognition = null
       $('micBtn').classList.remove('recording')
-      showBubble('长按说话')
+      showBubble('长按说话', 3000)
     } else {
       webSpeechRecognition.stop()
     }
@@ -1336,9 +1347,9 @@ function stopRecording() {
 
 async function transcribeAndSend(blob) {
   const config = getConfig()
-  if (!config.ttsBaseUrl) { showBubble('请先配置 TTS Base URL'); return }
+  if (!config.ttsBaseUrl) { showBubble('请先配置 TTS Base URL', 4000); return }
   const baseUrl = config.ttsBaseUrl
-  if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key'); return }
+  if (!config.ttsApiKey) { showBubble('请先配置 TTS API Key', 4000); return }
 
   showThinking()
   try {
@@ -1353,9 +1364,9 @@ async function transcribeAndSend(blob) {
       headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
       body: form
     })
-    if (!res.ok) { hideThinking(); showBubble('识别失败: ' + res.status); return }
+    if (!res.ok) { hideThinking(); showBubble('识别失败: ' + res.status, 4000); return }
     const ct = res.headers.get('content-type') || ''
-    if (!ct.includes('json')) { hideThinking(); showBubble('识别服务不可用'); return }
+    if (!ct.includes('json')) { hideThinking(); showBubble('识别服务不可用', 4000); return }
     const { text } = await res.json()
     console.log('[STT] Whisper result:', text)
     if (text?.trim()) {
@@ -1366,11 +1377,11 @@ async function transcribeAndSend(blob) {
       send()
     } else {
       hideThinking()
-      showBubble('没听清，再说一次？')
+      showBubble('没听清，再说一次？', 3000)
     }
   } catch (e) {
     hideThinking()
-    showBubble('识别错误: ' + e.message)
+    showBubble('识别错误: ' + e.message, 4000)
   }
 }
 
