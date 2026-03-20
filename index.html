@@ -1,129 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visual Talk</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=9">
-</head>
-<body>
-  <!-- AI speech -->
-  <div class="bubble" id="bubble"></div>
-
-  <!-- Thinking indicator -->
-  <div class="thinking" id="thinking">
-    <div class="thinking-dot"></div>
-    <div class="thinking-dot"></div>
-    <div class="thinking-dot"></div>
-  </div>
-
-  <!-- Canvas: 3D space -->
-  <div class="canvas" id="canvas">
-    <div class="canvas-space" id="canvasSpace"></div>
-    <div class="greeting" id="greeting">visual talk</div>
-  </div>
-
-  <!-- Input bar -->
-  <div class="input-bar">
-    <input type="text" id="input" placeholder="say something..." autocomplete="off" />
-    <button class="mic-btn" id="micBtn">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-        <line x1="12" y1="19" x2="12" y2="23"></line>
-        <line x1="8" y1="23" x2="16" y2="23"></line>
-      </svg>
-    </button>
-  </div>
-
-  <!-- Tool calls log (top-right, left of gear) -->
-  <div class="tool-log" id="toolLog"></div>
-
-  <!-- Config (hidden, gear icon to toggle) -->
-  <button class="gear-btn" id="gearBtn">⚙</button>
-  <div class="config-overlay" id="configOverlay">
-    <div class="config-box">
-      <div class="field">
-        <label>Provider</label>
-        <select id="provider">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>API Key</label>
-        <input type="text" id="apiKey" placeholder="sk-...">
-      </div>
-      <div class="field">
-        <label>Base URL</label>
-        <input id="baseUrl" placeholder="https://api.openai.com">
-      </div>
-      <div class="field">
-        <label>Model</label>
-        <input id="model" placeholder="gpt-4o">
-      </div>
-      <div class="field">
-        <label>Tavily API Key (搜索)</label>
-        <input type="text" id="tavilyKey" placeholder="tvly-...">
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" id="showToolCalls" style="accent-color:#e8856a">
-          显示 Tool 调用
-        </label>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" id="ttsEnabled" style="accent-color:#e8856a">
-          TTS 语音
-        </label>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" id="webSpeech" style="accent-color:#e8856a">
-          Web Speech (免配置语音识别)
-        </label>
-      </div>
-      <div class="field">
-        <label>TTS Base URL</label>
-        <input id="ttsBaseUrl" placeholder="https://yunwu.ai">
-      </div>
-      <div class="field">
-        <label>TTS API Key</label>
-        <input type="text" id="ttsApiKey" placeholder="sk-...">
-      </div>
-      <div class="field">
-        <label>TTS Model</label>
-        <input id="ttsModel" placeholder="tts-1-hd">
-      </div>
-      <div class="field">
-        <label>Voice</label>
-        <div class="voice-picker" id="voicePicker">
-          <button class="voice-chip" data-voice="alloy">alloy</button>
-          <button class="voice-chip" data-voice="echo">echo</button>
-          <button class="voice-chip" data-voice="fable">fable</button>
-          <button class="voice-chip active" data-voice="nova">nova</button>
-          <button class="voice-chip" data-voice="onyx">onyx</button>
-          <button class="voice-chip" data-voice="shimmer">shimmer</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" id="proxyEnabled" style="accent-color:#e8856a">
-          Proxy
-        </label>
-        <input id="proxyUrl" placeholder="companion-ui.momomo.dev/api/proxy" disabled>
-      </div>
-      <button class="config-close" id="configClose">Done</button>
-    </div>
-  </div>
-
-  <!-- agentic dogfooding: libraries from jsDelivr CDN (auto-sync on git push) -->
-  <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-core@main/docs/agentic-core.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-memory@main/docs/memory.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-claw@main/claw.js"></script>
-  <script src="tools.js?v=10"></script>
-  <script src="app.js?v=10"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Talk</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- agentic dogfooding: libraries from jsDelivr CDN (auto-sync on git push) -->
+    <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-core@main/docs/agentic-core.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-memory@main/docs/memory.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/momomo-agent/agentic-claw@main/claw.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
