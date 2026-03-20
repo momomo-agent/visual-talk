@@ -227,9 +227,17 @@ export const useCanvasStore = defineStore('canvas', () => {
    * - Missing from target: fade out to depth
    * - New in target: fly in from behind
    */
+  let restoreGeneration = 0
+
   function restoreFrom(computedCards) {
+    const gen = ++restoreGeneration
     currentRoundIds.value = new Set()
     selectedIds.value = new Set()
+
+    // Immediately remove cards still fading out from a previous restore
+    cards.forEach((card, id) => {
+      if (card.pointerEvents === 'none') cards.delete(id)
+    })
 
     // Build target lookup by contentKey
     const targetByKey = new Map()
@@ -279,8 +287,11 @@ export const useCanvasStore = defineStore('canvas', () => {
           card.scale = 0.5
           card.blur = 8
           card.pointerEvents = 'none'
-          // Remove after transition completes
-          setTimeout(() => { cards.delete(id) }, 600)
+          // Remove after transition completes (guarded by generation)
+          setTimeout(() => {
+            if (restoreGeneration !== gen) return
+            cards.delete(id)
+          }, 600)
         }
       }
     })
@@ -299,8 +310,9 @@ export const useCanvasStore = defineStore('canvas', () => {
         pointerEvents: 'auto',
       })
       cards.set(target.id, card)
-      // Animate to target state after a tick
+      // Animate to target state after a tick (guarded by generation)
       setTimeout(() => {
+        if (restoreGeneration !== gen) return
         card.opacity = target.opacity ?? 1
         card.z = target.z ?? 0
         card.scale = target.scale ?? 1
