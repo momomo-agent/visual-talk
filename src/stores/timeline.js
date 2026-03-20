@@ -46,6 +46,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       childIds: [],
       lastChildId: null,
       userMessage: userMessage || '',
+      aiResponse: '',
       timestamp: Date.now(),
       operations: [],
     })
@@ -322,6 +323,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     canvasCache.clear()
   }
 
+  function setAiResponse(nodeId, response) {
+    const node = nodes.get(nodeId)
+    if (node) node.aiResponse = response
+  }
+
   /**
    * Find cards by title substring in the computed canvas state.
    * Searches in timeline data (not canvas view layer).
@@ -409,6 +415,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     restoreToNode,
     getBubbleInfo,
     reset,
+    setAiResponse,
     resetLiveState,
     findCardsByKey,
     findCardsByTitle,

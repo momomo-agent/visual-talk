@@ -164,6 +164,7 @@ export function useSend({ tts } = {}) {
       const state = { pushRecorded: false, lastBlockCount: 0 }
       let lastCommandCount = 0
       let speechHandled = false
+      let reply = null
 
       try {
         const cfg = configStore.getConfig()
@@ -172,7 +173,7 @@ export function useSend({ tts } = {}) {
           return 'need-config'
         }
 
-        const reply = await callLLM(prompt,
+        reply = await callLLM(prompt,
           // onToken — streaming callback
           (partial) => {
             const { blocks, commands } = parseResponse(partial)
@@ -222,6 +223,9 @@ export function useSend({ tts } = {}) {
         isThinking.value = false
         canvas.isStreaming = false
         timeline.resetLiveState()
+
+        // Store AI response on timeline node
+        if (reply) timeline.setAiResponse(nodeId, reply)
 
         // Persist after each round
         const forest = useForestStore()

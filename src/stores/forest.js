@@ -41,6 +41,7 @@ export const useForestStore = defineStore('forest', () => {
         childIds: [...node.childIds],
         lastChildId: node.lastChildId,
         userMessage: node.userMessage,
+        aiResponse: node.aiResponse || '',
         timestamp: node.timestamp,
         operations: node.operations,
       }
@@ -70,6 +71,7 @@ export const useForestStore = defineStore('forest', () => {
         childIds: nd.childIds || [],
         lastChildId: nd.lastChildId ?? null,
         userMessage: nd.userMessage || '',
+        aiResponse: nd.aiResponse || '',
         timestamp: nd.timestamp || Date.now(),
         operations: nd.operations || [],
       })
