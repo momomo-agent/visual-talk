@@ -155,6 +155,11 @@ export function useSend({ tts } = {}) {
               blocks.slice(lastBlockCount).forEach((b, i) => {
                 const idx = lastBlockCount + i
                 if (!pushRecorded) {
+                  // Record selected card promotions BEFORE push
+                  // so computeCanvas can replay them during navigation
+                  canvas.selectedIds.forEach(id => {
+                    timeline.addOperation(nodeId, { op: 'promote', cardId: id })
+                  })
                   timeline.addOperation(nodeId, { op: 'push' })
                   pushRecorded = true
                 }
@@ -217,6 +222,9 @@ export function useSend({ tts } = {}) {
           blocks.slice(lastBlockCount).forEach((b, i) => {
             const idx = lastBlockCount + i
             if (!pushRecorded) {
+              canvas.selectedIds.forEach(id => {
+                timeline.addOperation(nodeId, { op: 'promote', cardId: id })
+              })
               timeline.addOperation(nodeId, { op: 'push' })
               pushRecorded = true
             }

@@ -83,6 +83,15 @@ export const useCanvasStore = defineStore('canvas', () => {
    */
   function applyOperation(op) {
     switch (op.op) {
+      case 'promote': {
+        // Mark a card as promoted (will survive the next push)
+        const card = cards.get(op.cardId)
+        if (card) {
+          card.pinned = true
+          currentRoundIds.value.add(op.cardId)
+        }
+        break
+      }
       case 'push': {
         greetingVisible.value = false
         pushOldBlocks()

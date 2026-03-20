@@ -132,13 +132,17 @@ export const useTimelineStore = defineStore('timeline', () => {
       // Pre-scan: find cards that will be update/moved in this node
       // so push doesn't blur them (commands arrive before blocks in streaming)
       for (const op of node.operations) {
-        if ((op.op === 'update' || op.op === 'move') && op.cardId != null) {
+        if ((op.op === 'update' || op.op === 'move' || op.op === 'promote') && op.cardId != null) {
           currentNodePinned.add(op.cardId)
         }
       }
 
       for (const op of node.operations) {
         switch (op.op) {
+          case 'promote': {
+            // No-op in computeCanvas — handled via currentNodePinned pre-scan
+            break
+          }
           case 'push': {
             depthLevel++
             // Push all existing cards back — except pinned ones
