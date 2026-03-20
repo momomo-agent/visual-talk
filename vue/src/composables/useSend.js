@@ -53,12 +53,10 @@ export function useSend({ tts } = {}) {
    * Resolves target cards via timeline data (id or title match).
    */
   function processCommands(commands, nodeId, timeline) {
-    const parentId = timeline.nodes.get(nodeId)?.parentId
-    const searchNodeId = parentId != null ? parentId : nodeId
-
+    // Search current node's canvas state — includes cards just created in this round
     commands.forEach(cmd => {
       const target = (cmd.title || '').toLowerCase()
-      const matchedIds = timeline.findCardsByTitle(searchNodeId, target)
+      const matchedIds = timeline.findCardsByTitle(nodeId, target)
 
       if (cmd.cmd === 'move') {
         matchedIds.forEach(cardId => {
