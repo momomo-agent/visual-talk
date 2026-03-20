@@ -147,6 +147,7 @@ export function useSend({ tts } = {}) {
                   canvas.selectedIds.forEach(id => {
                     timeline.addOperation(nodeId, { op: 'promote', cardId: id })
                   })
+                  canvas.clearSelection()
                   timeline.addOperation(nodeId, { op: 'push' })
                   pushRecorded = true
                 }
