@@ -49,7 +49,7 @@ let lastInputWasVoice = false
 // Voice enabled: TTS has baseUrl or webSpeech is on
 const voiceEnabled = computed(() => {
   const cfg = configStore
-  return (cfg.ttsEnabled && cfg.ttsBaseUrl?.trim()) || cfg.webSpeech
+  return !!(cfg.ttsEnabled && cfg.ttsBaseUrl?.trim()) || !!cfg.webSpeech
 })
 
 // TTS
