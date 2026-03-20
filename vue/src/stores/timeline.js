@@ -122,14 +122,32 @@ export const useTimelineStore = defineStore('timeline', () => {
     const path = getPathFromRoot(nodeId)
     const cards = new Map()
     let depthLevel = 0
+    // Track cards referenced by update/move in current node — immune to push
+    let currentNodePinned = new Set()
 
     for (const node of path) {
+      // Reset pinned set for each node (each node = one conversation round)
+      currentNodePinned = new Set()
+
+      // Pre-scan: find cards that will be update/moved in this node
+      // so push doesn't blur them (commands arrive before blocks in streaming)
+      for (const op of node.operations) {
+        if ((op.op === 'update' || op.op === 'move') && op.cardId != null) {
+          currentNodePinned.add(op.cardId)
+        }
+      }
+
       for (const op of node.operations) {
         switch (op.op) {
           case 'push': {
             depthLevel++
-            // Push all existing cards back
+            // Push all existing cards back — except pinned ones
             cards.forEach((card) => {
+              if (currentNodePinned.has(card.id)) {
+                // Pinned: promote to current depth, stay clear
+                card.depth = depthLevel
+                return
+              }
               const d = depthLevel - card.depth
               if (d > 0) {
                 card.z = -d * 160
@@ -175,6 +193,9 @@ export const useTimelineStore = defineStore('timeline', () => {
               card.depth = depthLevel
               card.opacity = 1
               card.blur = 0
+              card.scale = 1
+              card.zIndex = 100
+              card.pinned = true
             }
             break
           }
@@ -187,6 +208,9 @@ export const useTimelineStore = defineStore('timeline', () => {
               card.depth = depthLevel
               card.opacity = 1
               card.blur = 0
+              card.scale = 1
+              card.zIndex = 100
+              card.pinned = true
             }
             break
           }
