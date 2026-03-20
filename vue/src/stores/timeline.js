@@ -327,10 +327,18 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Searches in timeline data (not canvas view layer).
    * Returns array of card IDs that match.
    */
+  /**
+   * Find cards by title in the current live state or computed snapshot.
+   * During streaming, uses liveState for O(n) lookup without recomputation.
+   * Falls back to computeCanvas for navigation/historical queries.
+   */
   function findCardsByTitle(nodeId, titleQuery) {
-    const snapshot = computeCanvas(nodeId)
+    // Use liveState if querying the active streaming node
+    const snapshot = (nodeId === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(nodeId)
+
     const target = (titleQuery || '').toLowerCase()
-    // Exact match first, then substring fallback
     const exact = []
     const partial = []
     snapshot.forEach((card, id) => {
@@ -348,7 +356,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   function getCanvasContext(nodeId) {
     const id = nodeId ?? viewingId.value ?? activeTip.value
     if (id == null) return null
-    const snapshot = computeCanvas(id)
+    const snapshot = (id === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(id)
     return buildCanvasContext(snapshot)
   }
 
