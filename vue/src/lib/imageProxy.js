@@ -25,18 +25,26 @@ export function handleImageError(event) {
   if (!img.dataset.originalSrc) img.dataset.originalSrc = originalSrc
 
   if (retries === 0) {
+    // First failure: try CORS proxy
     img.dataset.retries = '1'
     img.src = getProxiedUrl(originalSrc, 1)
   } else if (retries === 1) {
+    // Second failure: try weserv
     img.dataset.retries = '2'
     img.src = getProxiedUrl(originalSrc, 2)
-  } else {
-    // Show placeholder instead of hiding — preserve card layout
-    img.style.objectFit = 'contain'
-    img.style.background = 'rgba(0,0,0,0.08)'
-    img.style.minHeight = '80px'
+  } else if (retries === 2) {
+    // Third failure: retry original after 2s delay (network flake)
+    img.dataset.retries = '3'
     img.removeAttribute('src')
-    // Prevent infinite error loop
+    setTimeout(() => {
+      img.src = originalSrc
+    }, 2000)
+  } else {
+    // All retries exhausted — show placeholder
+    img.style.objectFit = 'contain'
+    img.style.background = 'rgba(0,0,0,0.06)'
+    img.style.minHeight = '60px'
+    img.removeAttribute('src')
     img.onerror = null
   }
 }
