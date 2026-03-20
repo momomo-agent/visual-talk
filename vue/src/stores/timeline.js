@@ -321,6 +321,25 @@ export const useTimelineStore = defineStore('timeline', () => {
     canvasCache.clear()
   }
 
+  /**
+   * Find cards by title substring in the computed canvas state.
+   * Searches in timeline data (not canvas view layer).
+   * Returns array of card IDs that match.
+   */
+  function findCardsByTitle(nodeId, titleQuery) {
+    const snapshot = computeCanvas(nodeId)
+    const target = (titleQuery || '').toLowerCase()
+    const matched = []
+    snapshot.forEach((card, id) => {
+      const d = card.data || {}
+      const cardTitle = (d.title || d.caption || d.text || d.content || d.label || '').toLowerCase()
+      if (cardTitle && cardTitle.includes(target)) {
+        matched.push(id)
+      }
+    })
+    return matched
+  }
+
   return {
     nodes,
     activeTip,
@@ -341,6 +360,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getBubbleInfo,
     reset,
     resetLiveState,
+    findCardsByTitle,
     getPathFromRoot,
   }
 })
