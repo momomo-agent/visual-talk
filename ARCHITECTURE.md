@@ -1,193 +1,290 @@
-# Visual Talk — Vue 3 Architecture
+# Visual Talk — Architecture Spec v2
 
-## 核心理念
+## 核心原则
 
-UI 是 AI 的第一语言。屏幕是 AI 的表达空间，不是聊天记录。
+**Timeline 是唯一数据源。Canvas 是纯渲染层。**
 
-## 技术栈
+Timeline 拥有所有持久状态。Canvas 只负责"把数据画出来"——接收完整的卡片描述，输出动画和交互。两者之间不存在双向数据流。
 
-- Vite + Vue 3 (Composition API)
-- Pinia (状态管理)
-- 纯 CSS 动画 (no animation library)
-- agentic-core (LLM 调用) + agentic-claw (工具编排)
-- 部署: GitHub Pages (vite build → dist/)
+## 当前问题
 
-## 目录结构
+### 1. Canvas 反向写入 Timeline
 
-```
-src/
-├── App.vue                 # 根：CanvasSpace + InputBar + SpeechBubble + ConfigPanel
-├── main.js                 # Vite 入口
-├── stores/
-│   ├── canvas.js           # Pinia: cards Map, depthLevel, push/create/update/move
-│   ├── timeline.js         # Pinia: 活树, navigation, branching, computeCanvas
-│   └── config.js           # Pinia: API keys, voice, proxy
-├── composables/
-│   ├── useLLM.js           # callLLM + 流式解析 + onToken/onSpeech
-│   ├── useTTS.js           # playTTS + stopTTS + generation counter
-│   ├── useSTT.js           # startRecording + stopRecording + push-to-talk
-│   ├── useTimeline.js      # 滚轮/键盘/双指 → navigate(direction)
-│   └── useSend.js          # send() queue + orchestration
-├── components/
-│   ├── CanvasSpace.vue     # 3D perspective 容器 + parallax mouse tracking
-│   ├── BlockCard.vue       # 单卡片: props.card → 11种类型渲染
-│   ├── ChartRenderer.vue   # SVG 图表 (bar/column/pie/donut/line)
-│   ├── SpeechBubble.vue    # 语音气泡 + timeline indicator
-│   ├── ThinkingDots.vue    # 三点动画
-│   ├── InputBar.vue        # 文本输入 + mic 按钮
-│   └── ConfigPanel.vue     # 设置面板 (gear icon)
-├── lib/
-│   ├── parser.js           # parseResponse(): vt 格式 → { speech, blocks, commands }
-│   ├── imageProxy.js       # 三层 fallback: direct → proxy → weserv
-│   └── id.js               # nextId(): 全局自增 card-0, card-1, ...
-└── styles/
-    ├── base.css            # reset + CSS variables (颜色、字体)
-    ├── canvas.css          # perspective, 3D transforms
-    └── blocks.css          # 卡片类型样式
+`addOperation` 中 canvas 的运行时结果被写回 operation：
+```js
+// ❌ 当前：canvas 结果回写 timeline
+operation.card.z = card._targetZ
+operation.card.zIndex = card.zIndex
+operation.card.intraZ = card.intraZ
 ```
 
-## 数据模型
+这意味着 operation 的内容取决于 canvas 是否执行。导航走了 → canvas 不执行 → operation 缺少字段 → computeCanvas 重建不完整。
 
-### Canvas Store (canvas.js)
+### 2. 两套独立的状态重建逻辑
+
+- **`applyOperation`**（streaming）：有 intraZ 计算、sibling push-back、entrance 动画、selection promotion
+- **`computeCanvas`**（navigation）：简单的 depth 公式，没有 intraZ、没有 sibling 关系
+
+同一份 operations，两条路径算出不同的结果。
+
+### 3. UI 临时状态混入持久状态
+
+- `selection` 是 UI 交互状态，但影响 push 行为（promotion）
+- 修复方式是加 `promote` operation——正确方向，但说明设计初期没预见到
+- `ensureCurrentRoundVisible` 是给 setTimeout 竞态打的补丁，不是架构解
+
+### 4. 动画 setTimeout 没有统一管理
+
+`restoreFrom` 中有 3 种 setTimeout（fade-out 600ms、fly-in 30ms、entranceDelay 1200ms），靠 generation counter 防竞态。脆弱——新的竞态场景需要新的 guard。
+
+---
+
+## 目标架构
+
+### 数据流
+
+```
+User Input
+    ↓
+useSend → parseResponse
+    ↓
+timeline.addOperation(nodeId, op)
+    ↓ (写入完成，operation 自包含)
+    ├── if live → canvas.applySnapshot(computeCanvas(nodeId))
+    └── if navigating → 不触发 canvas
+    
+Navigation
+    ↓
+timeline.computeCanvas(nodeId)
+    ↓
+canvas.applySnapshot(snapshot)
+```
+
+### 核心改变
+
+#### 1. Operation 自包含——写入时计算完毕
+
+`addOperation` 在写入 timeline 时就确定所有值。不依赖 canvas 的任何运行时状态。
 
 ```js
-// 所有卡片，全局唯一 ID
-cards: Map<string, {
-  id: string,             // 'card-0', 'card-1', ...
-  type: string,           // 11种: card/metric/steps/columns/callout/code/markdown/media/chart/list/embed
-  data: object,           // LLM 输出的原始 JSON
-  x: number,              // 0-100 (viewport %)
-  y: number,
-  z: number,              // translateZ px
-  w: number,              // width %
-  depth: number,          // 哪一轮创建的
-  opacity: number,        // 当前显示透明度
-  scale: number,          // 当前缩放
-  blur: number,           // 当前模糊 px
-  selected: boolean,
-}>
-```
-
-### Timeline Store (timeline.js) — 活树
-
-```js
-// 树节点: 只存这一轮的 diff 操作
-nodes: Map<number, {
-  id: number,
-  parentId: number | null,
-  childIds: number[],
-  lastChildId: number | null,
-  userMessage: string,
-  timestamp: number,
-  depth: number,           // depthLevel at this round
-  operations: Operation[], // 这一轮做了什么
-}>
-
-// Operation 类型
-{ op: 'create', card: { id, type, data, x, y, z, w } }
-{ op: 'update', cardId: string, changes: object }
-{ op: 'move', cardId: string, to: { x?, y?, z? } }
-{ op: 'push' }  // 旧卡片后退一层
-
-// 导航状态
-activeTip: number          // 当前活跃分支的末端
-viewingId: number | null   // null = live (看最新), number = 看历史节点
-
-// 从根到目标节点重放，得到完整画面
-function computeCanvas(nodeId): Map<string, CardState>
-```
-
-### Config Store (config.js)
-
-```js
-{
-  provider: 'anthropic',
-  apiKey: string,
-  baseUrl: string,
-  model: string,
-  tavilyKey: string,
-  ttsKey: string,
-  ttsBaseUrl: string,
-  voice: 'nova',           // alloy/echo/fable/nova/onyx/shimmer
-  proxyEnabled: boolean,
-  proxyUrl: string,
-  showToolCalls: boolean,
+// ✅ 目标：operation 写入时就完整
+function addOperation(nodeId, operation) {
+  if (operation.op === 'create') {
+    operation.card.id = nextId()
+    operation.card.x = computeX(operation.card.data)
+    operation.card.y = computeY(operation.card.data)
+    operation.card.w = operation.card.data?.w || 25
+  }
+  node.operations.push(operation)
+  invalidateFrom(nodeId)
+  
+  // 通知 canvas 刷新（如果在 live 视图）
+  if (isLive) notifyCanvas()
 }
 ```
 
-## 关键流程
+#### 2. 统一的状态重建——`computeCanvas` 是唯一路径
 
-### 1. 用户发消息
+删除 `applyOperation` 中的所有状态计算逻辑。Canvas 只接收"完整的卡片快照"。
 
-```
-InputBar.send(text)
-  → useSend.enqueue({ text, branchFrom? })
-  → processSendQueue():
-      1. if branchFrom: timeline.setActiveTip(branchFrom)
-      2. canvas.beginRound() — depthLevel++, push old cards
-      3. callLLM(prompt, onToken, onSpeech)
-         onToken: parseResponse → canvas.applyOperations()
-         onSpeech: bubble.show() + tts.play()
-      4. timeline.commit(userMessage, operations)
-```
+`computeCanvas` 重放 operations，输出 `Map<id, CardSnapshot>`。这是纯函数，输入 operations，输出卡片状态。
 
-### 2. Timeline 导航
-
-```
-useTimeline: wheel/arrow → timeline.navigate(direction)
-  → computeCanvas(targetNodeId)
-  → canvas.setState(computedCards)  // 响应式更新，Vue 自动 transition
-  → bubble.showIndicator(node)
+```js
+// computeCanvas 负责所有状态计算
+function computeCanvas(nodeId) {
+  const path = getPathFromRoot(nodeId)
+  const state = new CanvasState()  // cards, depthLevel, intraZ tracking
+  
+  for (const node of path) {
+    for (const op of node.operations) {
+      state.apply(op)  // 统一的 apply 逻辑
+    }
+  }
+  return state.cards
+}
 ```
 
-### 3. 从历史分支
+IntraZ 计算、sibling push-back、depth/opacity/blur 公式——全部在 `computeCanvas` 的 `state.apply()` 中实现。
+
+#### 3. Canvas 只做两件事
 
 ```
-user viewing node B, sends new message F:
-  → branchFrom = B.id
-  → timeline.setActiveTip(B.id)
-  → canvas 当前是 B 的画面（通过 computeCanvas(B) 计算的）
-  → 正常 LLM 流程，新操作记录在新节点 F
-  → F.parentId = B.id, B.childIds.push(F.id)
+canvas.applySnapshot(snapshot, { animate: true })   // 增量动画（streaming）
+canvas.applySnapshot(snapshot, { animate: false })   // 瞬时切换（navigation）
 ```
 
-### 4. 卡片渲染 (BlockCard.vue)
+Canvas 的工作：
+- 接收 snapshot（Map<id, CardSnapshot>）
+- Diff 现有 DOM 和 snapshot
+- animate=true：entrance 动画、position 过渡
+- animate=false：morphing（匹配 contentKey → 过渡，新增 → fly-in，删除 → fade-out）
 
-```vue
-<template>
-  <div class="v-block"
-    :style="cardStyle"    <!-- position, transform, opacity, filter 全 computed -->
-    @click="toggleSelect"
-  >
-    <div class="win-bar">{{ card.type }}</div>
-    <div class="win-body">
-      <CardContent :type="card.type" :data="card.data" />
-      <!-- CardContent 内部 switch 11 种类型 -->
-    </div>
-  </div>
-</template>
+Canvas **不**持有 `depthLevel`、`currentRoundIds`、`currentRoundDepth` 这些状态。
+
+#### 4. 动画交给 CSS + 单次 requestAnimationFrame
+
+删除所有 setTimeout 动画。用 CSS transition + `requestAnimationFrame` 批量应用状态变更：
+
+```js
+function applySnapshot(snapshot, { animate }) {
+  // 1. 同步：标记要删除的、要更新的、要创建的
+  // 2. 同步：设置初始状态（opacity:0 for new cards）
+  // 3. requestAnimationFrame：设置目标状态，CSS transition 自动过渡
+}
 ```
 
-所有视觉属性 (x, y, z, opacity, scale, blur) 是响应式的。
-CSS transition 在 .v-block 上，改数据 = 自动动画。
+一个 rAF，不用 setTimeout。CSS transition 自动处理中断（新的 applySnapshot 来了 → CSS 从当前值过渡到新值）。
 
-## 设计决策
+#### 5. Selection 是 Canvas 的 UI 层状态
 
-1. **活树 > 快照**: 节点只存 diff，画面通过重放计算。无冗余，分支天然正确。
-2. **卡片 ID 全局自增**: `card-${counter++}`，永不碰撞。
-3. **数据驱动 > DOM 操作**: 不存 innerHTML，从 card.data 渲染。update = 改数据，Vue 自动更新。
-4. **CSS transition > JS 动画**: 改 style 属性，浏览器优化。
-5. **Pinia > 全局变量**: 响应式、devtools 友好、可持久化。
-6. **composables 封装副作用**: LLM/TTS/STT 都是 async 副作用，用 composable 隔离。
+Selection 不进入 timeline。`promote` operation 在 push 前由 useSend 写入——这是"用户选中这些卡片作为上下文"的语义记录。
 
-## 迁移策略
+Canvas 的 selection 只影响视觉（高亮、z 提升），不影响数据。
 
-Phase 1: 基础框架 + 卡片渲染 (不含 timeline)
-Phase 2: LLM 集成 + 流式渲染
-Phase 3: 活树 timeline + 分支导航
-Phase 4: TTS/STT + push-to-talk
-Phase 5: 配置面板 + 部署
+---
 
-## System Prompt
+## 模块职责
 
-从现有 app.js 的 SYSTEM 常量原样迁移到 useLLM.js。
+### timeline.js
+
+```
+拥有: nodes, operations, activeTip, viewingId, nodeCounter
+暴露: addOperation, computeCanvas, navigate, branchFrom, getBubbleInfo
+不触碰: canvas state, DOM, animation
+```
+
+`computeCanvas` 是纯函数。用 `CanvasState` 类封装重放逻辑：
+
+```js
+class CanvasState {
+  cards = new Map()
+  depthLevel = 0
+  pinnedIds = new Set()  // from promote + update + move
+  
+  apply(op) {
+    switch (op.op) {
+      case 'promote': this.pinnedIds.add(op.cardId); break
+      case 'push': this.pushAll(); break
+      case 'create': this.createCard(op); break
+      case 'update': this.updateCard(op); break
+      case 'move': this.moveCard(op); break
+      case 'remove': this.cards.delete(op.cardId); break
+    }
+  }
+  
+  pushAll() {
+    this.depthLevel++
+    this.cards.forEach((card, id) => {
+      if (this.pinnedIds.has(id)) {
+        card.depth = this.depthLevel
+        return
+      }
+      // depth/opacity/blur/scale 公式
+    })
+  }
+  
+  createCard(op) {
+    const c = op.card
+    this.cards.set(c.id, {
+      // 所有属性都从 operation 读取
+      // intraZ 在这里计算——基于同 round 已有的 cards
+    })
+  }
+}
+```
+
+### canvas.js
+
+```
+拥有: cards (reactive Map), selectedIds, greetingVisible
+暴露: applySnapshot, toggleSelect, clearSelection, getSelectedContext
+不触碰: timeline data, operation processing
+```
+
+Canvas 不再有 `applyOperation`、`pushOldBlocks`、`beginRound`、`depthLevel`、`currentRoundIds`。
+
+```js
+function applySnapshot(snapshot, { animate = true } = {}) {
+  const targetByKey = indexByContentKey(snapshot)
+  const existingByKey = indexByContentKey(cards)
+  
+  // Diff
+  const toUpdate = []   // contentKey 匹配
+  const toRemove = []   // 只在 existing 中
+  const toCreate = []   // 只在 snapshot 中
+  
+  // Apply
+  if (animate) {
+    // 1. Set initial state for new cards (opacity:0, z:-200)
+    // 2. rAF → set target state, CSS transition handles the rest
+  } else {
+    // Direct assignment, no animation
+  }
+}
+```
+
+### useSend.js
+
+```
+职责: 协调 LLM 调用 → 写 timeline → 控制 bubble
+```
+
+不再直接读写 canvas state（除了 `getSelectedContext` 和 `selectedIds` for promote）。
+
+Streaming 回调改为：
+```js
+onToken(partial) {
+  // parse → 检测新 blocks/commands → timeline.addOperation()
+  // timeline 内部决定是否通知 canvas 刷新
+}
+```
+
+### useTimeline.js
+
+```
+职责: 键盘/滚轮事件 → 导航 → 触发 canvas 刷新
+```
+
+```js
+function navigateAndRestore(direction) {
+  if (!timeline.navigate(direction)) return false
+  
+  const nodeId = timeline.viewingId ?? timeline.activeTip
+  const snapshot = timeline.computeCanvas(nodeId)
+  canvas.applySnapshot(snapshot, { animate: true })
+  
+  if (timeline.isLive) {
+    hideBubble()
+  } else {
+    showBubble()
+  }
+}
+```
+
+---
+
+## 状态对照表
+
+| 状态 | 当前归属 | 目标归属 | 原因 |
+|------|---------|---------|------|
+| card id | canvas (运行时) → 回写 timeline | timeline (写入时) | 已修 |
+| card x/y | canvas 计算 → 回写 timeline | timeline (写入时) | 已修 |
+| card intraZ | canvas 独有 | computeCanvas 计算 | 导航时能重建 |
+| depthLevel | canvas + timeline 各一份 | timeline (computeCanvas) | 消除双源 |
+| currentRoundIds | canvas | computeCanvas 内部 | 不需要持久化 |
+| selection | canvas | canvas | UI 状态，正确位置 |
+| promote | timeline operation | timeline operation | 已修，正确 |
+| bubble text | useSend + useTimeline 混合 | 分离为两个独立源 | 已修 |
+
+---
+
+## 迁移步骤
+
+1. **提取 CanvasState 类** — 从 computeCanvas 和 applyOperation 中抽取状态计算逻辑，统一到一个类
+2. **让 computeCanvas 使用 CanvasState** — 替换现有的 switch/case 块
+3. **让 addOperation 的 live 路径也走 computeCanvas** — 删除 canvas.applyOperation，改为 `canvas.applySnapshot(computeCanvas(nodeId))`
+4. **重写 canvas.applySnapshot** — 合并 restoreFrom + applyOperation 的 UI 逻辑，用 rAF 替代 setTimeout
+5. **清理 canvas store** — 删除 depthLevel、currentRoundIds、pushOldBlocks、beginRound、ensureCurrentRoundVisible
+6. **更新 useSend** — 删除 canvas.beginRound()、canvas.isStreaming、ensureCurrentRoundVisible 调用
+
+每一步都可以独立验证——旧测试应该持续通过。
