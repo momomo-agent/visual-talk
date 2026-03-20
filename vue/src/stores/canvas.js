@@ -365,9 +365,35 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedIds.value.forEach(id => {
       const card = cards.get(id)
       if (card) {
+        // Replicate el.innerText: concatenate all visible text fields
         const d = card.data
-        const text = d.title || d.text || d.content || d.value || d.caption || ''
-        texts.push(String(text).slice(0, 200))
+        const parts = []
+        if (d.title) parts.push(d.title)
+        if (d.sub) parts.push(d.sub)
+        if (d.label) parts.push(d.label)
+        if (d.value != null) parts.push(String(d.value) + (d.unit || ''))
+        if (d.text) parts.push(d.text)
+        if (d.content) parts.push(d.content)
+        if (d.caption) parts.push(d.caption)
+        if (d.code) parts.push(d.code)
+        if (d.author) parts.push(d.author)
+        if (d.source) parts.push(d.source)
+        if (d.footer) parts.push(d.footer)
+        if (d.tags?.length) parts.push(d.tags.join(', '))
+        if (d.items?.length) {
+          d.items.forEach(it => {
+            const t = typeof it === 'string' ? it : (it.text || it.title || it.label || '')
+            if (t) parts.push(t)
+          })
+        }
+        if (d.cols?.length) {
+          d.cols.forEach(c => {
+            if (c.name) parts.push(c.name)
+            ;(c.items || []).forEach(it => { if (it) parts.push(String(it)) })
+          })
+        }
+        const text = parts.join('\n')
+        if (text) texts.push(text.slice(0, 200))
       }
     })
     return texts.length ? texts.join('\n---\n') : null
