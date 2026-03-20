@@ -1,8 +1,8 @@
 <template>
   <CanvasSpace @click-canvas="blurInput" />
   <SpeechBubble
-    :text="timelineBubbleText || bubbleText"
-    :visible="timelineBubbleVisible || bubbleVisible"
+    :text="isScrollingTimeline ? timelineBubbleText : bubbleText"
+    :visible="isScrollingTimeline ? timelineBubbleVisible : bubbleVisible"
   />
   <ThinkingDots :visible="isThinking" />
   <InputBar
