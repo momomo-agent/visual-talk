@@ -330,14 +330,16 @@ export const useTimelineStore = defineStore('timeline', () => {
   function findCardsByTitle(nodeId, titleQuery) {
     const snapshot = computeCanvas(nodeId)
     const target = (titleQuery || '').toLowerCase()
-    const matched = []
+    // Exact match first, then substring fallback
+    const exact = []
+    const partial = []
     snapshot.forEach((card, id) => {
       const cardTitle = getCardTitle(card)
-      if (cardTitle && cardTitle.includes(target)) {
-        matched.push(id)
-      }
+      if (!cardTitle) return
+      if (cardTitle === target) exact.push(id)
+      else if (cardTitle.includes(target)) partial.push(id)
     })
-    return matched
+    return exact.length ? exact : partial
   }
 
   /**
