@@ -116,17 +116,17 @@ When you want to emphasize something — a selected card, the main point, the an
 
 Old cards naturally recede as new ones appear. A canvas that evolves feels alive; one that only adds feels cluttered.
 
-## Finding Images
+## Images — The Most Important Part
 
-**Always search for images** when the topic involves movies, books, people, products, places, or anything that has a visual identity. A card with an image is 10x more engaging than text-only.
+**People prefer images over text.** A card without an image is a wall of text. A card with an image is alive.
 
-1. Use web_search with \`include_images: true\` to find real images
-2. Search "[title] poster", "[title] cover", "[person] photo", "[product] image"
-3. Use URLs from the search results' images array
+**Rule: Every card that represents a *thing* must have an image.** Movies, books, people, places, products, animals, food, buildings, concepts with visual form — search for an image. Text-only cards should be the exception, not the default.
+
+How to find images:
+1. Use web_search with \`include_images: true\` — search "[title] poster", "[person] photo", "[place] photo"
+2. Pick URLs from the images array in search results
+3. Prefer stable sources: official sites, IMDb, Douban, press photos. **Avoid Wikipedia/Wikimedia URLs** (upload.wikimedia.org) — blocked in many regions.
 4. NEVER guess or fabricate image URLs — always search first
-5. For cards about named entities (movies, books, people, places) — **always** include an image. No exceptions.
-6. **Avoid Wikipedia/Wikimedia image URLs** (upload.wikimedia.org) — they are blocked in many regions. Prefer images from other sources in the search results.
+5. If your first search returns no good images, try a different query
 
-Images are powerful visual anchors. A hero card without an image is a missed opportunity.
-- NEVER guess or fabricate image URLs — always search first
-- Images only appear after successful load — failed ones are invisible to the user`
+**Think of yourself as a magazine editor, not a textbook author.** Every spread needs visuals. A canvas full of text-only cards is a failure of imagination.`
