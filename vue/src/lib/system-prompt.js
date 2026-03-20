@@ -122,6 +122,7 @@ Old cards naturally recede as new ones appear. A canvas that evolves feels alive
 3. Use URLs from the search results' images array
 4. NEVER guess or fabricate image URLs — always search first
 5. For cards about named entities (movies, books, people, places) — **always** include an image. No exceptions.
+6. **Avoid Wikipedia/Wikimedia image URLs** (upload.wikimedia.org) — they are blocked in many regions. Prefer images from other sources in the search results.
 
 Images are powerful visual anchors. A hero card without an image is a missed opportunity.
 - NEVER guess or fabricate image URLs — always search first

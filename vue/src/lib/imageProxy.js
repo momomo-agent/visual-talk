@@ -22,6 +22,8 @@ export function handleImageError(event) {
   const retries = parseInt(img.dataset.retries || '0')
   const originalSrc = img.dataset.originalSrc || img.src
 
+  if (!img.dataset.originalSrc) img.dataset.originalSrc = originalSrc
+
   if (retries === 0) {
     img.dataset.retries = '1'
     img.src = getProxiedUrl(originalSrc, 1)
@@ -29,6 +31,12 @@ export function handleImageError(event) {
     img.dataset.retries = '2'
     img.src = getProxiedUrl(originalSrc, 2)
   } else {
-    img.style.display = 'none'
+    // Show placeholder instead of hiding — preserve card layout
+    img.style.objectFit = 'contain'
+    img.style.background = 'rgba(0,0,0,0.08)'
+    img.style.minHeight = '80px'
+    img.removeAttribute('src')
+    // Prevent infinite error loop
+    img.onerror = null
   }
 }
