@@ -53,10 +53,19 @@ export function useSend({ tts } = {}) {
    * Resolves target cards via timeline data (id or title match).
    */
   function processCommands(commands, nodeId, timeline) {
-    // Search current node's canvas state — includes cards just created in this round
     commands.forEach(cmd => {
-      const target = (cmd.title || '').toLowerCase()
-      const matchedIds = timeline.findCardsByTitle(nodeId, target)
+      let matchedIds = []
+
+      // Key-based matching (primary — precise, unique)
+      if (cmd.key) {
+        matchedIds = timeline.findCardsByKey(nodeId, cmd.key)
+      }
+
+      // Title fallback (legacy — fuzzy, noise-tolerant)
+      if (!matchedIds.length && cmd.title) {
+        const target = cmd.title.toLowerCase()
+        matchedIds = timeline.findCardsByTitle(nodeId, target)
+      }
 
       if (cmd.cmd === 'move') {
         matchedIds.forEach(cardId => {

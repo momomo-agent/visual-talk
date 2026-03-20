@@ -89,11 +89,14 @@ export function buildCanvasContext(snapshot) {
   entries.forEach(([id, card]) => {
     if (card.depth === maxDepth) {
       try {
-        currentGroup.push(`<!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
+        const keyTag = card.data?.key ? `[${card.data.key}] ` : ''
+        currentGroup.push(`${keyTag}<!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
       } catch { }
     } else {
+      const key = card.data?.key
       const title = getCardTitle(card)
-      if (title) olderCards.push(`"${title}"`)
+      if (key) olderCards.push(`[${key}]`)
+      else if (title) olderCards.push(`"${title}"`)
     }
   })
 

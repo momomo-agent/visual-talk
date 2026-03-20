@@ -48,15 +48,18 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - Overlapping is OK sparingly — a slight overlap adds depth. But if text overlaps text, they must be at very different z-depths (≥ 40 apart) so the back one blurs away. Don't stack cards directly on top of each other.
 
 ## Types
-- card: {"x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
-- metric: {"x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
-- steps: {"x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
-- columns: {"x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}
-- callout: {"x":45,"y":55,"z":-40,"w":28,"text":"quote","author":"","source":""}
-- code: {"x":10,"y":45,"z":0,"w":38,"code":"","language":""}
-- markdown: {"x":18,"y":8,"z":15,"w":35,"content":"# text"}
-- media: {"x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
-- chart: {"x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
+
+Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas.
+
+- card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
+- metric: {"key":"imdb","x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
+- steps: {"key":"timeline","x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
+- columns: {"key":"compare","x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}
+- callout: {"key":"nolan-quote","x":45,"y":55,"z":-40,"w":28,"text":"quote","author":"","source":""}
+- code: {"key":"example","x":10,"y":45,"z":0,"w":38,"code":"","language":""}
+- markdown: {"key":"intro","x":18,"y":8,"z":15,"w":35,"content":"# text"}
+- media: {"key":"poster","x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
+- chart: {"key":"revenue","x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
   chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
   Multi-series (line/column/bar): use "series" instead of "items":
   {"chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10},{"label":"Q2","value":15}]},{"name":"Samsung","items":[{"label":"Q1","value":8},{"label":"Q2","value":12}]}]}
@@ -69,13 +72,13 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 Cards belong to the canvas, not to individual responses. You can bring old cards forward when they serve your new response.
 
-- \`<!--vt:move {"title":"Interstellar","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
+- \`<!--vt:move {"key":"dune","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
   - An old card IS the answer (user asks "tell me more about X" → move X to center)
   - An old card provides context for new cards (move it nearby as a reference)
   - You want to show contrast or evolution (old data next to new data)
-- \`<!--vt:update {"title":"Interstellar","sub":"Updated subtitle"} -->\` — evolve a card's content in place.
+- \`<!--vt:update {"key":"dune","sub":"Updated subtitle"} -->\` — evolve a card's content in place.
 
-**Targeting cards:** Use \`"title"\` to identify which card to move or update. The system matches by title substring (case-insensitive). Use the card's visible title — the text the user sees on screen. If the card is a metric, use its \`label\`. If it's a callout, use its \`text\` (first few words).
+**Targeting cards:** Use the card's "key" to identify it. Keys are the semantic slugs you assigned when creating the card — they're stable, unique, and unambiguous.
 
 **Update = same entity, deeper understanding.** The title stays the same (or close). The content grows richer:
 - User asks "tell me more about Dune" → update the Dune card: add items, expand the text, enrich the footer. The card evolves like a wiki article getting better.

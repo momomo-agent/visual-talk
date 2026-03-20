@@ -328,6 +328,24 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Returns array of card IDs that match.
    */
   /**
+   * Find a card by its semantic key (exact match).
+   * Keys are LLM-assigned, unique, and stable.
+   */
+  function findCardsByKey(nodeId, key) {
+    const snapshot = (nodeId === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(nodeId)
+
+    const target = (key || '').toLowerCase()
+    const matched = []
+    snapshot.forEach((card, id) => {
+      const cardKey = (card.data?.key || '').toLowerCase()
+      if (cardKey && cardKey === target) matched.push(id)
+    })
+    return matched
+  }
+
+  /**
    * Find cards by title in the current live state or computed snapshot.
    * During streaming, uses liveState for O(n) lookup without recomputation.
    * Falls back to computeCanvas for navigation/historical queries.
@@ -392,6 +410,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getBubbleInfo,
     reset,
     resetLiveState,
+    findCardsByKey,
     findCardsByTitle,
     getCanvasContext,
     getSelectedContext,
