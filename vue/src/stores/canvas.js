@@ -184,7 +184,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = 200
+      card.z = 120
       card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999

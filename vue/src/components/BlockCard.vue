@@ -312,8 +312,8 @@ function onMouseEnter() {
     blur: props.card.blur,
   }
   // Direct mutation through reactive proxy
-  props.card.z = 60
-  props.card.scale = 1.04
+  props.card.z = 80
+  props.card.scale = 1.05
   props.card.opacity = 1
   props.card.zIndex = 150
   props.card.blur = 0
