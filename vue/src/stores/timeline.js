@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { useCanvasStore } from './canvas.js'
+import { nextId } from '../lib/id.js'
 
 /**
  * Timeline Store — Active Tree
@@ -62,24 +63,30 @@ export const useTimelineStore = defineStore('timeline', () => {
   function addOperation(nodeId, operation) {
     const node = nodes.get(nodeId)
     if (!node) return
+
+    // Assign card identity at timeline level — never depend on canvas apply
+    if (operation.op === 'create' && operation.card && !operation.card.id) {
+      const canvas = useCanvasStore()
+      operation.card.id = nextId()
+      // Pre-compute position so computeCanvas can reconstruct accurately
+      const data = operation.card.data || {}
+      operation.card.x = data.x != null ? 5 + (data.x / 100) * 90 : 50
+      operation.card.y = data.y != null ? 5 + (data.y / 100) * 75 : 30
+      operation.card.w = data.w || operation.card.w || 25
+    }
+
     node.operations.push(operation)
     invalidateFrom(nodeId)
 
-    // If this is the live node, incrementally apply to canvas
+    // If this is the live node AND user is viewing it, apply to canvas
     if (nodeId === activeTip.value && viewingId.value == null) {
       const canvas = useCanvasStore()
       const result = canvas.applyOperation(operation)
-      // For create operations, record the generated card ID back into the operation
-      // so computeCanvas can reconstruct the same card identity
+      // Capture runtime-computed values back into the operation
       if (operation.op === 'create' && result != null && operation.card) {
-        operation.card.id = result
-        // Also capture the card's computed position/z values
         const card = canvas.cards.get(result)
         if (card) {
-          operation.card.x = card.x
-          operation.card.y = card.y
           operation.card.z = card._targetZ ?? card.z
-          operation.card.w = card.w
           operation.card.zIndex = card.zIndex
           operation.card.intraZ = card.intraZ
         }
