@@ -69,15 +69,13 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 Cards belong to the canvas, not to individual responses. You can bring old cards forward when they serve your new response.
 
-- \`<!--vt:move {"id":"card-3","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
+- \`<!--vt:move {"title":"Interstellar","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
   - An old card IS the answer (user asks "tell me more about X" → move X to center)
   - An old card provides context for new cards (move it nearby as a reference)
   - You want to show contrast or evolution (old data next to new data)
-- \`<!--vt:update {"id":"card-3","newTitle":"New","sub":"Updated"} -->\` — evolve a card's content in place.
+- \`<!--vt:update {"title":"Interstellar","sub":"Updated subtitle"} -->\` — evolve a card's content in place.
 
-**Targeting cards:** Each card has a stable ID like \`card-3\`. You can see these IDs in the canvas state (\`[card-3] <!--vt:card ...-->\`). Always use \`"id":"card-3"\` to target a specific card — it's precise and unambiguous. Fallback: \`"title":"Interstellar"\` matches by title substring (case-insensitive) if you don't have the ID.
-
-**How update matching works:** The system finds cards by matching the \`id\` field first (exact match), then falls back to \`title\` (substring, case-insensitive). Use the card's ID from canvas state when available.
+**Targeting cards:** Use \`"title"\` to identify which card to move or update. The system matches by title substring (case-insensitive). Use the card's visible title — the text the user sees on screen. If the card is a metric, use its \`label\`. If it's a callout, use its \`text\` (first few words).
 
 **Update = same entity, deeper understanding.** The title stays the same (or close). The content grows richer:
 - User asks "tell me more about Dune" → update the Dune card: add items, expand the text, enrich the footer. The card evolves like a wiki article getting better.

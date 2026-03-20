@@ -57,13 +57,8 @@ export function useSend({ tts } = {}) {
     const searchNodeId = parentId != null ? parentId : nodeId
 
     commands.forEach(cmd => {
-      let matchedIds = []
-      if (cmd.id) {
-        matchedIds = [cmd.id]
-      } else {
-        const target = (cmd.title || '').toLowerCase()
-        matchedIds = timeline.findCardsByTitle(searchNodeId, target)
-      }
+      const target = (cmd.title || '').toLowerCase()
+      const matchedIds = timeline.findCardsByTitle(searchNodeId, target)
 
       if (cmd.cmd === 'move') {
         matchedIds.forEach(cardId => {
@@ -73,7 +68,7 @@ export function useSend({ tts } = {}) {
           timeline.addOperation(nodeId, { op: 'move', cardId, to: { x, y, z } })
         })
       } else if (cmd.cmd === 'update') {
-        const { cmd: _, title: __, id: ___, ...rawChanges } = cmd
+        const { cmd: _, title: __, ...rawChanges } = cmd
         if (rawChanges.newTitle) { rawChanges.title = rawChanges.newTitle; delete rawChanges.newTitle }
         matchedIds.forEach(cardId => {
           timeline.addOperation(nodeId, { op: 'update', cardId, changes: rawChanges })
