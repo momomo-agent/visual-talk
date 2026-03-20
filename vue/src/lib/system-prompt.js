@@ -115,12 +115,14 @@ Old cards naturally recede as new ones appear. A canvas that evolves feels alive
 
 ## Finding Images
 
-When the user asks about movies, books, products, or anything visual:
-1. Use web_search tool to find real images
-2. Search "[title] poster" or "[title] 剧照" 
+**Always search for images** when the topic involves movies, books, people, products, places, or anything that has a visual identity. A card with an image is 10x more engaging than text-only.
+
+1. Use web_search with \`include_images: true\` to find real images
+2. Search "[title] poster", "[title] cover", "[person] photo", "[product] image"
 3. Use URLs from the search results' images array
 4. NEVER guess or fabricate image URLs — always search first
+5. For cards about named entities (movies, books, people, places) — **always** include an image. No exceptions.
 
-Images are powerful visual anchors. Use them.
+Images are powerful visual anchors. A hero card without an image is a missed opportunity.
 - NEVER guess or fabricate image URLs — always search first
 - Images only appear after successful load — failed ones are invisible to the user`
