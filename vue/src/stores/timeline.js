@@ -360,14 +360,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     const mm = String(time.getMinutes()).padStart(2, '0')
 
     const sib = siblingInfo.value
-    let text = `${hh}:${mm}`
+    const left = sib?.hasLeft ? '‹ ' : ''
+    const right = sib?.hasRight ? ' ›' : ''
+
+    let text = `${left}${hh}:${mm}${right}`
     if (node.userMessage) {
-      text += `\n${node.userMessage}`
-    }
-    if (sib) {
-      const left = sib.hasLeft ? '‹ ' : ''
-      const right = sib.hasRight ? ' ›' : ''
-      text = `${left}${text}${right}`
+      const msg = node.userMessage.slice(0, 30)
+      text += `\n"${msg}"`
     }
 
     return { text, hasSiblings: !!sib }
