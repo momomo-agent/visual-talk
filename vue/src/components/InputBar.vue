@@ -9,6 +9,7 @@
       @keydown="onKeyDown"
     />
     <button
+      v-if="voiceEnabled"
       class="mic-btn"
       :class="{ recording: recording, active: micActive }"
       @mousedown.prevent="$emit('mic-down')"
@@ -32,6 +33,7 @@ import { ref } from 'vue'
 const props = defineProps({
   recording: { type: Boolean, default: false },
   micActive: { type: Boolean, default: false },
+  voiceEnabled: { type: Boolean, default: false },
 })
 const emit = defineEmits(['send', 'mic-down', 'mic-up'])
 
