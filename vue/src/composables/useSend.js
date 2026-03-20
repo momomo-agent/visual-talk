@@ -186,12 +186,17 @@ export function useSend({ tts } = {}) {
 
         if (commands.length > lastCommandCount) {
           commands.slice(lastCommandCount).forEach(cmd => {
-            const target = (cmd.title || '').toLowerCase()
-            // Find cards in timeline data (not canvas view layer)
-            // Use parent node to search — commands target existing cards before this round
-            const parentId = timeline.nodes.get(nodeId)?.parentId
-            const searchNodeId = parentId != null ? parentId : nodeId
-            const matchedIds = timeline.findCardsByTitle(searchNodeId, target)
+            // Find target cards — prefer id (precise), fallback to title (fuzzy)
+            let matchedIds = []
+            if (cmd.id) {
+              // Direct ID match from canvas context
+              matchedIds = [cmd.id]
+            } else {
+              const target = (cmd.title || '').toLowerCase()
+              const parentId = timeline.nodes.get(nodeId)?.parentId
+              const searchNodeId = parentId != null ? parentId : nodeId
+              matchedIds = timeline.findCardsByTitle(searchNodeId, target)
+            }
 
             if (cmd.cmd === 'move') {
               matchedIds.forEach(cardId => {

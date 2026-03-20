@@ -69,13 +69,15 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 Cards belong to the canvas, not to individual responses. You can bring old cards forward when they serve your new response.
 
-- \`<!--vt:move {"title":"TITLE","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
+- \`<!--vt:move {"id":"card-3","x":50,"y":20,"z":40} -->\` — pull an existing card into your new composition. Use this when:
   - An old card IS the answer (user asks "tell me more about X" → move X to center)
   - An old card provides context for new cards (move it nearby as a reference)
   - You want to show contrast or evolution (old data next to new data)
-- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — evolve a card's content in place.
+- \`<!--vt:update {"id":"card-3","newTitle":"New","sub":"Updated"} -->\` — evolve a card's content in place.
 
-**How update matching works:** The system finds cards by matching the \`title\` field against existing card titles (substring match, case-insensitive). So \`"title":"Interstellar"\` will find a card titled "星际穿越" only if that exact text appears. Use the card's visible title text — the one the user can see on screen.
+**Targeting cards:** Each card has a stable ID like \`card-3\`. You can see these IDs in the canvas state (\`[card-3] <!--vt:card ...-->\`). Always use \`"id":"card-3"\` to target a specific card — it's precise and unambiguous. Fallback: \`"title":"Interstellar"\` matches by title substring (case-insensitive) if you don't have the ID.
+
+**How update matching works:** The system finds cards by matching the \`id\` field first (exact match), then falls back to \`title\` (substring, case-insensitive). Use the card's ID from canvas state when available.
 
 **Update = same entity, deeper understanding.** The title stays the same (or close). The content grows richer:
 - User asks "tell me more about Dune" → update the Dune card: add items, expand the text, enrich the footer. The card evolves like a wiki article getting better.

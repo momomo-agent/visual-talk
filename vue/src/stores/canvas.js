@@ -247,19 +247,19 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function getCanvasContext() {
-    const allCards = Array.from(cards.values())
+    const allCards = Array.from(cards.entries())
     if (!allCards.length) return null
-    const maxDepth = Math.max(...allCards.map(c => c.depth || 0), 0)
+    const maxDepth = Math.max(...allCards.map(([, c]) => c.depth || 0), 0)
     const currentGroup = []
     const olderCards = []
-    allCards.forEach(card => {
+    allCards.forEach(([id, card]) => {
       if (card.depth === maxDepth) {
         try {
-          currentGroup.push(`<!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
+          currentGroup.push(`[${id}] <!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
         } catch { }
       } else {
         const title = getCardTitle(card)
-        if (title) olderCards.push(`"${title}" (depth:${card.depth})`)
+        if (title) olderCards.push(`[${id}] "${title}"`)
       }
     })
     if (!currentGroup.length && !olderCards.length) return null
