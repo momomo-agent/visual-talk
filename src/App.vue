@@ -22,6 +22,7 @@
       :class="{ fading: log.fading }"
     >{{ log.text }}</div>
   </div>
+  <button class="gear-btn" style="right: 40px" @click="handleNewChat" title="新对话">+</button>
   <button class="gear-btn" @click="configOpen = true">⚙</button>
   <ConfigPanel v-model:open="configOpen" />
 </template>
@@ -39,12 +40,21 @@ import { useSTT } from './composables/useSTT.js'
 import { useTimeline } from './composables/useTimeline.js'
 import { useConfigStore } from './stores/config.js'
 import { useTimelineStore } from './stores/timeline.js'
+import { useForestStore } from './stores/forest.js'
 
 const configOpen = ref(false)
 const inputBar = ref(null)
 const configStore = useConfigStore()
 const timeline = useTimelineStore()
+const forest = useForestStore()
 let lastInputWasVoice = false
+
+// Initialize forest (restore persisted state)
+onMounted(async () => {
+  await forest.init()
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+})
 
 // Voice enabled: TTS has baseUrl or webSpeech is on
 const voiceEnabled = computed(() => {
@@ -143,6 +153,10 @@ function blurInput() {
   inputBar.value?.blur?.()
 }
 
+function handleNewChat() {
+  forest.newTree()
+}
+
 // Timeline navigation
 const { isScrollingTimeline } = useTimeline()
 
@@ -173,11 +187,6 @@ watch(isThinking, (thinking, wasThinkin) => {
   if (wasThinkin && !thinking) {
     lastInputWasVoice = false
   }
-})
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-  window.addEventListener('keyup', handleKeyUp)
 })
 
 onUnmounted(() => {

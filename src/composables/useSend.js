@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useConfigStore } from '../stores/config.js'
 import { useTimelineStore } from '../stores/timeline.js'
+import { useForestStore } from '../stores/forest.js'
 import { useLLM } from './useLLM.js'
 import { parseResponse } from '../lib/parser.js'
 
@@ -221,6 +222,11 @@ export function useSend({ tts } = {}) {
         isThinking.value = false
         canvas.isStreaming = false
         timeline.resetLiveState()
+
+        // Persist after each round
+        const forest = useForestStore()
+        forest.autoName(forest.activeTreeId, userMessage)
+        forest.scheduleSave()
       }
     }
     sendProcessing.value = false

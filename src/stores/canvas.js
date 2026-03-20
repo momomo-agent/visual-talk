@@ -198,6 +198,13 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
+  function clear() {
+    cards.value = new Map()
+    selectedIds.value.clear()
+    greetingVisible.value = true
+    isStreaming.value = false
+  }
+
   return {
     cards,
     selectedIds,
@@ -207,5 +214,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     toggleSelect,
     clearSelection,
     updateCardPosition,
+    clear,
   }
 })
