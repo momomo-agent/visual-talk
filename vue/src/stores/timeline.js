@@ -3,6 +3,7 @@ import { ref, reactive, computed } from 'vue'
 import { useCanvasStore } from './canvas.js'
 import { nextId } from '../lib/id.js'
 import { CanvasState } from '../lib/canvas-state.js'
+import { getCardTitle, buildCanvasContext, buildSelectedContext } from '../lib/card-utils.js'
 
 /**
  * Timeline Store — Active Tree
@@ -331,13 +332,32 @@ export const useTimelineStore = defineStore('timeline', () => {
     const target = (titleQuery || '').toLowerCase()
     const matched = []
     snapshot.forEach((card, id) => {
-      const d = card.data || {}
-      const cardTitle = (d.title || d.caption || d.text || d.content || d.label || '').toLowerCase()
+      const cardTitle = getCardTitle(card)
       if (cardTitle && cardTitle.includes(target)) {
         matched.push(id)
       }
     })
     return matched
+  }
+
+  /**
+   * Build canvas context string for LLM from timeline data.
+   */
+  function getCanvasContext(nodeId) {
+    const id = nodeId ?? viewingId.value ?? activeTip.value
+    if (id == null) return null
+    const snapshot = computeCanvas(id)
+    return buildCanvasContext(snapshot)
+  }
+
+  /**
+   * Build selected cards context for LLM from timeline data.
+   */
+  function getSelectedContext(nodeId, selectedIds) {
+    const id = nodeId ?? viewingId.value ?? activeTip.value
+    if (id == null || !selectedIds?.length) return null
+    const snapshot = computeCanvas(id)
+    return buildSelectedContext(snapshot, selectedIds)
   }
 
   return {
@@ -361,6 +381,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     reset,
     resetLiveState,
     findCardsByTitle,
+    getCanvasContext,
+    getSelectedContext,
     getPathFromRoot,
   }
 })

@@ -18,11 +18,6 @@ export const useCanvasStore = defineStore('canvas', () => {
   // Generation counter for cancelling stale transitions
   let snapshotGen = 0
 
-  function getCardTitle(card) {
-    const d = card.data
-    return (d.title || d.caption || d.text || d.content || d.label || d.code?.slice(0, 30) || '').toLowerCase()
-  }
-
   function applyDepth(card, d) {
     const z = -d * 160
     const s = Math.max(0.5, 1 - d * 0.12)
@@ -208,67 +203,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   // ─── Context for LLM ───
 
-  function getSelectedContext() {
-    const texts = []
-    selectedIds.value.forEach(id => {
-      const card = cards.get(id)
-      if (card) {
-        const d = card.data
-        const parts = []
-        if (d.title) parts.push(d.title)
-        if (d.sub) parts.push(d.sub)
-        if (d.label) parts.push(d.label)
-        if (d.value != null) parts.push(String(d.value) + (d.unit || ''))
-        if (d.text) parts.push(d.text)
-        if (d.content) parts.push(d.content)
-        if (d.caption) parts.push(d.caption)
-        if (d.code) parts.push(d.code)
-        if (d.author) parts.push(d.author)
-        if (d.source) parts.push(d.source)
-        if (d.footer) parts.push(d.footer)
-        if (d.tags?.length) parts.push(d.tags.join(', '))
-        if (d.items?.length) {
-          d.items.forEach(it => {
-            const t = typeof it === 'string' ? it : (it.text || it.title || it.label || '')
-            if (t) parts.push(t)
-          })
-        }
-        if (d.cols?.length) {
-          d.cols.forEach(c => {
-            if (c.name) parts.push(c.name)
-            ;(c.items || []).forEach(it => { if (it) parts.push(String(it)) })
-          })
-        }
-        const text = parts.join('\n')
-        if (text) texts.push(text.slice(0, 200))
-      }
-    })
-    return texts.length ? texts.join('\n---\n') : null
-  }
-
-  function getCanvasContext() {
-    const allCards = Array.from(cards.entries())
-    if (!allCards.length) return null
-    const maxDepth = Math.max(...allCards.map(([, c]) => c.depth || 0), 0)
-    const currentGroup = []
-    const olderCards = []
-    allCards.forEach(([id, card]) => {
-      if (card.depth === maxDepth) {
-        try {
-          currentGroup.push(`[${id}] <!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
-        } catch { }
-      } else {
-        const title = getCardTitle(card)
-        if (title) olderCards.push(`[${id}] "${title}"`)
-      }
-    })
-    if (!currentGroup.length && !olderCards.length) return null
-    let ctx = '[Current canvas state]\n'
-    if (currentGroup.length) ctx += `Latest cards:\n${currentGroup.join('\n')}\n`
-    if (olderCards.length) ctx += `Older (receding): ${olderCards.join(', ')}\n`
-    return ctx
-  }
-
   function updateCardPosition(id, x, y) {
     const card = cards.get(id)
     if (card) {
@@ -285,9 +219,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     applySnapshot,
     toggleSelect,
     clearSelection,
-    getSelectedContext,
-    getCanvasContext,
     updateCardPosition,
-    getCardTitle,
   }
 })
