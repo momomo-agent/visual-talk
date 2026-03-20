@@ -85,18 +85,22 @@ export const useCanvasStore = defineStore('canvas', () => {
           // Don't touch card.selected — that's UI state
         }
       } else {
-        // Card no longer in snapshot — fade out
+        // Card no longer in snapshot — fade out or remove instantly
         const card = cards.get(id)
         if (card) {
-          card.opacity = 0
-          card.z = -400
-          card.scale = 0.5
-          card.blur = 8
-          card.pointerEvents = 'none'
-          setTimeout(() => {
-            if (snapshotGen !== gen) return
+          if (animate) {
+            card.opacity = 0
+            card.z = -400
+            card.scale = 0.5
+            card.blur = 8
+            card.pointerEvents = 'none'
+            setTimeout(() => {
+              if (snapshotGen !== gen) return
+              cards.delete(id)
+            }, 800)
+          } else {
             cards.delete(id)
-          }, 600)
+          }
         }
       }
     })
@@ -118,13 +122,15 @@ export const useCanvasStore = defineStore('canvas', () => {
           entranceDelay: 0,
         })
         cards.set(target.id, card)
-        // Animate to target state
+        // Animate to target state — double rAF ensures initial state is painted first
         requestAnimationFrame(() => {
-          if (snapshotGen !== gen) return
-          card.opacity = target.opacity ?? 1
-          card.z = target.z ?? 0
-          card.scale = target.scale ?? 1
-          card.blur = target.blur ?? 0
+          requestAnimationFrame(() => {
+            if (snapshotGen !== gen) return
+            card.opacity = target.opacity ?? 1
+            card.z = target.z ?? 0
+            card.scale = target.scale ?? 1
+            card.blur = target.blur ?? 0
+          })
         })
       } else {
         // Instant: no animation
@@ -178,8 +184,8 @@ export const useCanvasStore = defineStore('canvas', () => {
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = 300
-      card.scale = 1.05
+      card.z = 200
+      card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999
       card.blur = 0
