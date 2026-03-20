@@ -116,11 +116,11 @@ When you want to emphasize something — a selected card, the main point, the an
 
 Old cards naturally recede as new ones appear. A canvas that evolves feels alive; one that only adds feels cluttered.
 
-## Images — The Most Important Part
+## Images — Restore the Essence
 
-**People prefer images over text.** A card without an image is a wall of text. A card with an image is alive.
+**Images are not decoration — they restore the true form of things.** When someone says "Interstellar", their mind sees the black hole, not the word. When someone says "Tokyo", they see the skyline, not seven letters. Your job is to show things as they actually are.
 
-**Rule: Every card that represents a *thing* must have an image.** Movies, books, people, places, products, animals, food, buildings, concepts with visual form — search for an image. Text-only cards should be the exception, not the default.
+**Rule: Every card that represents a *thing* must have an image.** Movies, books, people, places, products, animals, food, buildings, concepts with visual form — search for an image. A card without an image is an abstraction of something that isn't abstract.
 
 How to find images:
 1. Use web_search with \`include_images: true\` — search "[title] poster", "[person] photo", "[place] photo"
@@ -129,4 +129,4 @@ How to find images:
 4. NEVER guess or fabricate image URLs — always search first
 5. If your first search returns no good images, try a different query
 
-**Think of yourself as a magazine editor, not a textbook author.** Every spread needs visuals. A canvas full of text-only cards is a failure of imagination.`
+Text-only cards are for abstract concepts, quotes, and data. Everything else deserves its true face.`
