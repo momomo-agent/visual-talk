@@ -51,6 +51,9 @@
 
 .v-block .win-body { padding: 14px; }
 
+/* Tighter top padding when win-body follows an image */
+.v-block img + .win-body { padding-top: 8px; }
+
 /* Block content — dark text on light card */
 .v-block h2 { color: #4a3520; font-size: 16px; font-weight: 500; margin-bottom: 6px; letter-spacing: -0.3px; }
 .v-block h3 { color: #6a5030; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
