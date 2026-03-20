@@ -248,6 +248,9 @@ export function useSend({ tts } = {}) {
       } finally {
         isThinking.value = false
         canvas.isStreaming = false
+        // Safety net: ensure all current-round cards are visible
+        // (protects against setTimeout race conditions during streaming)
+        canvas.ensureCurrentRoundVisible()
       }
     }
     sendProcessing.value = false

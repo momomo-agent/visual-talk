@@ -112,6 +112,7 @@ export const useCanvasStore = defineStore('canvas', () => {
             card.data = { ...c.data }
             card.depth = depthLevel.value
             card.blur = 0
+            card.opacity = card.opacity || 1
             currentRoundIds.value.add(existingId)
           }
           return existingId
@@ -442,6 +443,17 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
+  function ensureCurrentRoundVisible() {
+    currentRoundIds.value.forEach(id => {
+      const card = cards.get(id)
+      if (card && card.opacity === 0) {
+        card.opacity = 1
+        card.scale = 1
+        card.blur = 0
+      }
+    })
+  }
+
   return {
     cards,
     depthLevel,
@@ -453,6 +465,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     applyOperation,
     restoreFrom,
     beginRound,
+    ensureCurrentRoundVisible,
     toggleSelect,
     clearSelection,
     getSelectedContext,
