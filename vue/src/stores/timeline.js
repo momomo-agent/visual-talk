@@ -363,10 +363,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     const left = sib?.hasLeft ? '‹ ' : ''
     const right = sib?.hasRight ? ' ›' : ''
 
-    let text = `${left}${hh}:${mm}${right}`
+    let text = `${hh}:${mm}`
     if (node.userMessage) {
       const msg = node.userMessage.slice(0, 30)
-      text += `\n"${msg}"`
+      text += `\n${left}"${msg}"${right}`
     }
 
     return { text, hasSiblings: !!sib }
