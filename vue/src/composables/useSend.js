@@ -75,8 +75,7 @@ export function useSend({ tts } = {}) {
           timeline.addOperation(nodeId, { op: 'move', cardId, to: { x, y, z } })
         })
       } else if (cmd.cmd === 'update') {
-        const { cmd: _, title: __, ...rawChanges } = cmd
-        if (rawChanges.newTitle) { rawChanges.title = rawChanges.newTitle; delete rawChanges.newTitle }
+        const { cmd: _, key: __, ...rawChanges } = cmd
         matchedIds.forEach(cardId => {
           timeline.addOperation(nodeId, { op: 'update', cardId, changes: rawChanges })
         })
