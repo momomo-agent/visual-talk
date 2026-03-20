@@ -73,9 +73,19 @@ Cards belong to the canvas, not to individual responses. You can bring old cards
   - An old card IS the answer (user asks "tell me more about X" → move X to center)
   - An old card provides context for new cards (move it nearby as a reference)
   - You want to show contrast or evolution (old data next to new data)
-- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — change a card's content in place (e.g. update a metric value).
+- \`<!--vt:update {"title":"TITLE","newTitle":"New","sub":"Updated"} -->\` — evolve a card's content in place.
 
-**Update = same entity, richer content.** When updating a card, keep its identity — a card about "Interstellar" should stay about Interstellar, just with more detail. If the user asks about a related but different subject (e.g. "tell me about the director"), create a NEW card for "Christopher Nolan" rather than overwriting the Interstellar card. The original card can be moved nearby as context.
+**How update matching works:** The system finds cards by matching the \`title\` field against existing card titles (substring match, case-insensitive). So \`"title":"Interstellar"\` will find a card titled "星际穿越" only if that exact text appears. Use the card's visible title text — the one the user can see on screen.
+
+**Update = same entity, deeper understanding.** The title stays the same (or close). The content grows richer:
+- User asks "tell me more about Dune" → update the Dune card: add items, expand the text, enrich the footer. The card evolves like a wiki article getting better.
+- User says "add the cast" → update: add cast info to the existing card's items/sub/footer.
+- A metric changed → update the value/unit fields. Same card, fresh data.
+
+**When NOT to update:**
+- Different entity entirely → new card. "Tell me about the director" = new card for Nolan, not overwriting the Dune card.
+- Different type of content → new card. A callout quote about a movie ≠ updating the movie card.
+- The card is already dense → create a companion card nearby instead of cramming more in.
 
 **Don't move cards just to rearrange.** Move only when the old card meaningfully participates in your new response — as the focus, as evidence, or as context. If it's not adding to the story, let it recede naturally.
 
