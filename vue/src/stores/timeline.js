@@ -3,7 +3,7 @@ import { ref, reactive, computed } from 'vue'
 import { useCanvasStore } from './canvas.js'
 import { nextId } from '../lib/id.js'
 import { CanvasState } from '../lib/canvas-state.js'
-import { getCardTitle, buildCanvasContext, buildSelectedContext } from '../lib/card-utils.js'
+import { getCardTitle, matchTitle, buildCanvasContext, buildSelectedContext } from '../lib/card-utils.js'
 
 /**
  * Timeline Store — Active Tree
@@ -343,9 +343,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     const partial = []
     snapshot.forEach((card, id) => {
       const cardTitle = getCardTitle(card)
-      if (!cardTitle) return
-      if (cardTitle === target) exact.push(id)
-      else if (cardTitle.includes(target) || target.includes(cardTitle)) partial.push(id)
+      const match = matchTitle(cardTitle, target)
+      if (match === 'exact') exact.push(id)
+      else if (match === 'partial') partial.push(id)
     })
     return exact.length ? exact : partial
   }

@@ -3,6 +3,16 @@
  * No store dependencies — operates on plain card objects.
  */
 
+// Strip emoji, numbering prefixes, and excess punctuation for fuzzy matching
+const EMOJI_RE = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu
+function normalizeForMatch(text) {
+  return text
+    .replace(EMOJI_RE, '')        // strip emoji
+    .replace(/^[\d.)\]]+\s*/, '') // strip leading "1. " "2) " etc
+    .replace(/^[-–—•*#]+\s*/, '') // strip leading bullets/hashes
+    .trim()
+}
+
 /**
  * Extract a human-readable title from any card type.
  * Returns lowercase string.
@@ -10,6 +20,23 @@
 export function getCardTitle(card) {
   const d = card.data || card
   return (d.title || d.caption || d.text || d.content || d.label || d.code?.slice(0, 30) || '').toLowerCase()
+}
+
+/**
+ * Match a query against a card title with noise tolerance.
+ * Returns: 'exact' | 'partial' | null
+ */
+export function matchTitle(cardTitle, query) {
+  if (!cardTitle || !query) return null
+  if (cardTitle === query) return 'exact'
+
+  // Normalize both for fuzzy comparison
+  const normCard = normalizeForMatch(cardTitle)
+  const normQuery = normalizeForMatch(query)
+
+  if (normCard === normQuery) return 'exact'
+  if (normCard.includes(normQuery) || normQuery.includes(normCard)) return 'partial'
+  return null
 }
 
 /**
