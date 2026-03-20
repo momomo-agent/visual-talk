@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="blockRef"
     class="v-block"
     :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
     :style="cardStyle"
@@ -224,7 +225,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-select', 'update-position'])
-
+const blockRef = ref(null)
 const glowBreathing = ref(false)
 
 const typeLabels = {
@@ -359,8 +360,9 @@ function onMouseDown(e) {
       isDragging = true
     }
     if (isDragging) {
-      const cw = window.innerWidth
-      const ch = window.innerHeight
+      const el = blockRef.value
+      const cw = el?.parentElement?.offsetWidth || window.innerWidth
+      const ch = el?.parentElement?.offsetHeight || window.innerHeight
       emit('update-position', origLeft + (dx / cw) * 100, origTop + (dy / ch) * 100)
     }
   }
