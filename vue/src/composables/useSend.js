@@ -10,10 +10,10 @@ import { parseResponse } from '../lib/parser.js'
  * 
  * Data flow:
  *   User input → LLM streaming → timeline.addOperation()
- *                                         ↓ (auto-notify)
- *                                 canvas.applyOperation()
+ *                                         ↓
+ *                                 timeline: computeCanvas → canvas.applySnapshot()
  * 
- * useSend ONLY writes to timeline. Canvas is derived automatically.
+ * useSend ONLY writes to timeline. Canvas updates automatically.
  */
 export function useSend({ tts } = {}) {
   const sendQueue = ref([])
@@ -84,16 +84,10 @@ export function useSend({ tts } = {}) {
       const parentId = timeline.getBranchPoint()
       const nodeId = timeline.branchFrom(parentId, userMessage)
 
-      // Prepare canvas for new round
-      canvas.beginRound()
-
       let pushRecorded = false
       let lastBlockCount = 0
       let lastCommandCount = 0
       let speechHandled = false
-
-      // Card ID tracking for commands (need to find cards BEFORE command execution)
-      let globalCardIndex = 0
 
       try {
         const cfg = configStore.getConfig()
@@ -170,7 +164,7 @@ export function useSend({ tts } = {}) {
                   card: {
                     type: b.type,
                     data: { ...b.data },
-                    contentKey: `r${canvas.depthLevel}-${idx}`,
+                    contentKey: `n${nodeId}-${idx}`,
                   },
                 })
               })
@@ -234,7 +228,7 @@ export function useSend({ tts } = {}) {
               card: {
                 type: b.type,
                 data: { ...b.data },
-                contentKey: `r${canvas.depthLevel}-${idx}`,
+                contentKey: `n${nodeId}-${idx}`,
               },
             })
           })
@@ -256,9 +250,7 @@ export function useSend({ tts } = {}) {
       } finally {
         isThinking.value = false
         canvas.isStreaming = false
-        // Safety net: ensure all current-round cards are visible
-        // (protects against setTimeout race conditions during streaming)
-        canvas.ensureCurrentRoundVisible()
+        timeline.resetLiveState()
       }
     }
     sendProcessing.value = false

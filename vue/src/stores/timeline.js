@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { useCanvasStore } from './canvas.js'
 import { nextId } from '../lib/id.js'
+import { CanvasState } from '../lib/canvas-state.js'
 
 /**
  * Timeline Store — Active Tree
@@ -60,15 +61,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     return id
   }
 
+  // Live streaming state — incremental CanvasState for the active node
+  let liveState = null
+
   function addOperation(nodeId, operation) {
     const node = nodes.get(nodeId)
     if (!node) return
 
     // Assign card identity at timeline level — never depend on canvas apply
     if (operation.op === 'create' && operation.card && !operation.card.id) {
-      const canvas = useCanvasStore()
       operation.card.id = nextId()
-      // Pre-compute position so computeCanvas can reconstruct accurately
       const data = operation.card.data || {}
       operation.card.x = data.x != null ? 5 + (data.x / 100) * 90 : 50
       operation.card.y = data.y != null ? 5 + (data.y / 100) * 75 : 30
@@ -78,20 +80,39 @@ export const useTimelineStore = defineStore('timeline', () => {
     node.operations.push(operation)
     invalidateFrom(nodeId)
 
-    // If this is the live node AND user is viewing it, apply to canvas
+    // If this is the live node AND user is viewing it, update canvas
     if (nodeId === activeTip.value && viewingId.value == null) {
-      const canvas = useCanvasStore()
-      const result = canvas.applyOperation(operation)
-      // Capture runtime-computed values back into the operation
-      if (operation.op === 'create' && result != null && operation.card) {
-        const card = canvas.cards.get(result)
-        if (card) {
-          operation.card.z = card._targetZ ?? card.z
-          operation.card.zIndex = card.zIndex
-          operation.card.intraZ = card.intraZ
+      // Maintain incremental state for streaming performance
+      if (!liveState) {
+        // First op in this round — bootstrap from parent state
+        liveState = new CanvasState()
+        const path = getPathFromRoot(nodeId)
+        // Replay all nodes EXCEPT the current one (it's being built incrementally)
+        for (let i = 0; i < path.length - 1; i++) {
+          const n = path[i]
+          liveState.beginNode()
+          liveState.preScan(n.operations)
+          for (const op of n.operations) {
+            liveState.apply(op)
+          }
         }
+        // Begin the current node
+        liveState.beginNode()
+        // Pre-scan ALL ops for the current node (including future ones already recorded)
+        liveState.preScan(node.operations)
       }
+
+      // Apply this single operation incrementally
+      liveState.apply(operation)
+
+      // Push snapshot to canvas
+      const canvas = useCanvasStore()
+      canvas.applySnapshot(liveState.cards, { animate: true })
     }
+  }
+
+  function resetLiveState() {
+    liveState = null
   }
 
   function invalidateFrom(nodeId) {
@@ -121,120 +142,24 @@ export const useTimelineStore = defineStore('timeline', () => {
    * all operations from root to that node.
    * 
    * Returns: Map<string, CardState>
-   * CardState: { id, type, data, x, y, z, w, depth, opacity, scale, blur, zIndex }
+   * Uses CanvasState — the single source of truth for state computation.
    */
   function computeCanvas(nodeId) {
     if (canvasCache.has(nodeId)) return canvasCache.get(nodeId)
 
     const path = getPathFromRoot(nodeId)
-    const cards = new Map()
-    let depthLevel = 0
-    // Track cards referenced by update/move in current node — immune to push
-    let currentNodePinned = new Set()
+    const state = new CanvasState()
 
     for (const node of path) {
-      // Reset pinned set for each node (each node = one conversation round)
-      currentNodePinned = new Set()
-
-      // Pre-scan: find cards that will be update/moved in this node
-      // so push doesn't blur them (commands arrive before blocks in streaming)
+      state.beginNode()
+      state.preScan(node.operations)
       for (const op of node.operations) {
-        if ((op.op === 'update' || op.op === 'move' || op.op === 'promote') && op.cardId != null) {
-          currentNodePinned.add(op.cardId)
-        }
-      }
-
-      for (const op of node.operations) {
-        switch (op.op) {
-          case 'promote': {
-            // No-op in computeCanvas — handled via currentNodePinned pre-scan
-            break
-          }
-          case 'push': {
-            depthLevel++
-            // Push all existing cards back — except pinned ones
-            cards.forEach((card) => {
-              if (currentNodePinned.has(card.id)) {
-                // Pinned: promote to current depth, stay clear
-                card.depth = depthLevel
-                return
-              }
-              const d = depthLevel - card.depth
-              if (d > 0) {
-                card.z = -d * 160
-                card.scale = Math.max(0.5, 1 - d * 0.12)
-                card.opacity = Math.max(0, 1 - d * 0.45)
-                card.blur = d >= 1 ? d * 4 : 0
-                card.zIndex = Math.max(1, 50 - d * 20)
-              }
-              // Remove fully faded cards
-              if (card.opacity <= 0) cards.delete(card.id)
-            })
-            break
-          }
-          case 'create': {
-            const c = op.card
-            const data = c.data || {}
-            cards.set(c.id, {
-              id: c.id,
-              type: c.type,
-              data: { ...data },
-              x: c.x ?? (data.x != null ? 5 + (data.x / 100) * 90 : 50),
-              y: c.y ?? (data.y != null ? 5 + (data.y / 100) * 75 : 30),
-              z: c.z ?? 0,
-              w: c.w ?? data.w ?? 25,
-              depth: depthLevel,
-              opacity: 1,
-              scale: 1,
-              blur: 0,
-              zIndex: c.zIndex ?? 100,
-              intraZ: c.intraZ ?? 0,
-              selected: false,
-              pinned: false,
-              contentKey: c.contentKey,
-            })
-            break
-          }
-          case 'update': {
-            const card = cards.get(op.cardId)
-            if (card) {
-              if (op.changes) {
-                Object.assign(card.data, op.changes)
-              }
-              card.depth = depthLevel
-              card.opacity = 1
-              card.blur = 0
-              card.scale = 1
-              card.zIndex = 100
-              card.pinned = true
-            }
-            break
-          }
-          case 'move': {
-            const card = cards.get(op.cardId)
-            if (card && op.to) {
-              if (op.to.x != null) card.x = op.to.x
-              if (op.to.y != null) card.y = op.to.y
-              if (op.to.z != null) card.z = op.to.z
-              card.depth = depthLevel
-              card.opacity = 1
-              card.blur = 0
-              card.scale = 1
-              card.zIndex = 100
-              card.pinned = true
-            }
-            break
-          }
-          case 'remove': {
-            cards.delete(op.cardId)
-            break
-          }
-        }
+        state.apply(op)
       }
     }
 
-    canvasCache.set(nodeId, cards)
-    return cards
+    canvasCache.set(nodeId, state.cards)
+    return state.cards
   }
 
   // --- Navigation ---
@@ -349,6 +274,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function branchFrom(parentId, userMessage) {
     const newId = createNode(parentId, userMessage)
     viewingId.value = null // always go live
+    liveState = null // reset incremental state for new branch
     return newId
   }
 
@@ -414,6 +340,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     restoreToNode,
     getBubbleInfo,
     reset,
+    resetLiveState,
     getPathFromRoot,
   }
 })
