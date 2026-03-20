@@ -81,6 +81,7 @@ export function useSend({ tts } = {}) {
     if (!text?.trim()) return
 
     const canvas = useCanvasStore()
+    const timeline = useTimelineStore()
 
     // Build context from timeline data (not canvas view layer)
     const selCtx = timeline.getSelectedContext(null, Array.from(canvas.selectedIds))
