@@ -16,8 +16,10 @@ export function parseResponse(text) {
     }
     try {
       const data = JSON.parse(m[2])
-      // Normalize items to string arrays — LLM sometimes sends {text:} objects
-      if (Array.isArray(data.items)) {
+      const type = m[1]
+      // Normalize items to string arrays for card/list types
+      // Steps items are {time, title, detail} objects — don't flatten them
+      if (Array.isArray(data.items) && type !== 'steps') {
         data.items = data.items.map(it =>
           typeof it === 'string' ? it : (it.text || it.title || it.label || '')
         )
@@ -32,7 +34,7 @@ export function parseResponse(text) {
           }
         })
       }
-      blocks.push({ type: m[1], data })
+      blocks.push({ type, data })
     } catch {}
   }
   return { speech: speech ? speech[1].trim() : null, blocks, commands }
