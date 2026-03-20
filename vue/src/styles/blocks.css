@@ -51,12 +51,9 @@
 
 .v-block .win-body { padding: 14px; }
 
-/* Tighter top padding when win-body follows an image */
-.v-block img + .win-body { padding-top: 8px; }
-
 /* Block content — dark text on light card */
-.v-block h2 { color: #4a3520; font-size: 16px; font-weight: 500; margin-bottom: 6px; letter-spacing: -0.3px; }
-.v-block h3 { color: #6a5030; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.v-block h2 { color: #4a3520; font-size: 16px; font-weight: 500; margin: 0 0 6px; letter-spacing: -0.3px; }
+.v-block h3 { color: #6a5030; font-size: 13px; font-weight: 500; margin: 0 0 8px; }
 .v-block .sub { color: #8a7a60; font-size: 12px; margin-bottom: 8px; }
 .v-block .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
 .v-block .tag { color: #7a6a50; font-size: 10px; background: rgba(180,150,110,0.1); padding: 2px 8px; border-radius: 3px; border: 1px solid rgba(180,150,110,0.08); }
