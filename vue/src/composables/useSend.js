@@ -15,7 +15,7 @@ import { parseResponse } from '../lib/parser.js'
  * 
  * useSend ONLY writes to timeline. Canvas is derived automatically.
  */
-export function useSend() {
+export function useSend({ tts } = {}) {
   const sendQueue = ref([])
   const sendProcessing = ref(false)
   const isThinking = ref(false)
@@ -176,7 +176,7 @@ export function useSend() {
           (speechText) => {
             speechHandled = true
             showBubble(speechText)
-
+            tts?.playTTS(speechText)
           }
         )
 
@@ -234,12 +234,12 @@ export function useSend() {
 
         if (speech && !speechHandled) {
           showBubble(speech)
-
+          tts?.playTTS(speech)
         } else if (!speech && !speechHandled && !blocks.length) {
           const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
           if (plain) {
             showBubble(plain.slice(0, 100))
-
+            tts?.playTTS(plain.slice(0, 100))
           }
         }
       } catch (err) {

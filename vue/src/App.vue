@@ -48,13 +48,13 @@ let lastInputWasVoice = false
 // TTS
 const tts = useTTS()
 
+// Send — with TTS integration
+const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismissBubble } = useSend({ tts })
+
 // Wire TTS → bubble dismissal (original behavior: bubble fades 3s after TTS ends)
 tts.onPlaybackEnd(() => {
   dismissBubble(3000)
 })
-
-// Send — with TTS integration
-const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismissBubble } = useSend()
 
 const originalSend = send
 async function handleSend(text) {
