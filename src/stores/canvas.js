@@ -33,6 +33,10 @@ export const useCanvasStore = defineStore('canvas', () => {
   /**
    * Apply a canvas snapshot. This is the ONLY way to update card state.
    * 
+   * Two-pass approach:
+   *   1. Upsert: iterate snapshot — update existing or create new cards
+   *   2. Cleanup: iterate cards — fade out any not in snapshot
+   * 
    * @param {Map} snapshot - Map<id, CardState> from computeCanvas or liveState
    * @param {Object} opts - { animate: true } for streaming, false for instant
    */
@@ -41,7 +45,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     if (snapshot.size > 0) greetingVisible.value = false
 
-    // Build target lookup by contentKey
+    // Build snapshot lookup by contentKey
     const targetByKey = new Map()
     snapshot.forEach(card => {
       if (card.contentKey) targetByKey.set(card.contentKey, card)
@@ -53,15 +57,13 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (card.contentKey) existingByKey.set(card.contentKey, id)
     })
 
-    // Diff: matched, to-remove, to-create
-    const matchedKeys = new Set()
+    // ── Pass 1: Upsert — iterate snapshot, update or create ──
+    targetByKey.forEach((target, key) => {
+      const existingId = existingByKey.get(key)
 
-    // 1. Update existing cards that match by contentKey
-    existingByKey.forEach((id, key) => {
-      const target = targetByKey.get(key)
-      if (target) {
-        matchedKeys.add(key)
-        const card = cards.get(id)
+      if (existingId != null) {
+        // Update existing card
+        const card = cards.get(existingId)
         if (card) {
           card.x = target.x
           card.y = target.y
@@ -80,76 +82,61 @@ export const useCanvasStore = defineStore('canvas', () => {
           // Don't touch card.selected — that's UI state
         }
       } else {
-        // Card no longer in snapshot — fade out or remove instantly
-        const card = cards.get(id)
-        if (card) {
-          if (animate) {
-            card.opacity = 0
-            card.z = -400
-            card.scale = 0.5
-            card.blur = 8
-            card.pointerEvents = 'none'
-            setTimeout(() => {
+        // Create new card
+        if (animate) {
+          // Fly in: start behind, animate to target
+          const card = reactive({
+            ...target,
+            opacity: 0,
+            z: -200,
+            scale: 0.8,
+            blur: 4,
+            selected: false,
+            pointerEvents: 'auto',
+            entranceDelay: 0,
+          })
+          cards.set(target.id, card)
+          // Animate to target state — double rAF ensures initial state is painted first
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
               if (snapshotGen !== gen) return
-              cards.delete(id)
-            }, 800)
-          } else {
-            cards.delete(id)
-          }
+              card.opacity = target.opacity ?? 1
+              card.z = target.z ?? 0
+              card.scale = target.scale ?? 1
+              card.blur = target.blur ?? 0
+            })
+          })
+        } else {
+          // Instant: no animation
+          const card = reactive({
+            ...target,
+            selected: false,
+            pointerEvents: 'auto',
+            entranceDelay: 0,
+          })
+          cards.set(target.id, card)
         }
       }
     })
 
-    // 2. Create new cards
-    targetByKey.forEach((target, key) => {
-      if (matchedKeys.has(key)) return
-
-      if (animate) {
-        // Fly in: start behind, animate to target
-        const card = reactive({
-          ...target,
-          opacity: 0,
-          z: -200,
-          scale: 0.8,
-          blur: 4,
-          selected: false,
-          pointerEvents: 'auto',
-          entranceDelay: 0,
-        })
-        cards.set(target.id, card)
-        // Animate to target state — double rAF ensures initial state is painted first
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (snapshotGen !== gen) return
-            card.opacity = target.opacity ?? 1
-            card.z = target.z ?? 0
-            card.scale = target.scale ?? 1
-            card.blur = target.blur ?? 0
-          })
-        })
-      } else {
-        // Instant: no animation
-        const card = reactive({
-          ...target,
-          selected: false,
-          pointerEvents: 'auto',
-          entranceDelay: 0,
-        })
-        cards.set(target.id, card)
-      }
-    })
-
-    // 3. Remove cards not in either lookup (orphans from previous restores)
+    // ── Pass 2: Cleanup — remove cards not in snapshot ──
     cards.forEach((card, id) => {
       if (card.pointerEvents === 'none') return // already fading out
       if (!card.contentKey) return // no key to match
-      if (!targetByKey.has(card.contentKey) && !existingByKey.has(card.contentKey)) {
+      if (targetByKey.has(card.contentKey)) return // still in snapshot
+
+      if (animate) {
         card.opacity = 0
+        card.z = -400
+        card.scale = 0.5
+        card.blur = 8
         card.pointerEvents = 'none'
         setTimeout(() => {
           if (snapshotGen !== gen) return
           cards.delete(id)
-        }, 600)
+        }, 800)
+      } else {
+        cards.delete(id)
       }
     })
 

@@ -7,7 +7,7 @@
   <ThinkingDots :visible="isThinking" />
   <InputBar
     ref="inputBar"
-    :recording="sttRecording"
+    :recording="stt.state.isRecording"
     :mic-active="spaceDown"
     :voice-enabled="voiceEnabled"
     @send="handleSend"
@@ -73,44 +73,50 @@ async function handleSend(text) {
   originalSend(text)
 }
 
-// STT
-const { isRecording: sttRecording, startRecording: rawStartRecording, stopRecording: rawStopRecording } = useSTT({
-  tts,
-  onResult: (text) => {
+// STT — reactive state, watched below
+const stt = useSTT({ tts })
+
+// Watch STT result → trigger send
+watch(() => stt.state.result, (text) => {
+  if (text) {
     lastInputWasVoice = true
     handleSend(text)
-  },
-  onError: (msg) => {
+  }
+})
+
+// Watch STT error → show bubble
+watch(() => stt.state.error, (msg) => {
+  if (msg) {
     showBubble(msg, 3000)
-  },
-  onStart: (label) => {
-    // Clear any existing bubble immediately, then show recording label
+  }
+})
+
+// Watch STT label → show/clear recording bubble
+watch(() => stt.state.label, (label) => {
+  if (label) {
     dismissBubble(0)
-    showBubble(label || '松开发送...')
-  },
-  onStop: () => {
-    // Immediately clear "松开发送" bubble
-    bubbleVisible.value = false
-  },
-  onThinkingStart: () => {
+    showBubble(label)
+  }
+})
+
+// Watch STT isTranscribing → manage thinking dots
+watch(() => stt.state.isTranscribing, (transcribing) => {
+  if (transcribing) {
     isThinking.value = true
-  },
-  onThinkingEnd: () => {
-    isThinking.value = false
-  },
+  }
+  // isTranscribing=false is handled when result/error fires, or
+  // when no result comes back (error path clears it)
 })
 
 // Wrap start/stop to handle bubble clearing (matches original)
 function startRecording() {
-  // Clear bubble and stop TTS before recording
   bubbleVisible.value = false
-  rawStartRecording()
+  stt.startRecording()
 }
 
 function stopRecording() {
-  // Immediately clear recording bubble
   bubbleVisible.value = false
-  rawStopRecording()
+  stt.stopRecording()
 }
 
 // Spacebar = push-to-talk (when not typing)
@@ -149,7 +155,7 @@ const timelineBubbleVisible = computed(() => isScrollingTimeline.value && !!time
 
 // Wire TTS into speech — watch bubbleText changes to trigger TTS
 watch(bubbleText, async (text) => {
-  if (text && !isScrollingTimeline.value && !sttRecording.value) {
+  if (text && !isScrollingTimeline.value && !stt.state.isRecording) {
     const played = await tts.playTTS(text)
     // If TTS didn't play (disabled or error), auto-dismiss after 3s
     if (!played) {

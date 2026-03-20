@@ -97,6 +97,10 @@ const props = defineProps({
   data: { type: Object, required: true },
 })
 
+// ═══════════════════════════════════════════
+// ─── Shared: colors, data extraction ───
+// ═══════════════════════════════════════════
+
 const colors = ['#c8a96e','#8a7a60','#e8856a','#6aad8e','#7a9ec8','#b87acc','#d4a85c','#5cb8b2','#c76a6a','#8aae5c']
 
 const chartType = computed(() => props.data.chartType || 'bar')
@@ -109,33 +113,48 @@ const allValues = computed(() => series.value.flatMap(s => (s.items || []).map(d
 const absMax = computed(() => Math.max(...allValues.value.map(Math.abs), 1))
 const hasNeg = computed(() => allValues.value.some(v => v < 0))
 
+// ═══════════════════════════════════════════
+// ─── Shared helpers ───
+// ═══════════════════════════════════════════
+
 function esc(s) { return String(s || '') }
 function getVal(s, li) { return parseFloat(s.items?.[li]?.value) || 0 }
 function barPct(s, li) { return (Math.abs(getVal(s, li)) / absMax.value) * 100 }
 
-// Multi-series legend HTML
-const multiLegend = computed(() =>
-  series.value.map((s, i) =>
+// ═══════════════════════════════════════════
+// ─── Bar / Column: multi-series legend ───
+// ═══════════════════════════════════════════
+
+const multiLegend = computed(() => buildMultiLegend(series.value))
+
+function buildMultiLegend(seriesData) {
+  return seriesData.map((s, i) =>
     `<div style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${colors[i % colors.length]}"></span><span style="font-size:10px;color:#6a5a4a">${esc(s.name || '')}</span></div>`
   ).join('')
-)
+}
 
-// Pie/Donut
-const pieSlices = computed(() => {
-  if (chartType.value !== 'pie' && chartType.value !== 'donut') return ''
-  const total = items.value.reduce((s, d) => s + (parseFloat(d.value) || 0), 0) || 1
+// ═══════════════════════════════════════════
+// ─── Pie / Donut chart ───
+// ═══════════════════════════════════════════
+
+const pieSlices = computed(() => buildPieSlices(items.value, chartType.value))
+const pieLegend = computed(() => buildPieLegend(items.value))
+
+function buildPieSlices(itemsData, type) {
+  if (type !== 'pie' && type !== 'donut') return ''
+  const total = itemsData.reduce((s, d) => s + (parseFloat(d.value) || 0), 0) || 1
   const r = 55, cx = 70, cy = 70
-  const innerR = chartType.value === 'donut' ? 30 : 0
+  const innerR = type === 'donut' ? 30 : 0
   let cumAngle = -90
 
-  if (items.value.length === 1) {
+  if (itemsData.length === 1) {
     if (innerR > 0) {
-      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[0]}" stroke-width="${r - innerR}" opacity="0.85"><title>${esc(items.value[0].label || '')}: ${items.value[0].value}</title></circle>`
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[0]}" stroke-width="${r - innerR}" opacity="0.85"><title>${esc(itemsData[0].label || '')}: ${itemsData[0].value}</title></circle>`
     }
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colors[0]}" opacity="0.85"><title>${esc(items.value[0].label || '')}: ${items.value[0].value}</title></circle>`
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${colors[0]}" opacity="0.85"><title>${esc(itemsData[0].label || '')}: ${itemsData[0].value}</title></circle>`
   }
 
-  return items.value.map((d, i) => {
+  return itemsData.map((d, i) => {
     const val = parseFloat(d.value) || 0
     const angle = (val / total) * 360
     const startAngle = cumAngle
@@ -153,26 +172,33 @@ const pieSlices = computed(() => {
     }
     return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2}Z" fill="${colors[i % colors.length]}" opacity="0.85"><title>${esc(d.label || '')}: ${d.value}</title></path>`
   }).join('')
-})
+}
 
-const pieLegend = computed(() =>
-  items.value.map((d, i) =>
+function buildPieLegend(itemsData) {
+  return itemsData.map((d, i) =>
     `<div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${colors[i % colors.length]};flex-shrink:0"></span><span style="font-size:11px;color:#6a5a4a">${esc(d.label || '')} ${d.value}</span></div>`
   ).join('')
-)
+}
 
-// Line chart
+// ═══════════════════════════════════════════
+// ─── Line chart ───
+// ═══════════════════════════════════════════
+
 const lineW = 280, lineH = 100, padL = 10, padR = 10, padT = 15, padB = 5
 const pw = lineW - padL - padR, ph = lineH - padT - padB
 
-const lineSvg = computed(() => {
+const lineSvg = computed(() => buildLineSvg(series.value, allValues.value))
+const lineLabelsHtml = computed(() => buildLineLabels(labels.value))
+const lineLegend = computed(() => buildLineLegend(series.value))
+
+function buildLineSvg(seriesData, allVals) {
   if (chartType.value !== 'line') return ''
   const gradId = 'ag' + Math.random().toString(36).slice(2, 8)
-  const absM = Math.max(...allValues.value.map(Math.abs), 1)
+  const absM = Math.max(...allVals.map(Math.abs), 1)
 
   const defs = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c8a96e"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>`
 
-  const lines = series.value.map((s, si) => {
+  const lines = seriesData.map((s, si) => {
     const sItems = s.items || []
     const pts = sItems.map((d, i) => {
       const x = padL + (sItems.length > 1 ? (i / (sItems.length - 1)) * pw : pw / 2)
@@ -188,17 +214,17 @@ const lineSvg = computed(() => {
   }).join('')
 
   return defs + lines
-})
+}
 
-const lineLabelsHtml = computed(() =>
-  labels.value.map(l =>
+function buildLineLabels(labelsData) {
+  return labelsData.map(l =>
     `<span style="flex:1;text-align:center;font-size:9px;color:#6a5a4a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l || '')}</span>`
   ).join('')
-)
+}
 
-const lineLegend = computed(() =>
-  series.value.map((s, i) =>
+function buildLineLegend(seriesData) {
+  return seriesData.map((s, i) =>
     `<div style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:2px;background:${colors[i % colors.length]};border-radius:1px"></span><span style="font-size:10px;color:#6a5a4a">${esc(s.name || '')}</span></div>`
   ).join('')
-)
+}
 </script>

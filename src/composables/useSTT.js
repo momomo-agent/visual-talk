@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { reactive } from 'vue'
 import { useConfigStore } from '../stores/config.js'
 
 /**
@@ -10,9 +10,17 @@ import { useConfigStore } from '../stores/config.js'
  * 
  * Push-to-talk: mousedown → start, mouseup → stop
  * Spacebar shortcut when input not focused
+ * 
+ * Returns reactive state object — consumer watches for changes.
  */
-export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStart, onThinkingEnd }) {
-  const isRecording = ref(false)
+export function useSTT({ tts } = {}) {
+  const state = reactive({
+    isRecording: false,
+    label: '',
+    error: '',
+    result: '',
+    isTranscribing: false,
+  })
 
   let mediaRecorder = null
   let webSpeechRecognition = null
@@ -20,12 +28,16 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
   let micReleased = false
 
   function startRecording() {
+    // Clear previous signals
+    state.error = ''
+    state.result = ''
+
     // User is speaking — AI shuts up
     if (tts) {
       tts.stopTTS()
       tts.isRecording.value = true
     }
-    onStart?.()
+    state.label = '松开发送...'
 
     const config = useConfigStore()
     if (config.webSpeech) return startWebSpeech()
@@ -35,15 +47,15 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
   function stopRecording() {
     micReleased = true
     if (tts) tts.isRecording.value = false
-    onStop?.()
+    state.label = ''
 
     if (webSpeechRecognition) {
       const held = Date.now() - micDownTime
       if (held < 300) {
         webSpeechRecognition.abort()
         webSpeechRecognition = null
-        isRecording.value = false
-        onError?.('长按说话')
+        state.isRecording = false
+        state.error = '长按说话'
       } else {
         webSpeechRecognition.stop()
       }
@@ -58,38 +70,38 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
   function startWebSpeech() {
     if (webSpeechRecognition) return
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) { onError?.('浏览器不支持 Web Speech'); return }
+    if (!SR) { state.error = '浏览器不支持 Web Speech'; return }
 
     micDownTime = Date.now()
     const recognition = new SR()
     recognition.lang = 'zh-CN'
     recognition.interimResults = false
     // Show "说话中..." for Web Speech mode
-    onStart?.('说话中...')
+    state.label = '说话中...'
 
     recognition.onresult = e => {
       const text = e.results[0]?.[0]?.transcript?.trim()
       webSpeechRecognition = null
-      isRecording.value = false
+      state.isRecording = false
       if (text) {
-        onResult?.(text)
+        state.result = text
       } else {
-        onError?.('没听清，再说一次？')
+        state.error = '没听清，再说一次？'
       }
     }
     recognition.onerror = e => {
       webSpeechRecognition = null
-      isRecording.value = false
-      onError?.('识别错误: ' + e.error)
+      state.isRecording = false
+      state.error = '识别错误: ' + e.error
     }
     recognition.onend = () => {
       webSpeechRecognition = null
-      isRecording.value = false
+      state.isRecording = false
     }
 
     webSpeechRecognition = recognition
     recognition.start()
-    isRecording.value = true
+    state.isRecording = true
   }
 
   // ── Whisper API ──
@@ -131,7 +143,7 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
     micReleased = false
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      onError?.('需要 HTTPS 才能使用麦克风')
+      state.error = '需要 HTTPS 才能使用麦克风'
       return
     }
 
@@ -139,7 +151,7 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       if (micReleased) {
         stream.getTracks().forEach(t => t.stop())
-        onError?.('长按说话')
+        state.error = '长按说话'
         return
       }
 
@@ -150,10 +162,10 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
         stream.getTracks().forEach(t => t.stop())
         const held = Date.now() - micDownTime
         mediaRecorder = null
-        isRecording.value = false
+        state.isRecording = false
 
         if (held < 300) {
-          onError?.('长按说话')
+          state.error = '长按说话'
           return
         }
 
@@ -162,9 +174,9 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
       }
 
       mediaRecorder.start()
-      isRecording.value = true
+      state.isRecording = true
     } catch (e) {
-      onError?.('麦克风不可用: ' + e.message)
+      state.error = '麦克风不可用: ' + e.message
     }
   }
 
@@ -172,11 +184,11 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
     const config = useConfigStore()
     const baseUrl = tts?.cleanUrl ? tts.cleanUrl(config.ttsBaseUrl) : (config.ttsBaseUrl || '')
     if (!baseUrl || !config.ttsApiKey) {
-      onError?.('请先配置 TTS Base URL 和 API Key')
+      state.error = '请先配置 TTS Base URL 和 API Key'
       return
     }
 
-    onThinkingStart?.()
+    state.isTranscribing = true
     try {
       const wavBlob = await webmToWav(blob)
       const form = new FormData()
@@ -190,26 +202,26 @@ export function useSTT({ onResult, onError, onStart, onStop, tts, onThinkingStar
         body: form,
       })
 
-      if (!res.ok) { onThinkingEnd?.(); onError?.('识别失败: ' + res.status); return }
+      if (!res.ok) { state.isTranscribing = false; state.error = '识别失败: ' + res.status; return }
       const ct = res.headers.get('content-type') || ''
-      if (!ct.includes('json')) { onThinkingEnd?.(); onError?.('识别服务不可用'); return }
+      if (!ct.includes('json')) { state.isTranscribing = false; state.error = '识别服务不可用'; return }
 
       const { text } = await res.json()
       if (text?.trim()) {
-        // thinking stays — send() will manage it
-        onResult?.(text.trim())
+        // isTranscribing stays true — send() will manage it via isThinking
+        state.result = text.trim()
       } else {
-        onThinkingEnd?.()
-        onError?.('没听清，再说一次？')
+        state.isTranscribing = false
+        state.error = '没听清，再说一次？'
       }
     } catch (e) {
-      onThinkingEnd?.()
-      onError?.('识别错误: ' + e.message)
+      state.isTranscribing = false
+      state.error = '识别错误: ' + e.message
     }
   }
 
   return {
-    isRecording,
+    state,
     startRecording,
     stopRecording,
   }

@@ -83,6 +83,46 @@ export function useSend({ tts } = {}) {
     })
   }
 
+  /**
+   * Process new blocks from parsed LLM output.
+   * Shared between streaming callback and final pass.
+   * 
+   * @param {Array} blocks - all parsed blocks so far
+   * @param {number} fromIndex - index to start processing from (state.lastBlockCount)
+   * @param {string} nodeId - timeline node id
+   * @param {Object} timeline - timeline store
+   * @param {Object} canvas - canvas store
+   * @param {Object} state - mutable { pushRecorded, lastBlockCount }
+   */
+  function processBlocks(blocks, fromIndex, nodeId, timeline, canvas, state) {
+    if (blocks.length <= fromIndex) return
+
+    blocks.slice(fromIndex).forEach((b, i) => {
+      const idx = fromIndex + i
+      if (!state.pushRecorded) {
+        // Record selected card promotions BEFORE push
+        // so computeCanvas can replay them during navigation
+        canvas.selectedIds.forEach(id => {
+          timeline.addOperation(nodeId, { op: 'promote', cardId: id })
+        })
+        canvas.clearSelection()
+        timeline.addOperation(nodeId, { op: 'push' })
+        state.pushRecorded = true
+      }
+      // Write to timeline — canvas updates automatically via addOperation
+      timeline.addOperation(nodeId, {
+        op: 'create',
+        globalIndex: idx,
+        card: {
+          type: b.type,
+          data: { ...b.data },
+          contentKey: `n${nodeId}-${idx}`,
+        },
+      })
+    })
+    state.lastBlockCount = blocks.length
+  }
+
   async function send(text) {
     if (!text?.trim()) return
 
@@ -120,8 +160,7 @@ export function useSend({ tts } = {}) {
       const parentId = timeline.getBranchPoint()
       const nodeId = timeline.branchFrom(parentId, userMessage)
 
-      let pushRecorded = false
-      let lastBlockCount = 0
+      const state = { pushRecorded: false, lastBlockCount: 0 }
       let lastCommandCount = 0
       let speechHandled = false
 
@@ -144,32 +183,7 @@ export function useSend({ tts } = {}) {
             }
 
             // Process new blocks
-            if (blocks.length > lastBlockCount) {
-              blocks.slice(lastBlockCount).forEach((b, i) => {
-                const idx = lastBlockCount + i
-                if (!pushRecorded) {
-                  // Record selected card promotions BEFORE push
-                  // so computeCanvas can replay them during navigation
-                  canvas.selectedIds.forEach(id => {
-                    timeline.addOperation(nodeId, { op: 'promote', cardId: id })
-                  })
-                  canvas.clearSelection()
-                  timeline.addOperation(nodeId, { op: 'push' })
-                  pushRecorded = true
-                }
-                // Write to timeline — canvas updates automatically via addOperation
-                timeline.addOperation(nodeId, {
-                  op: 'create',
-                  globalIndex: idx,
-                  card: {
-                    type: b.type,
-                    data: { ...b.data },
-                    contentKey: `n${nodeId}-${idx}`,
-                  },
-                })
-              })
-              lastBlockCount = blocks.length
-            }
+            processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
           },
           // onSpeech
           (speechText) => {
@@ -188,27 +202,7 @@ export function useSend({ tts } = {}) {
           processCommands(commands.slice(lastCommandCount), nodeId, timeline)
         }
 
-        if (blocks.length > lastBlockCount) {
-          blocks.slice(lastBlockCount).forEach((b, i) => {
-            const idx = lastBlockCount + i
-            if (!pushRecorded) {
-              canvas.selectedIds.forEach(id => {
-                timeline.addOperation(nodeId, { op: 'promote', cardId: id })
-              })
-              timeline.addOperation(nodeId, { op: 'push' })
-              pushRecorded = true
-            }
-            timeline.addOperation(nodeId, {
-              op: 'create',
-              globalIndex: idx,
-              card: {
-                type: b.type,
-                data: { ...b.data },
-                contentKey: `n${nodeId}-${idx}`,
-              },
-            })
-          })
-        }
+        processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
 
         if (speech && !speechHandled) {
           showBubble(speech)
