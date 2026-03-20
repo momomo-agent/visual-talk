@@ -345,7 +345,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const cardTitle = getCardTitle(card)
       if (!cardTitle) return
       if (cardTitle === target) exact.push(id)
-      else if (cardTitle.includes(target)) partial.push(id)
+      else if (cardTitle.includes(target) || target.includes(cardTitle)) partial.push(id)
     })
     return exact.length ? exact : partial
   }
