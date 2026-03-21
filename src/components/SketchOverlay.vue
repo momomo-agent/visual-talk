@@ -436,18 +436,22 @@ function circleOutline(sk) {
   const gapSize = (0.008 + (seed % 3) * 0.005) * Math.PI * 2 // ~3-8°
   const totalAngle = Math.PI * 2 - gapSign * gapSize
 
-  // Gentle low-frequency shape distortion — 2-3 smooth bumps
-  const lobes = 2 + (seed % 2)
-  const distortAmt = 0.055 // 5.5% — noticeable but smooth
-
+  // Multiple layers of smooth distortion — each circle looks unique
   const rawPts = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * totalAngle
-    // Smooth sinusoidal distortion — no noise, no jitter
-    const shape = 1 + distortAmt * Math.sin(t * lobes + seed * 0.3)
+    // Layer 1: broad shape (2-3 lobes) — overall asymmetry
+    const d1 = 0.04 * Math.sin(t * (2 + seed % 2) + seed * 0.3)
+    // Layer 2: medium detail (4-5 lobes) — gives character  
+    const d2 = 0.025 * Math.sin(t * (4 + seed % 2) + seed * 1.7)
+    // Layer 3: slight tilt — one axis stretches more than the other
+    const tilt = 0.015 * Math.cos(t + seed * 0.8)
+    
+    const shapeX = 1 + d1 + d2 + tilt
+    const shapeY = 1 + d1 * 0.8 + d2 * 0.6 - tilt // Y distorts differently
     rawPts.push({
-      x: cx + rx * shape * Math.cos(t),
-      y: cy + ry * shape * Math.sin(t),
+      x: cx + rx * shapeX * Math.cos(t),
+      y: cy + ry * shapeY * Math.sin(t),
     })
   }
 
