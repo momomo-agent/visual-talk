@@ -434,13 +434,13 @@ function circleOutline(sk) {
   const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
 
   const steps = 72
-  // Slight overshoot past 360° — pen goes a bit further before lifting
-  const overshoot = (0.04 + (seed % 4) * 0.015) * Math.PI * 2 // ~15-37°
+  // Very short overshoot — just enough to feel human, not mechanical
+  const overshoot = (0.02 + (seed % 3) * 0.008) * Math.PI * 2 // ~7-16°
   const totalAngle = Math.PI * 2 + overshoot
 
-  // Very gentle low-frequency shape distortion — 2-3 smooth bumps
+  // Gentle low-frequency shape distortion — 2-3 smooth bumps
   const lobes = 2 + (seed % 2)
-  const distortAmt = 0.04 // 4% — subtle, smooth
+  const distortAmt = 0.055 // 5.5% — noticeable but smooth
 
   const pts = []
   for (let i = 0; i <= steps; i++) {
@@ -462,16 +462,24 @@ function circlePathD(sk) {
   const data = circleOutline(sk)
   if (!data?.pts) return ''
   const pts = data.pts
-  // Build a smooth SVG path through the points using quadratic curves
+  if (pts.length < 3) return ''
+  
+  // Catmull-Rom → cubic bezier for ultra-smooth curves (no sharp corners)
   let d = `M${f(pts[0].x)},${f(pts[0].y)}`
-  for (let i = 1; i < pts.length - 1; i++) {
-    const mx = (pts[i].x + pts[i + 1].x) / 2
-    const my = (pts[i].y + pts[i + 1].y) / 2
-    d += `Q${f(pts[i].x)},${f(pts[i].y)} ${f(mx)},${f(my)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[Math.min(pts.length - 1, i + 2)]
+    
+    // Catmull-Rom to cubic bezier control points
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    
+    d += `C${f(cp1x)},${f(cp1y)} ${f(cp2x)},${f(cp2y)} ${f(p2.x)},${f(p2.y)}`
   }
-  // Final segment to last point
-  const last = pts[pts.length - 1]
-  d += `L${f(last.x)},${f(last.y)}`
   return d
 }
 
