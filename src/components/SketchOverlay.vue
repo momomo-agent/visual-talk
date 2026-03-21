@@ -419,7 +419,12 @@ function circleOutline(sk) {
     const r = cardRect(sk.target)
     if (!r) return null
     cx = r.cx; cy = r.cy
-    rx = r.w / 2 + 20; ry = r.h / 2 + 16
+    // Limit aspect ratio to prevent pointy ends on very wide/flat cards
+    let rawRx = r.w / 2 + 20, rawRy = r.h / 2 + 16
+    const ratio = rawRx / rawRy
+    if (ratio > 1.8) rawRy = rawRx / 1.8 // don't let it get too flat
+    if (ratio < 0.55) rawRx = rawRy * 0.55 // don't let it get too tall
+    rx = rawRx; ry = rawRy
   } else if (sk.cx != null) {
     cx = pctX(sk.cx); cy = pctY(sk.cy)
     rx = pctX(sk.r || 5); ry = pctY(sk.r || 5)
@@ -440,18 +445,15 @@ function circleOutline(sk) {
   const rawPts = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * totalAngle
-    // Layer 1: broad shape (2-3 lobes) — overall asymmetry
-    const d1 = 0.04 * Math.sin(t * (2 + seed % 2) + seed * 0.3)
-    // Layer 2: medium detail (4-5 lobes) — gives character  
-    const d2 = 0.025 * Math.sin(t * (4 + seed % 2) + seed * 1.7)
-    // Layer 3: slight tilt — one axis stretches more than the other
-    const tilt = 0.015 * Math.cos(t + seed * 0.8)
+    // Layer 1: broad shape (2-3 lobes) — gentle overall asymmetry
+    const d1 = 0.03 * Math.sin(t * (2 + seed % 2) + seed * 0.3)
+    // Layer 2: medium detail (3-4 lobes) — subtle character
+    const d2 = 0.015 * Math.sin(t * (3 + seed % 2) + seed * 1.7)
     
-    const shapeX = 1 + d1 + d2 + tilt
-    const shapeY = 1 + d1 * 0.8 + d2 * 0.6 - tilt // Y distorts differently
+    const shape = 1 + d1 + d2
     rawPts.push({
-      x: cx + rx * shapeX * Math.cos(t),
-      y: cy + ry * shapeY * Math.sin(t),
+      x: cx + rx * shape * Math.cos(t),
+      y: cy + ry * shape * Math.sin(t),
     })
   }
 
