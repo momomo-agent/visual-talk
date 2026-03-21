@@ -1,4 +1,4 @@
-<template>
+<template v-if="sketchEnabled">
   <!--
     Each sketch element gets its own mini-SVG with the same translateZ
     as its associated card(s). This eliminates perspective parallax
@@ -101,11 +101,23 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSketchStore } from '../stores/sketch.js'
 import { useCanvasStore } from '../stores/canvas.js'
+import { useConfigStore } from '../stores/config.js'
 
 const sketchStore = useSketchStore()
 const canvasStore = useCanvasStore()
+const configStore = useConfigStore()
 const { sketches } = storeToRefs(sketchStore)
 const { cards } = storeToRefs(canvasStore)
+const { sketchEnabled, sketchFont } = storeToRefs(configStore)
+
+const fontFamily = computed(() => {
+  const fonts = {
+    ChenYuluoyan: "'ChenYuluoyan', 'Shantell Sans', cursive",
+    HuiFont: "'HuiFont', 'Shantell Sans', cursive",
+    Yozai: "'Yozai', 'Shantell Sans', cursive",
+  }
+  return fonts[sketchFont.value] || fonts.ChenYuluoyan
+})
 
 const sketchColor = '#e8a849'
 const SIZE = 5.5
@@ -624,7 +636,7 @@ function bracketData(sk) {
   }
 }
 .sk-text {
-  font-family: 'ZCOOL KuaiLe', 'Shantell Sans', 'Caveat', cursive;
+  font-family: v-bind('fontFamily');
   font-weight: 400;
 }
 </style>
