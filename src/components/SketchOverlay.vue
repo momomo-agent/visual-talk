@@ -45,6 +45,7 @@
         <path
           :d="circleOutline(sk)"
           :fill="sk.color || sketchColor"
+          fill-rule="evenodd"
           stroke="none"
         />
       </template>
@@ -173,16 +174,21 @@ function simulatePressure(points, size) {
   return result
 }
 
-function getOutline(strokePoints) {
+function getOutline(strokePoints, closed = false) {
   if (strokePoints.length < 2) return ''
   
+  const n = strokePoints.length
   const leftPts = []
   const rightPts = []
 
-  for (let i = 0; i < strokePoints.length; i++) {
+  for (let i = 0; i < n; i++) {
     const pt = strokePoints[i]
-    const prev = strokePoints[Math.max(0, i - 1)]
-    const next = strokePoints[Math.min(strokePoints.length - 1, i + 1)]
+    const prev = closed
+      ? strokePoints[(i - 1 + n) % n]
+      : strokePoints[Math.max(0, i - 1)]
+    const next = closed
+      ? strokePoints[(i + 1) % n]
+      : strokePoints[Math.min(n - 1, i + 1)]
     
     let dx = next.x - prev.x
     let dy = next.y - prev.y
@@ -196,28 +202,57 @@ function getOutline(strokePoints) {
     rightPts.push({ x: pt.x + px, y: pt.y + py })
   }
 
-  const last = strokePoints[strokePoints.length - 1]
-  const first = strokePoints[0]
-  
-  let d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
-  for (let i = 1; i < leftPts.length; i++) {
-    d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
+  let d
+  if (closed) {
+    // Closed shape: inner loop + outer loop (donut)
+    d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
+    for (let i = 1; i < leftPts.length; i++) {
+      d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
+    }
+    d += 'Z'
+    // Outer loop in reverse = fill between inner and outer
+    d += `M${f(rightPts[0].x)},${f(rightPts[0].y)}`
+    for (let i = rightPts.length - 1; i >= 0; i--) {
+      d += `L${f(rightPts[i].x)},${f(rightPts[i].y)}`
+    }
+    d += 'Z'
+  } else {
+    // Open path: left side → end cap → right side reversed → start cap
+    d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
+    for (let i = 1; i < leftPts.length; i++) {
+      d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
+    }
+    const last = strokePoints[n - 1]
+    const first = strokePoints[0]
+    const endR = last.radius
+    d += `A${f(endR)},${f(endR)} 0 0 1 ${f(rightPts[n-1].x)},${f(rightPts[n-1].y)}`
+    for (let i = n - 2; i >= 0; i--) {
+      d += `L${f(rightPts[i].x)},${f(rightPts[i].y)}`
+    }
+    const startR = first.radius
+    d += `A${f(startR)},${f(startR)} 0 0 1 ${f(leftPts[0].x)},${f(leftPts[0].y)}`
+    d += 'Z'
   }
-  const endR = last.radius
-  d += `A${f(endR)},${f(endR)} 0 0 1 ${f(rightPts[rightPts.length-1].x)},${f(rightPts[rightPts.length-1].y)}`
-  for (let i = rightPts.length - 2; i >= 0; i--) {
-    d += `L${f(rightPts[i].x)},${f(rightPts[i].y)}`
-  }
-  const startR = first.radius
-  d += `A${f(startR)},${f(startR)} 0 0 1 ${f(leftPts[0].x)},${f(leftPts[0].y)}`
-  d += 'Z'
   return d
 }
 
-function pathToFreehand(pathPoints, size = SIZE) {
+function pathToFreehand(pathPoints, size = SIZE, closed = false) {
   if (pathPoints.length < 2) return ''
   const stroked = simulatePressure(pathPoints, size)
-  return getOutline(stroked)
+  return getOutline(stroked, closed)
+}
+
+// Uniform-radius version for closed shapes — no pressure simulation,
+// just a consistent radius with tiny jitter for hand-drawn feel
+function pathToFreehandClosed(pathPoints, size = SIZE) {
+  if (pathPoints.length < 2) return ''
+  const radius = size * 0.5
+  const pts = pathPoints.map((pt, i) => {
+    // Tiny deterministic jitter based on index
+    const jitter = Math.sin(i * 7.3) * 0.3
+    return { ...pt, radius: Math.max(0.5, radius + jitter), pressure: 0.5 }
+  })
+  return getOutline(pts, true)
 }
 
 // ═══════════════════════════════════════════════
@@ -347,11 +382,11 @@ function circleOutline(sk) {
 
   const steps = 48
   const pts = []
-  for (let i = 0; i <= steps; i++) {
+  for (let i = 0; i < steps; i++) {
     const t = (i / steps) * Math.PI * 2
     pts.push({ x: cx + rx * Math.cos(t), y: cy + ry * Math.sin(t) })
   }
-  return pathToFreehand(pts, SIZE)
+  return pathToFreehandClosed(pts, SIZE)
 }
 
 // ═══════════════════════════════════════════════
@@ -458,14 +493,12 @@ function bracketData(sk) {
   inset: 0;
   pointer-events: none;
   /*
-   * Z-layering in preserve-3d:
-   * Cards at Z 0–120px. SVG at Z 200px → always in front.
-   * Perspective (1400px) magnifies near objects: scale = 1400/(1400-200) = 1.167x
-   * Counter-scale 0.857 cancels this, keeping SVG coords = card layout coords.
-   * transform-origin 50% 50% matches perspective-origin.
+   * In preserve-3d, z-index is ignored. Elements at same translateZ
+   * use DOM order (painter's algorithm) — later DOM = on top.
+   * SketchOverlay is after all BlockCards in DOM, so it renders on top.
+   * translateZ(0) keeps it in the same plane as cards for perfect alignment.
    */
-  transform: translateZ(200px) scale(0.857);
-  transform-origin: 50% 50%;
+  transform: translateZ(0px);
   overflow: visible;
 }
 .sk-text {
