@@ -205,12 +205,17 @@ export const useCanvasStore = defineStore('canvas', () => {
     isStreaming.value = false
   }
 
+  function restoreFrom(snapshot) {
+    applySnapshot(snapshot, { animate: false })
+  }
+
   return {
     cards,
     selectedIds,
     greetingVisible,
     isStreaming,
     applySnapshot,
+    restoreFrom,
     toggleSelect,
     clearSelection,
     updateCardPosition,

@@ -183,7 +183,6 @@ export const useForestStore = defineStore('forest', () => {
 
     if (store) {
       await store.set('tree:' + activeTreeId.value, data)
-      console.log('[Forest] saved tree:', activeTreeId.value)
     }
   }
 
@@ -191,7 +190,11 @@ export const useForestStore = defineStore('forest', () => {
     if (!store) return
     const data = await store.get('tree:' + treeId)
     if (data) {
-      deserializeTimeline(data)
+      try {
+        deserializeTimeline(data)
+      } catch (err) {
+        console.error('[Forest] deserialize error:', err)
+      }
     } else {
       // Empty tree
       const timeline = useTimelineStore()
@@ -202,7 +205,7 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   async function saveForestMeta() {
-    if (!store) { console.warn('[Forest] no store'); return }
+    if (!store) return
     try {
       const data = JSON.parse(JSON.stringify({
         activeTreeId: activeTreeId.value,
@@ -213,9 +216,7 @@ export const useForestStore = defineStore('forest', () => {
           }])
         ),
       }))
-      console.log('[Forest] saving meta...', Object.keys(data.trees))
       await store.set('forest:meta', data)
-      console.log('[Forest] meta saved OK')
     } catch (err) {
       console.error('[Forest] meta save error:', err)
     }
