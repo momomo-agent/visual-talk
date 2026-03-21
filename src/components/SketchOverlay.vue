@@ -431,10 +431,10 @@ function circleOutline(sk) {
   const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
 
   const steps = 72
-  // Leave a small gap — don't close the circle. Like a confident pen stroke
-  // that stops just short of where it started.
-  const gap = (0.03 + (seed % 4) * 0.01) * Math.PI * 2 // ~11-25° gap
-  const totalAngle = Math.PI * 2 - gap
+  // Tiny gap or slight overlap — feels hand-drawn but nearly closed
+  const gapSign = (seed % 3 === 0) ? -1 : 1 // sometimes overlap, sometimes gap
+  const gapSize = (0.008 + (seed % 3) * 0.005) * Math.PI * 2 // ~3-8°
+  const totalAngle = Math.PI * 2 - gapSign * gapSize
 
   // Gentle low-frequency shape distortion — 2-3 smooth bumps
   const lobes = 2 + (seed % 2)
