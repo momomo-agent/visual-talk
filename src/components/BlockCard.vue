@@ -35,6 +35,7 @@ import MarkdownBlock from './cards/MarkdownBlock.vue'
 import MediaBlock from './cards/MediaBlock.vue'
 import ChartBlock from './cards/ChartBlock.vue'
 import ListBlock from './cards/ListBlock.vue'
+import TableBlock from './cards/TableBlock.vue'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -47,7 +48,7 @@ const glowBreathing = ref(false)
 const typeLabels = {
   card: 'card', metric: 'data', steps: 'timeline', columns: 'compare',
   callout: 'quote', code: 'code', markdown: 'note', media: 'media',
-  chart: 'chart', list: 'list', embed: 'embed',
+  chart: 'chart', list: 'list', embed: 'embed', table: 'table',
 }
 
 const componentMap = {
@@ -62,6 +63,7 @@ const componentMap = {
   embed: MediaBlock,
   chart: ChartBlock,
   list: ListBlock,
+  table: TableBlock,
 }
 
 const typeLabel = computed(() => typeLabels[props.card.type] || props.card.type)

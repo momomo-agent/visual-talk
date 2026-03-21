@@ -65,6 +65,8 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
   {"chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10},{"label":"Q2","value":15}]},{"name":"Samsung","items":[{"label":"Q1","value":8},{"label":"Q2","value":12}]}]}
 - list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
   style: "unordered", "ordered", or "todo"
+- table: {"key":"specs","x":10,"y":20,"z":10,"w":35,"title":"","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}],"footer":""}
+  columns: array of header strings. rows: array of objects keyed by column name.
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
   Supports YouTube, Bilibili, Google Maps, and generic link previews
 
