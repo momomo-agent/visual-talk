@@ -107,7 +107,7 @@ const chartType = computed(() => props.data.chartType || 'bar')
 const series = computed(() => props.data.series || (props.data.items?.length ? [{ name: '', items: props.data.items }] : []))
 const items = computed(() => series.value[0]?.items || [])
 const isMulti = computed(() => series.value.length > 1)
-const labels = computed(() => items.value.map(d => d.label || d.name || d.title || ''))
+const labels = computed(() => items.value.map(d => d.label ?? ''))
 
 const allValues = computed(() => series.value.flatMap(s => (s.items || []).map(d => parseFloat(d.value) || 0)))
 const absMax = computed(() => Math.max(...allValues.value.map(Math.abs), 1))
