@@ -47,13 +47,15 @@
       />
     </template>
 
-    <!-- Circle / ellipse -->
+    <!-- Circle / ellipse — rendered as a smooth stroke, not filled polygon -->
     <template v-else-if="sk.type === 'circle' && circleOutline(sk)">
       <path
-        :d="circleOutline(sk)"
-        :fill="sk.color || sketchColor"
-        fill-rule="evenodd"
-        stroke="none"
+        :d="circlePathD(sk)"
+        fill="none"
+        :stroke="sk.color || sketchColor"
+        :stroke-width="SIZE * 1.1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
       />
     </template>
 
@@ -426,42 +428,51 @@ function circleOutline(sk) {
     rx = pctX(sk.r || 5); ry = pctY(sk.r || 5)
   } else return null
 
-  // A real hand-drawn circle is NOT a closed shape — it's an open stroke
-  // that goes slightly past 360°. Draw it as an open freehand path
-  // with pressure variation (thin start → thick middle → thin end).
+  // Smooth hand-drawn circle: gentle shape variation, NO jitter/wobble.
+  // Like a confident single pen stroke — smooth but not mathematically perfect.
 
   const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  const sRand = (i, freq) => Math.sin(seed * 0.7 + i * freq) * Math.cos(seed * 1.3 + i * freq * 0.7)
 
   const steps = 72
-  // Overshoot: go ~20-40° past full circle (like a real hand)
-  const overshoot = (0.06 + (seed % 5) * 0.02) * Math.PI * 2 // ~20-55°
+  // Slight overshoot past 360° — pen goes a bit further before lifting
+  const overshoot = (0.04 + (seed % 4) * 0.015) * Math.PI * 2 // ~15-37°
   const totalAngle = Math.PI * 2 + overshoot
 
+  // Very gentle low-frequency shape distortion — 2-3 smooth bumps
   const lobes = 2 + (seed % 2)
-  const avgR = (rx + ry) / 2
-  const distortAmt = 0.05
-  const wobbleAmt = Math.min(8, avgR * 0.025)
+  const distortAmt = 0.04 // 4% — subtle, smooth
 
   const pts = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * totalAngle
-
-    const loFreq = 1 + distortAmt * Math.sin(t * lobes + seed * 0.3)
-    const asymmetry = 1 + 0.02 * Math.sin(t + seed * 0.5)
-    const wobble = sRand(i, 0.6) * wobbleAmt
-
-    const curRx = rx * loFreq * asymmetry + wobble
-    const curRy = ry * loFreq / asymmetry - wobble * 0.6
-
+    // Smooth sinusoidal distortion — no noise, no jitter
+    const shape = 1 + distortAmt * Math.sin(t * lobes + seed * 0.3)
     pts.push({
-      x: cx + curRx * Math.cos(t),
-      y: cy + curRy * Math.sin(t),
+      x: cx + rx * shape * Math.cos(t),
+      y: cy + ry * shape * Math.sin(t),
     })
   }
 
-  // Use open freehand (not closed) — this IS a single stroke, not a ring
-  return pathToFreehand(pts, SIZE, false)
+  // Build as SVG stroke path (not filled polygon) for smooth, even-width lines
+  // Return a special marker so the template can render it as a <path stroke=...>
+  return { pts, isStroke: true }
+}
+
+function circlePathD(sk) {
+  const data = circleOutline(sk)
+  if (!data?.pts) return ''
+  const pts = data.pts
+  // Build a smooth SVG path through the points using quadratic curves
+  let d = `M${f(pts[0].x)},${f(pts[0].y)}`
+  for (let i = 1; i < pts.length - 1; i++) {
+    const mx = (pts[i].x + pts[i + 1].x) / 2
+    const my = (pts[i].y + pts[i + 1].y) / 2
+    d += `Q${f(pts[i].x)},${f(pts[i].y)} ${f(mx)},${f(my)}`
+  }
+  // Final segment to last point
+  const last = pts[pts.length - 1]
+  d += `L${f(last.x)},${f(last.y)}`
+  return d
 }
 
 // ═══════════════════════════════════════════════
