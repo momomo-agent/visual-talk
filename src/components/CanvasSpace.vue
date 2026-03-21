@@ -8,6 +8,7 @@
         @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
       />
+      <SketchOverlay />
     </div>
     <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
   </div>
@@ -18,6 +19,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import BlockCard from './BlockCard.vue'
+import SketchOverlay from './SketchOverlay.vue'
 
 const canvas = useCanvasStore()
 const { cards, greetingVisible } = storeToRefs(canvas)

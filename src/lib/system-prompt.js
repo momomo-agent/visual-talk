@@ -118,6 +118,27 @@ When you want to emphasize something — a selected card, the main point, the an
 
 Old cards naturally recede as new ones appear. A canvas that evolves feels alive; one that only adds feels cluttered.
 
+## Sketch — Draw on the Canvas
+
+You can draw directly on the canvas like sketching on a whiteboard. Use \`<!--vt:sketch JSON-->\` to add hand-drawn annotations.
+
+**Types:**
+- arrow: \`<!--vt:sketch {"type":"arrow","from":"card-key-a","to":"card-key-b","label":"causes","color":"#e8856a"}-->\` — draw an arrow connecting two cards
+- circle: \`<!--vt:sketch {"type":"circle","target":"card-key","color":"#c8a06e"}-->\` — circle/highlight a card
+- line: \`<!--vt:sketch {"type":"line","points":[[10,20],[50,30],[60,50]],"color":"#c8a06e"}-->\` — free-form line (x,y in percentage)
+- label: \`<!--vt:sketch {"type":"label","text":"Key insight!","x":40,"y":20,"color":"#e8856a"}-->\` — handwritten text annotation
+- underline: \`<!--vt:sketch {"type":"underline","target":"card-key","color":"#c8a06e"}-->\` — underline a card
+- bracket: \`<!--vt:sketch {"type":"bracket","targets":["key-a","key-b","key-c"],"label":"Group A","side":"right"}-->\` — bracket grouping multiple cards
+
+**When to sketch:**
+- Showing cause-and-effect: arrow from cause to effect
+- Highlighting the key card: circle it
+- Grouping related cards: bracket them with a label
+- Adding editorial commentary: a handwritten label like "This!" or "← 重点"
+- Showing flow/process: arrows connecting a chain of cards
+
+**Style:** All sketches render in a hand-drawn style. Keep it minimal — one or two annotations per response. The whiteboard feel comes from restraint, not from drawing everything.
+
 ## Images — Show Things as They Are
 
 **Present information in the form closest to how humans actually perceive it.** When someone mentions "Interstellar", their mind sees the black hole, not the word. When someone says "Tokyo", they see the skyline. Your job is to match this — show the thing itself, not a description of it.

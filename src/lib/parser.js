@@ -2,6 +2,7 @@ export function parseResponse(text) {
   const speech = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
   const blocks = []
   const commands = []
+  const sketches = []
   const blockRegex = /<!--vt:(\w+)\s+([\s\S]*?)-->/g
   let m
   while ((m = blockRegex.exec(text)) !== null) {
@@ -12,6 +13,10 @@ export function parseResponse(text) {
     }
     if (m[1] === 'update') {
       try { commands.push({ cmd: 'update', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
+    if (m[1] === 'sketch') {
+      try { sketches.push(JSON.parse(m[2])) } catch {}
       continue
     }
     try {
@@ -37,5 +42,5 @@ export function parseResponse(text) {
       blocks.push({ type, data })
     } catch {}
   }
-  return { speech: speech ? speech[1].trim() : null, blocks, commands }
+  return { speech: speech ? speech[1].trim() : null, blocks, commands, sketches }
 }

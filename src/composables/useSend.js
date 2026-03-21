@@ -3,6 +3,7 @@ import { useCanvasStore } from '../stores/canvas.js'
 import { useConfigStore } from '../stores/config.js'
 import { useTimelineStore } from '../stores/timeline.js'
 import { useForestStore } from '../stores/forest.js'
+import { useSketchStore } from '../stores/sketch.js'
 import { useLLM } from './useLLM.js'
 import { parseResponse } from '../lib/parser.js'
 
@@ -163,6 +164,8 @@ export function useSend({ tts } = {}) {
 
       const state = { pushRecorded: false, lastBlockCount: 0 }
       let lastCommandCount = 0
+      let lastSketchCount = 0
+      const sketch = useSketchStore()
       let speechHandled = false
       let reply = null
 
@@ -176,12 +179,18 @@ export function useSend({ tts } = {}) {
         reply = await callLLM(prompt,
           // onToken — streaming callback
           (partial) => {
-            const { blocks, commands } = parseResponse(partial)
+            const { blocks, commands, sketches } = parseResponse(partial)
 
             // Process new commands
             if (commands.length > lastCommandCount) {
               processCommands(commands.slice(lastCommandCount), nodeId, timeline)
               lastCommandCount = commands.length
+            }
+
+            // Process new sketches
+            if (sketches.length > lastSketchCount) {
+              sketch.setFromOperations(sketches.slice(lastSketchCount))
+              lastSketchCount = sketches.length
             }
 
             // Process new blocks
@@ -198,10 +207,14 @@ export function useSend({ tts } = {}) {
         if (!reply) continue
 
         // Final pass — catch any remaining blocks/commands
-        const { speech, blocks, commands } = parseResponse(reply)
+        const { speech, blocks, commands, sketches } = parseResponse(reply)
 
         if (commands.length > lastCommandCount) {
           processCommands(commands.slice(lastCommandCount), nodeId, timeline)
+        }
+
+        if (sketches.length > lastSketchCount) {
+          sketch.setFromOperations(sketches.slice(lastSketchCount))
         }
 
         processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
