@@ -110,7 +110,8 @@ function onMouseEnter() {
     zIndex: props.card.zIndex,
     blur: props.card.blur,
   }
-  props.card.z = 80
+  // Push forward relative to current z — never backwards
+  props.card.z = Math.max(80, props.card.z + 40)
   props.card.scale = 1.05
   props.card.opacity = 1
   props.card.zIndex = 150
