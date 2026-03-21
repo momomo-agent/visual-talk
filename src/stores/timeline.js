@@ -105,6 +105,10 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
 
       // Apply this single operation incrementally
+      // For push: re-scan all ops to catch move/update targets that arrived after initial preScan
+      if (operation.op === 'push') {
+        liveState.preScan(node.operations)
+      }
       liveState.apply(operation)
 
       // Push snapshot to canvas
