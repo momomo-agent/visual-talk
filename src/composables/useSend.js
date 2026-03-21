@@ -166,6 +166,7 @@ export function useSend({ tts } = {}) {
       let lastCommandCount = 0
       let lastSketchCount = 0
       const sketch = useSketchStore()
+      sketch.clear() // Clear old sketches on new message
       let speechHandled = false
       let reply = null
 

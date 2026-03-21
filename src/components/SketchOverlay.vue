@@ -15,21 +15,17 @@
           :fill="sk.color || sketchColor"
           stroke="none"
         />
-        <!-- Open V arrowhead -->
         <path
-          :d="arrowData(sk).head"
-          fill="none"
-          :stroke="sk.color || sketchColor"
-          :stroke-width="baseStrokeW"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          :d="arrowData(sk).headOutline"
+          :fill="sk.color || sketchColor"
+          stroke="none"
         />
         <text
           v-if="sk.label && arrowData(sk).labelPos"
           :x="arrowData(sk).labelPos[0]"
           :y="arrowData(sk).labelPos[1]"
           :fill="sk.color || sketchColor"
-          font-size="14"
+          font-size="15"
           text-anchor="middle"
           class="sk-text"
         >{{ sk.label }}</text>
@@ -54,10 +50,10 @@
       </template>
 
       <!-- Text label -->
-      <template v-else-if="sk.type === 'label'">
+      <template v-else-if="sk.type === 'label' && labelPos(sk)">
         <text
-          :x="pctX(sk.x)"
-          :y="pctY(sk.y)"
+          :x="labelPos(sk)[0]"
+          :y="labelPos(sk)[1]"
           :fill="sk.color || sketchColor"
           :font-size="sk.size || 18"
           class="sk-text"
@@ -85,7 +81,7 @@
           :x="bracketData(sk).labelPos[0]"
           :y="bracketData(sk).labelPos[1]"
           :fill="sk.color || sketchColor"
-          font-size="14"
+          font-size="15"
           text-anchor="middle"
           class="sk-text"
         >{{ sk.label }}</text>
@@ -106,10 +102,9 @@ const { sketches } = storeToRefs(sketchStore)
 const { cards } = storeToRefs(canvasStore)
 
 const sketchColor = '#d4930d'
-const baseStrokeW = 2.0
-const SIZE = 4.5 // slightly larger than tldraw "m" (3.5) for visibility on dark bg
+const SIZE = 5.5 // thicker for dark background visibility
 
-// Track card positions reactively — touch x/y of every card to trigger re-render on move
+// Track card positions reactively
 const cardPositionVersion = computed(() => {
   let v = 0
   cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) })
@@ -118,7 +113,6 @@ const cardPositionVersion = computed(() => {
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
-const spaceRef = ref(null)
 
 function onResize() {
   width.value = window.innerWidth
@@ -126,10 +120,8 @@ function onResize() {
 }
 onMounted(() => {
   window.addEventListener('resize', onResize)
-  // Get actual canvas-space dimensions
   const space = document.querySelector('.canvas-space')
   if (space) {
-    spaceRef.value = space
     width.value = space.offsetWidth || window.innerWidth
     height.value = space.offsetHeight || window.innerHeight
   }
@@ -144,7 +136,6 @@ function f(n) { return n.toFixed(1) }
 // Freehand stroke engine (simplified tldraw/perfect-freehand)
 // ═══════════════════════════════════════════════
 
-// Sample a quadratic bezier at t
 function sampleQuad(p0, cp, p1, t) {
   const it = 1 - t
   return {
@@ -153,20 +144,16 @@ function sampleQuad(p0, cp, p1, t) {
   }
 }
 
-// Sample points along a quadratic bezier curve with speed variation
 function sampleBezier(p0, cp, p1, steps = 24) {
   const pts = []
   for (let i = 0; i <= steps; i++) {
-    // Ease in-out: slower at ends, faster in middle → thicker ends, thinner middle
     let t = i / steps
-    t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2 // easeInOutQuad
+    t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
     pts.push(sampleQuad(p0, cp, p1, t))
   }
   return pts
 }
 
-// Simulate pressure based on speed (tldraw approach)
-// Slower movement = more pressure = thicker line
 function simulatePressure(points, size) {
   const result = []
   const thinning = 0.65
@@ -186,7 +173,6 @@ function simulatePressure(points, size) {
   return result
 }
 
-// Generate outline polygon from stroke points (like tldraw getStrokeOutlinePoints)
 function getOutline(strokePoints) {
   if (strokePoints.length < 2) return ''
   
@@ -198,13 +184,11 @@ function getOutline(strokePoints) {
     const prev = strokePoints[Math.max(0, i - 1)]
     const next = strokePoints[Math.min(strokePoints.length - 1, i + 1)]
     
-    // Direction vector
     let dx = next.x - prev.x
     let dy = next.y - prev.y
     const len = Math.sqrt(dx * dx + dy * dy)
     if (len > 0) { dx /= len; dy /= len }
     
-    // Perpendicular
     const px = -dy * pt.radius
     const py = dx * pt.radius
     
@@ -212,35 +196,24 @@ function getOutline(strokePoints) {
     rightPts.push({ x: pt.x + px, y: pt.y + py })
   }
 
-  // Build path: left side forward, end cap, right side backward, start cap
   const last = strokePoints[strokePoints.length - 1]
   const first = strokePoints[0]
   
   let d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
-  
-  // Left side (forward)
   for (let i = 1; i < leftPts.length; i++) {
     d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
   }
-  
-  // End cap (semicircle)
   const endR = last.radius
   d += `A${f(endR)},${f(endR)} 0 0 1 ${f(rightPts[rightPts.length-1].x)},${f(rightPts[rightPts.length-1].y)}`
-  
-  // Right side (backward)
   for (let i = rightPts.length - 2; i >= 0; i--) {
     d += `L${f(rightPts[i].x)},${f(rightPts[i].y)}`
   }
-  
-  // Start cap (semicircle)
   const startR = first.radius
   d += `A${f(startR)},${f(startR)} 0 0 1 ${f(leftPts[0].x)},${f(leftPts[0].y)}`
-  
   d += 'Z'
   return d
 }
 
-// The main function: path string → freehand outline
 function pathToFreehand(pathPoints, size = SIZE) {
   if (pathPoints.length < 2) return ''
   const stroked = simulatePressure(pathPoints, size)
@@ -252,18 +225,15 @@ function pathToFreehand(pathPoints, size = SIZE) {
 // ═══════════════════════════════════════════════
 
 function cardRect(key) {
-  // Find the DOM element by LLM-assigned key
   const el = document.querySelector(`[data-block-key="${key}"]`)
     || document.querySelector(`[data-content-key="${key}"]`)
   if (el) {
-    // offsetLeft/Top/Width/Height are layout values, not affected by CSS transforms
     const x = el.offsetLeft
     const y = el.offsetTop
     const w = el.offsetWidth
     const h = el.offsetHeight
     return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
   }
-  // Fallback: use store data (percentage-based)
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c
@@ -280,7 +250,7 @@ function edgePoint(rect, tx, ty) {
   const cx = rect.cx, cy = rect.cy
   const dx = tx - cx, dy = ty - cy
   if (dx === 0 && dy === 0) return { x: cx, y: cy - rect.h / 2 }
-  const hw = rect.w / 2 + 6, hh = rect.h / 2 + 6
+  const hw = rect.w / 2 + 8, hh = rect.h / 2 + 8
   const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity
   const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity
   const s = Math.min(sx, sy)
@@ -288,7 +258,7 @@ function edgePoint(rect, tx, ty) {
 }
 
 // ═══════════════════════════════════════════════
-// Arrow
+// Arrow — freehand body + freehand arrowhead
 // ═══════════════════════════════════════════════
 
 function arrowData(sk) {
@@ -308,28 +278,33 @@ function arrowData(sk) {
   const cpx = (p1.x + p2.x) / 2 + nx * curvature
   const cpy = (p1.y + p2.y) / 2 + ny * curvature
 
-  // Sample the bezier curve into points
   const pathPoints = sampleBezier(p1, { x: cpx, y: cpy }, p2, 32)
-  
-  // Generate freehand outline
   const outline = pathToFreehand(pathPoints, SIZE)
 
-  // Open V arrowhead (tldraw: PI/6 = 30°)
+  // Freehand arrowhead — two short lines forming a V, rendered as filled polygons
   const adx = p2.x - cpx, ady = p2.y - cpy
   const al = Math.sqrt(adx * adx + ady * ady)
   const ax = adx / al, ay = ady / al
-  const headLen = Math.max(Math.min(len / 5, SIZE * 3), SIZE)
+  const headLen = Math.max(Math.min(len / 5, SIZE * 4), SIZE * 1.5)
   const angle = Math.PI / 6
   const cos = Math.cos(angle), sin = Math.sin(angle)
+  
+  // Left prong
   const lx = p2.x - headLen * (ax * cos + ay * sin)
   const ly = p2.y - headLen * (ay * cos - ax * sin)
+  // Right prong
   const rx = p2.x - headLen * (ax * cos - ay * sin)
   const ry = p2.y - headLen * (ay * cos + ax * sin)
-  const head = `M${f(lx)},${f(ly)} L${f(p2.x)},${f(p2.y)} L${f(rx)},${f(ry)}`
+  
+  // Render each prong as a freehand line
+  const leftPts = sampleBezier({ x: lx, y: ly }, { x: (lx + p2.x) / 2, y: (ly + p2.y) / 2 }, p2, 8)
+  const rightPts = sampleBezier(p2, { x: (rx + p2.x) / 2, y: (ry + p2.y) / 2 }, { x: rx, y: ry }, 8)
+  const headPts = [...leftPts, ...rightPts.slice(1)]
+  const headOutline = pathToFreehand(headPts, SIZE * 0.8)
 
-  const labelPos = [cpx, cpy - 8]
+  const labelPos = [cpx, cpy - 10]
 
-  return { outline, head, labelPos }
+  return { outline, headOutline, labelPos }
 }
 
 // ═══════════════════════════════════════════════
@@ -339,7 +314,6 @@ function arrowData(sk) {
 function freehandOutline(sk) {
   const pts = sk.points.map(([x, y]) => ({ x: pctX(x), y: pctY(y) }))
   if (pts.length < 2) return ''
-  // Interpolate between points with bezier for smoothness
   const allPts = []
   allPts.push(pts[0])
   for (let i = 1; i < pts.length; i++) {
@@ -365,13 +339,12 @@ function circleOutline(sk) {
     const r = cardRect(sk.target)
     if (!r) return null
     cx = r.cx; cy = r.cy
-    rx = r.w / 2 + 14; ry = r.h / 2 + 10
+    rx = r.w / 2 + 16; ry = r.h / 2 + 12
   } else if (sk.cx != null) {
     cx = pctX(sk.cx); cy = pctY(sk.cy)
     rx = pctX(sk.r || 5); ry = pctY(sk.r || 5)
   } else return null
 
-  // Sample ellipse into points
   const steps = 48
   const pts = []
   for (let i = 0; i <= steps; i++) {
@@ -382,21 +355,42 @@ function circleOutline(sk) {
 }
 
 // ═══════════════════════════════════════════════
+// Label — supports both absolute % and relative-to-card positioning
+// ═══════════════════════════════════════════════
+
+function labelPos(sk) {
+  // If label has a target card, position relative to it
+  if (sk.target) {
+    const r = cardRect(sk.target)
+    if (r) {
+      const offsetX = sk.offsetX || 0
+      const offsetY = sk.offsetY || -20
+      return [r.cx + offsetX, r.y + offsetY]
+    }
+  }
+  // Absolute percentage positioning
+  if (sk.x != null && sk.y != null) {
+    return [pctX(sk.x), pctY(sk.y)]
+  }
+  return null
+}
+
+// ═══════════════════════════════════════════════
 // Underline
 // ═══════════════════════════════════════════════
 
 function underOutline(sk) {
   const r = cardRect(sk.target)
   if (!r) return null
-  const y = r.y + r.h + 6
-  const x1 = r.x + 6, x2 = r.x + r.w - 6
+  const y = r.y + r.h + 8
+  const x1 = r.x + 8, x2 = r.x + r.w - 8
   const mid = (x1 + x2) / 2
-  const pts = sampleBezier({ x: x1, y }, { x: mid, y: y + 4 }, { x: x2, y }, 16)
+  const pts = sampleBezier({ x: x1, y }, { x: mid, y: y + 5 }, { x: x2, y }, 16)
   return pathToFreehand(pts, SIZE * 0.8)
 }
 
 // ═══════════════════════════════════════════════
-// Bracket
+// Bracket — supports top/bottom/left/right
 // ═══════════════════════════════════════════════
 
 function bracketData(sk) {
@@ -413,9 +407,8 @@ function bracketData(sk) {
   let allPts, labelPos
 
   if (side === 'top' || side === 'bottom') {
-    // Horizontal bracket
-    const y = side === 'top' ? minY - 14 : maxY + 14
-    const bump = side === 'top' ? -16 : 16
+    const y = side === 'top' ? minY - 16 : maxY + 16
+    const bump = side === 'top' ? -18 : 18
     const midX = (minX + maxX) / 2
 
     const leftPts = sampleBezier(
@@ -433,10 +426,9 @@ function bracketData(sk) {
     allPts = [...leftPts, ...rightPts.slice(1)]
     labelPos = [midX, y + bump * 2.2]
   } else {
-    // Vertical bracket (left/right)
     const isRight = side === 'right'
-    const edge = isRight ? maxX + 14 : minX - 14
-    const bump = isRight ? 16 : -16
+    const edge = isRight ? maxX + 16 : minX - 16
+    const bump = isRight ? 18 : -18
     const midY = (minY + maxY) / 2
 
     const topPts = sampleBezier(
