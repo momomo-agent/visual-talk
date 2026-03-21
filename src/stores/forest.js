@@ -43,7 +43,7 @@ export const useForestStore = defineStore('forest', () => {
         userMessage: node.userMessage,
         aiResponse: node.aiResponse || '',
         timestamp: node.timestamp,
-        operations: node.operations,
+        operations: JSON.parse(JSON.stringify(node.operations)),
       }
     })
     return {
@@ -176,13 +176,14 @@ export const useForestStore = defineStore('forest', () => {
 
   // --- Persistence ---
 
-  function saveCurrentTree() {
+  async function saveCurrentTree() {
     if (!activeTreeId.value || !trees[activeTreeId.value]) return
     const data = serializeTimeline()
     trees[activeTreeId.value].updatedAt = Date.now()
 
     if (store) {
-      store.set('tree:' + activeTreeId.value, data)
+      await store.set('tree:' + activeTreeId.value, data)
+      console.log('[Forest] saved tree:', activeTreeId.value)
     }
   }
 
@@ -201,23 +202,37 @@ export const useForestStore = defineStore('forest', () => {
   }
 
   async function saveForestMeta() {
-    if (!store) return
-    await store.set('forest:meta', {
-      activeTreeId: activeTreeId.value,
-      order: order.value,
-      trees: Object.fromEntries(
-        Object.entries(trees).map(([id, t]) => [id, {
-          id: t.id, name: t.name, createdAt: t.createdAt, updatedAt: t.updatedAt,
-        }])
-      ),
-    })
+    if (!store) { console.warn('[Forest] no store'); return }
+    try {
+      const data = JSON.parse(JSON.stringify({
+        activeTreeId: activeTreeId.value,
+        order: order.value,
+        trees: Object.fromEntries(
+          Object.entries(trees).map(([id, t]) => [id, {
+            id: t.id, name: t.name, createdAt: t.createdAt, updatedAt: t.updatedAt,
+          }])
+        ),
+      }))
+      console.log('[Forest] saving meta...', Object.keys(data.trees))
+      await store.set('forest:meta', data)
+      console.log('[Forest] meta saved OK')
+    } catch (err) {
+      console.error('[Forest] meta save error:', err)
+    }
   }
 
   function scheduleSave() {
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
-      saveCurrentTree()
-      saveForestMeta()
+      // Fire and forget — but catch errors
+      (async () => {
+        try {
+          await saveCurrentTree()
+        } catch (e) { console.error('[Forest] save tree error:', e) }
+        try {
+          await saveForestMeta()
+        } catch (e) { console.error('[Forest] save meta error:', e) }
+      })()
       saveTimer = null
     }, 500)
   }
