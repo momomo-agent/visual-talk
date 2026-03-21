@@ -121,8 +121,14 @@ const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
 
 function onResize() {
-  width.value = window.innerWidth
-  height.value = window.innerHeight
+  const space = document.querySelector('.canvas-space')
+  if (space) {
+    width.value = space.offsetWidth || window.innerWidth
+    height.value = space.offsetHeight || window.innerHeight
+  } else {
+    width.value = window.innerWidth
+    height.value = window.innerHeight
+  }
 }
 onMounted(() => {
   window.addEventListener('resize', onResize)
@@ -313,6 +319,21 @@ function cardRect(key) {
   const el = document.querySelector(`[data-block-key="${key}"]`)
     || document.querySelector(`[data-content-key="${key}"]`)
   if (el) {
+    // Use position relative to .canvas-space parent for accurate alignment
+    const space = document.querySelector('.canvas-space')
+    if (space) {
+      const sr = space.getBoundingClientRect()
+      const er = el.getBoundingClientRect()
+      // Account for perspective scaling: cards at different Z have different
+      // apparent positions via getBoundingClientRect, but SVG is at Z=cardZ+1
+      // which is very close to the card's Z, so the rect is close enough
+      const x = er.left - sr.left
+      const y = er.top - sr.top
+      const w = er.width
+      const h = er.height
+      return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
+    }
+    // Fallback to offset
     const x = el.offsetLeft
     const y = el.offsetTop
     const w = el.offsetWidth
