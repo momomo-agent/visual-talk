@@ -584,6 +584,23 @@ function bracketData(sk) {
   inset: 0;
   pointer-events: none;
   overflow: visible;
+  animation: sketch-draw-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.sketch-layer:nth-child(2) { animation-delay: 0.15s; }
+.sketch-layer:nth-child(3) { animation-delay: 0.3s; }
+.sketch-layer:nth-child(4) { animation-delay: 0.45s; }
+.sketch-layer:nth-child(5) { animation-delay: 0.6s; }
+.sketch-layer:nth-child(6) { animation-delay: 0.75s; }
+
+@keyframes sketch-draw-in {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
 }
 .sk-text {
   font-family: 'Shantell Sans', 'Caveat', cursive;
