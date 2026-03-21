@@ -181,13 +181,12 @@ function arrowData(sk) {
 
   const path = `M${f(p1.x)},${f(p1.y)} Q${f(cpx)},${f(cpy)} ${f(p2.x)},${f(p2.y)}`
 
-  // Open V arrowhead at p2
-  // Direction from control point to endpoint
+  // Open V arrowhead at p2 (tldraw: PI/6 = 30°, length = clamp(totalLen/5, sw, sw*3))
   const adx = p2.x - cpx, ady = p2.y - cpy
   const al = Math.sqrt(adx * adx + ady * ady)
   const ax = adx / al, ay = ady / al
-  const headLen = 12
-  const headAngle = 0.45  // ~26 degrees
+  const headLen = Math.max(Math.min(len / 5, strokeW * 3), strokeW)
+  const headAngle = Math.PI / 6  // 30 degrees, same as tldraw
   const cos = Math.cos(headAngle), sin = Math.sin(headAngle)
   const lx = p2.x - headLen * (ax * cos + ay * sin)
   const ly = p2.y - headLen * (ay * cos - ax * sin)
