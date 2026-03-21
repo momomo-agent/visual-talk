@@ -603,7 +603,7 @@ function bracketData(sk) {
   }
 }
 .sk-text {
-  font-family: 'Shantell Sans', 'Caveat', cursive;
+  font-family: 'ZCOOL KuaiLe', 'Shantell Sans', 'Caveat', cursive;
   font-weight: 400;
 }
 </style>
