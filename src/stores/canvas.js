@@ -199,10 +199,11 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function clear() {
-    cards.value = new Map()
+    cards.clear()
     selectedIds.value.clear()
     greetingVisible.value = true
     isStreaming.value = false
+    snapshotGen++
   }
 
   function restoreFrom(snapshot) {

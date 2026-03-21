@@ -328,6 +328,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (node) node.aiResponse = response
   }
 
+  function setNodeCounter(n) { nodeCounter = n }
+
   /**
    * Find cards by title substring in the computed canvas state.
    * Searches in timeline data (not canvas view layer).
@@ -416,6 +418,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getBubbleInfo,
     reset,
     setAiResponse,
+    setNodeCounter,
     resetLiveState,
     findCardsByKey,
     findCardsByTitle,

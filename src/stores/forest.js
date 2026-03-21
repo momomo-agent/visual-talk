@@ -48,7 +48,7 @@ export const useForestStore = defineStore('forest', () => {
     })
     return {
       nodeCounter: timeline.nodes.size > 0
-        ? Math.max(...[...timeline.nodes.keys()]) + 1
+        ? Array.from(timeline.nodes.keys()).reduce((a, b) => Math.max(a, b), 0) + 1
         : 0,
       activeTip: timeline.activeTip,
       nodes: nodesData,
@@ -80,6 +80,11 @@ export const useForestStore = defineStore('forest', () => {
     // Restore activeTip
     if (data.activeTip != null && timeline.nodes.has(data.activeTip)) {
       timeline.activeTip = data.activeTip
+    }
+
+    // Restore nodeCounter so new nodes don't collide with restored ones
+    if (data.nodeCounter != null) {
+      timeline.setNodeCounter(data.nodeCounter)
     }
 
     // Restore canvas to activeTip
@@ -118,25 +123,22 @@ export const useForestStore = defineStore('forest', () => {
     return id
   }
 
-  function switchTree(treeId) {
+  async function switchTree(treeId) {
     if (treeId === activeTreeId.value) return
     if (!trees[treeId]) return
 
-    const timeline = useTimelineStore()
-    const canvas = useCanvasStore()
-
     // Save current tree
     if (activeTreeId.value) {
-      saveCurrentTree()
+      await saveCurrentTree()
     }
 
     activeTreeId.value = treeId
 
     // Load target tree from store
-    loadTree(treeId)
+    await loadTree(treeId)
   }
 
-  function deleteTree(treeId) {
+  async function deleteTree(treeId) {
     if (!trees[treeId]) return
 
     const idx = order.value.indexOf(treeId)
@@ -144,12 +146,12 @@ export const useForestStore = defineStore('forest', () => {
     delete trees[treeId]
 
     // Remove from persistent storage
-    if (store) store.delete('tree:' + treeId)
+    if (store) await store.delete('tree:' + treeId)
 
     // If deleted the active tree, switch to another or create new
     if (treeId === activeTreeId.value) {
       if (order.value.length > 0) {
-        switchTree(order.value[order.value.length - 1])
+        await switchTree(order.value[order.value.length - 1])
       } else {
         newTree()
       }
@@ -224,16 +226,13 @@ export const useForestStore = defineStore('forest', () => {
 
   function scheduleSave() {
     if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      // Fire and forget — but catch errors
-      (async () => {
-        try {
-          await saveCurrentTree()
-        } catch (e) { console.error('[Forest] save tree error:', e) }
-        try {
-          await saveForestMeta()
-        } catch (e) { console.error('[Forest] save meta error:', e) }
-      })()
+    saveTimer = setTimeout(async () => {
+      try {
+        await saveCurrentTree()
+      } catch (e) { console.error('[Forest] save tree error:', e) }
+      try {
+        await saveForestMeta()
+      } catch (e) { console.error('[Forest] save meta error:', e) }
       saveTimer = null
     }, 500)
   }
@@ -242,9 +241,14 @@ export const useForestStore = defineStore('forest', () => {
 
   async function init() {
     // Create agentic-store instance
-    const AgenticStore = window.AgenticStore || globalThis.AgenticStore
-    if (AgenticStore) {
-      store = await AgenticStore.createStore('visual-talk')
+    try {
+      const AgenticStore = window.AgenticStore || globalThis.AgenticStore
+      if (AgenticStore) {
+        store = await AgenticStore.createStore('visual-talk')
+      }
+    } catch (err) {
+      console.warn('[Forest] persistence unavailable:', err)
+      store = null
     }
 
     // Try to restore forest
