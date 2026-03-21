@@ -333,25 +333,24 @@ function pathToFreehandClosed(pathPoints, size = SIZE) {
 // No rAF polling needed — Vue reactivity handles updates automatically.
 // ═══════════════════════════════════════════════
 
-// Cache measured heights by contentKey (DOM heights don't change often)
-const measuredHeights = reactive({})
+// Cache measured dimensions by key (content-dependent, not in store)
+const measuredDims = reactive({})
 
-function measureHeights() {
+function measureDims() {
   document.querySelectorAll('[data-block-key]').forEach(el => {
     const key = el.dataset.blockKey
-    if (key) measuredHeights[key] = el.offsetHeight
+    if (key) measuredDims[key] = { w: el.offsetWidth, h: el.offsetHeight }
   })
   document.querySelectorAll('[data-content-key]').forEach(el => {
     const key = el.dataset.contentKey
-    if (key) measuredHeights[key] = el.offsetHeight
+    if (key) measuredDims[key] = { w: el.offsetWidth, h: el.offsetHeight }
   })
 }
 
 // Measure after layout changes
 onMounted(() => {
-  setTimeout(measureHeights, 500)
-  // Re-measure when cards change
-  watch(() => cards.value.size, () => setTimeout(measureHeights, 300))
+  setTimeout(measureDims, 500)
+  watch(() => cards.value.size, () => setTimeout(measureDims, 300))
 })
 
 function cardRect(key) {
@@ -363,8 +362,9 @@ function cardRect(key) {
 
   const x = pctX(found.x)
   const y = pctY(found.y)
-  const w = found.w ? pctX(found.w) : 200
-  const h = measuredHeights[key] || measuredHeights[found.contentKey] || 130
+  const dims = measuredDims[key] || measuredDims[found.contentKey]
+  const w = dims?.w || (found.w ? pctX(found.w) : 200)
+  const h = dims?.h || 130
 
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
 }

@@ -93,10 +93,12 @@ const cardStyle = computed(() => {
     filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',
     pointerEvents: c.pointerEvents || 'auto',
     transitionDelay: c.entranceDelay > 0 ? `${c.entranceDelay}s` : '0s',
+    transition: dragging.value ? 'transform 0.15s, opacity 0.3s, filter 0.3s, box-shadow 0.3s' : undefined,
   }
 })
 
 // Interaction state
+const dragging = ref(false)
 let isDragging = false
 let startX = 0, startY = 0, origLeft = 0, origTop = 0
 let preHover = null
@@ -157,6 +159,7 @@ function onMouseDown(e) {
     const dy = e2.clientY - startY
     if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       isDragging = true
+      dragging.value = true
     }
     if (isDragging) {
       const el = blockRef.value
@@ -169,7 +172,7 @@ function onMouseDown(e) {
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    setTimeout(() => { isDragging = false }, 10)
+    setTimeout(() => { isDragging = false; dragging.value = false }, 10)
   }
 
   document.addEventListener('mousemove', onMove)
