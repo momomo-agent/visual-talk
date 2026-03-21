@@ -1,98 +1,99 @@
 <template>
+  <!--
+    Each sketch element gets its own mini-SVG with the same translateZ
+    as its associated card(s). This eliminates perspective parallax
+    because sketch and card are on the same Z plane.
+  -->
   <svg
-    class="sketch-overlay"
-    :style="overlayStyle"
+    v-for="[id, sk] in sketches"
+    :key="id"
+    class="sketch-layer"
     xmlns="http://www.w3.org/2000/svg"
     :viewBox="`0 0 ${width} ${height}`"
     :width="width"
     :height="height"
+    :style="layerStyle(sk)"
     :data-card-pos="cardPositionVersion"
   >
-    <!-- Compensate perspective magnification from translateZ.
-         Scale toward center (= perspective-origin) to cancel the apparent enlargement. -->
-    <g :transform="`translate(${width/2}, ${height/2}) scale(${pScale}) translate(${-width/2}, ${-height/2})`">
-    <g v-for="[id, sk] in sketches" :key="id">
-      <!-- Arrow between cards -->
-      <template v-if="sk.type === 'arrow' && arrowData(sk)">
-        <path
-          :d="arrowData(sk).outline"
-          :fill="sk.color || sketchColor"
-          stroke="none"
-        />
-        <path
-          :d="arrowData(sk).headOutline"
-          :fill="sk.color || sketchColor"
-          stroke="none"
-        />
-        <text
-          v-if="sk.label && arrowData(sk).labelPos"
-          :x="arrowData(sk).labelPos[0]"
-          :y="arrowData(sk).labelPos[1]"
-          :fill="sk.color || sketchColor"
-          font-size="15"
-          text-anchor="middle"
-          class="sk-text"
-        >{{ sk.label }}</text>
-      </template>
+    <!-- Arrow between cards -->
+    <template v-if="sk.type === 'arrow' && arrowData(sk)">
+      <path
+        :d="arrowData(sk).outline"
+        :fill="sk.color || sketchColor"
+        stroke="none"
+      />
+      <path
+        :d="arrowData(sk).headOutline"
+        :fill="sk.color || sketchColor"
+        stroke="none"
+      />
+      <text
+        v-if="sk.label && arrowData(sk).labelPos"
+        :x="arrowData(sk).labelPos[0]"
+        :y="arrowData(sk).labelPos[1]"
+        :fill="sk.color || sketchColor"
+        font-size="15"
+        text-anchor="middle"
+        class="sk-text"
+      >{{ sk.label }}</text>
+    </template>
 
-      <!-- Free-form line -->
-      <template v-else-if="sk.type === 'line' && sk.points?.length >= 2">
-        <path
-          :d="freehandOutline(sk)"
-          :fill="sk.color || sketchColor"
-          stroke="none"
-        />
-      </template>
+    <!-- Free-form line -->
+    <template v-else-if="sk.type === 'line' && sk.points?.length >= 2">
+      <path
+        :d="freehandOutline(sk)"
+        :fill="sk.color || sketchColor"
+        stroke="none"
+      />
+    </template>
 
-      <!-- Circle / ellipse -->
-      <template v-else-if="sk.type === 'circle' && circleOutline(sk)">
-        <path
-          :d="circleOutline(sk)"
-          :fill="sk.color || sketchColor"
-          fill-rule="evenodd"
-          stroke="none"
-        />
-      </template>
+    <!-- Circle / ellipse -->
+    <template v-else-if="sk.type === 'circle' && circleOutline(sk)">
+      <path
+        :d="circleOutline(sk)"
+        :fill="sk.color || sketchColor"
+        fill-rule="evenodd"
+        stroke="none"
+      />
+    </template>
 
-      <!-- Text label -->
-      <template v-else-if="sk.type === 'label' && labelPos(sk)">
-        <text
-          :x="labelPos(sk)[0]"
-          :y="labelPos(sk)[1]"
-          :fill="sk.color || sketchColor"
-          :font-size="sk.size || 18"
-          class="sk-text"
-        >{{ sk.text }}</text>
-      </template>
+    <!-- Text label -->
+    <template v-else-if="sk.type === 'label' && labelPos(sk)">
+      <text
+        :x="labelPos(sk)[0]"
+        :y="labelPos(sk)[1]"
+        :fill="sk.color || sketchColor"
+        :font-size="sk.size || 18"
+        class="sk-text"
+      >{{ sk.text }}</text>
+    </template>
 
-      <!-- Underline -->
-      <template v-else-if="sk.type === 'underline' && underOutline(sk)">
-        <path
-          :d="underOutline(sk)"
-          :fill="sk.color || sketchColor"
-          stroke="none"
-        />
-      </template>
+    <!-- Underline -->
+    <template v-else-if="sk.type === 'underline' && underOutline(sk)">
+      <path
+        :d="underOutline(sk)"
+        :fill="sk.color || sketchColor"
+        stroke="none"
+      />
+    </template>
 
-      <!-- Bracket -->
-      <template v-else-if="sk.type === 'bracket' && bracketData(sk)">
-        <path
-          :d="bracketData(sk).outline"
-          :fill="sk.color || sketchColor"
-          stroke="none"
-        />
-        <text
-          v-if="sk.label && bracketData(sk).labelPos"
-          :x="bracketData(sk).labelPos[0]"
-          :y="bracketData(sk).labelPos[1]"
-          :fill="sk.color || sketchColor"
-          font-size="15"
-          text-anchor="middle"
-          class="sk-text"
-        >{{ sk.label }}</text>
-      </template>
-    </g>
-    </g><!-- close perspective compensation group -->
+    <!-- Bracket -->
+    <template v-else-if="sk.type === 'bracket' && bracketData(sk)">
+      <path
+        :d="bracketData(sk).outline"
+        :fill="sk.color || sketchColor"
+        stroke="none"
+      />
+      <text
+        v-if="sk.label && bracketData(sk).labelPos"
+        :x="bracketData(sk).labelPos[0]"
+        :y="bracketData(sk).labelPos[1]"
+        :fill="sk.color || sketchColor"
+        font-size="15"
+        text-anchor="middle"
+        class="sk-text"
+      >{{ sk.label }}</text>
+    </template>
   </svg>
 </template>
 
@@ -108,8 +109,7 @@ const { sketches } = storeToRefs(sketchStore)
 const { cards } = storeToRefs(canvasStore)
 
 const sketchColor = '#d4930d'
-const SIZE = 5.5 // thicker for dark background visibility
-const PERSPECTIVE = 1400
+const SIZE = 5.5
 
 // Track card positions reactively
 const cardPositionVersion = computed(() => {
@@ -117,24 +117,6 @@ const cardPositionVersion = computed(() => {
   cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) })
   return v
 })
-
-// Dynamic Z: always float above the highest card
-const sketchZ = computed(() => {
-  let maxZ = 0
-  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z })
-  return maxZ + 10
-})
-
-// No scale compensation — we compensate inside the SVG coordinate system instead.
-// This avoids the mismatch between CSS transform-origin and perspective-origin.
-const overlayStyle = computed(() => ({
-  transform: `translateZ(${sketchZ.value}px)`,
-}))
-
-// Perspective compensation factor for SVG coordinates.
-// translateZ(Z) makes the element appear larger by P/(P-Z).
-// We shrink coordinates toward perspective-origin to cancel this.
-const pScale = computed(() => (PERSPECTIVE - sketchZ.value) / PERSPECTIVE)
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
@@ -152,6 +134,49 @@ onMounted(() => {
   }
 })
 onUnmounted(() => window.removeEventListener('resize', onResize))
+
+// ═══════════════════════════════════════════════
+// Per-sketch Z: match the associated card's translateZ
+// ═══════════════════════════════════════════════
+
+function cardZ(key) {
+  let found = null
+  cards.value.forEach(c => {
+    if (c.contentKey === key || c.data?.key === key) found = c
+  })
+  return found ? (found.z || 0) : 0
+}
+
+function sketchZ(sk) {
+  // Get the Z of associated card(s), add 1 to float just above
+  if (sk.type === 'circle' || sk.type === 'underline') {
+    return cardZ(sk.target) + 1
+  }
+  if (sk.type === 'arrow') {
+    const z1 = cardZ(sk.from)
+    const z2 = cardZ(sk.to)
+    return Math.max(z1, z2) + 1
+  }
+  if (sk.type === 'bracket') {
+    if (!sk.targets?.length) return 1
+    const zs = sk.targets.map(cardZ)
+    return Math.max(...zs) + 1
+  }
+  if (sk.type === 'label' && sk.target) {
+    return cardZ(sk.target) + 1
+  }
+  // Fallback: above everything
+  let maxZ = 0
+  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z })
+  return maxZ + 1
+}
+
+function layerStyle(sk) {
+  const z = sketchZ(sk)
+  return {
+    transform: `translateZ(${z}px)`,
+  }
+}
 
 function pctX(v) { return (v / 100) * width.value }
 function pctY(v) { return (v / 100) * height.value }
@@ -228,20 +253,17 @@ function getOutline(strokePoints, closed = false) {
 
   let d
   if (closed) {
-    // Closed shape: inner loop + outer loop (donut)
     d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
     for (let i = 1; i < leftPts.length; i++) {
       d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
     }
     d += 'Z'
-    // Outer loop in reverse = fill between inner and outer
     d += `M${f(rightPts[0].x)},${f(rightPts[0].y)}`
     for (let i = rightPts.length - 1; i >= 0; i--) {
       d += `L${f(rightPts[i].x)},${f(rightPts[i].y)}`
     }
     d += 'Z'
   } else {
-    // Open path: left side → end cap → right side reversed → start cap
     d = `M${f(leftPts[0].x)},${f(leftPts[0].y)}`
     for (let i = 1; i < leftPts.length; i++) {
       d += `L${f(leftPts[i].x)},${f(leftPts[i].y)}`
@@ -266,13 +288,10 @@ function pathToFreehand(pathPoints, size = SIZE, closed = false) {
   return getOutline(stroked, closed)
 }
 
-// Uniform-radius version for closed shapes — no pressure simulation,
-// just a consistent radius with tiny jitter for hand-drawn feel
 function pathToFreehandClosed(pathPoints, size = SIZE) {
   if (pathPoints.length < 2) return ''
   const radius = size * 0.5
   const pts = pathPoints.map((pt, i) => {
-    // Tiny deterministic jitter based on index
     const jitter = Math.sin(i * 7.3) * 0.3
     return { ...pt, radius: Math.max(0.5, radius + jitter), pressure: 0.5 }
   })
@@ -317,7 +336,7 @@ function edgePoint(rect, tx, ty) {
 }
 
 // ═══════════════════════════════════════════════
-// Arrow — freehand body + freehand arrowhead
+// Arrow
 // ═══════════════════════════════════════════════
 
 function arrowData(sk) {
@@ -340,7 +359,6 @@ function arrowData(sk) {
   const pathPoints = sampleBezier(p1, { x: cpx, y: cpy }, p2, 32)
   const outline = pathToFreehand(pathPoints, SIZE)
 
-  // Freehand arrowhead — two short lines forming a V, rendered as filled polygons
   const adx = p2.x - cpx, ady = p2.y - cpy
   const al = Math.sqrt(adx * adx + ady * ady)
   const ax = adx / al, ay = ady / al
@@ -348,21 +366,17 @@ function arrowData(sk) {
   const angle = Math.PI / 6
   const cos = Math.cos(angle), sin = Math.sin(angle)
   
-  // Left prong
   const lx = p2.x - headLen * (ax * cos + ay * sin)
   const ly = p2.y - headLen * (ay * cos - ax * sin)
-  // Right prong
   const rx = p2.x - headLen * (ax * cos - ay * sin)
   const ry = p2.y - headLen * (ay * cos + ax * sin)
   
-  // Render each prong as a freehand line
   const leftPts = sampleBezier({ x: lx, y: ly }, { x: (lx + p2.x) / 2, y: (ly + p2.y) / 2 }, p2, 8)
   const rightPts = sampleBezier(p2, { x: (rx + p2.x) / 2, y: (ry + p2.y) / 2 }, { x: rx, y: ry }, 8)
   const headPts = [...leftPts, ...rightPts.slice(1)]
   const headOutline = pathToFreehand(headPts, SIZE * 0.8)
 
   const labelPos = [cpx, cpy - 10]
-
   return { outline, headOutline, labelPos }
 }
 
@@ -414,11 +428,10 @@ function circleOutline(sk) {
 }
 
 // ═══════════════════════════════════════════════
-// Label — supports both absolute % and relative-to-card positioning
+// Label
 // ═══════════════════════════════════════════════
 
 function labelPos(sk) {
-  // If label has a target card, position relative to it
   if (sk.target) {
     const r = cardRect(sk.target)
     if (r) {
@@ -427,7 +440,6 @@ function labelPos(sk) {
       return [r.cx + offsetX, r.y + offsetY]
     }
   }
-  // Absolute percentage positioning
   if (sk.x != null && sk.y != null) {
     return [pctX(sk.x), pctY(sk.y)]
   }
@@ -449,7 +461,7 @@ function underOutline(sk) {
 }
 
 // ═══════════════════════════════════════════════
-// Bracket — supports top/bottom/left/right
+// Bracket
 // ═══════════════════════════════════════════════
 
 function bracketData(sk) {
@@ -512,14 +524,10 @@ function bracketData(sk) {
 </script>
 
 <style scoped>
-.sketch-overlay {
+.sketch-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /* transform set dynamically via overlayStyle computed:
-   * translateZ(maxCardZ + 10) — always above highest card
-   * scale(counterPerspective) — cancel perspective magnification
-   * transform-origin: 50% 50% — match perspective-origin */
   overflow: visible;
 }
 .sk-text {
