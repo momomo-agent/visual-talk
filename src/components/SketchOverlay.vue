@@ -22,11 +22,13 @@
         :d="arrowData(sk).outline"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-draw-path"
       />
       <path
         :d="arrowData(sk).headOutline"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-draw-path"
       />
       <text
         v-if="sk.label && arrowData(sk).labelPos"
@@ -45,16 +47,21 @@
         :d="freehandOutline(sk)"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-draw-path"
       />
     </template>
 
     <!-- Circle / ellipse -->
-    <template v-else-if="sk.type === 'circle' && circleOutline(sk)">
+    <template v-else-if="sk.type === 'circle' && circleStrokePath(sk)">
       <path
-        :d="circleOutline(sk)"
-        :fill="sk.color || sketchColor"
-        stroke="none"
-        class="sk-circle"
+        :d="circleStrokePath(sk)"
+        fill="none"
+        :stroke="sk.color || sketchColor"
+        :stroke-width="SIZE"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="sk-stroke-draw"
+        :style="{ '--path-len': circlePathLen(sk) }"
       />
     </template>
 
@@ -75,6 +82,7 @@
         :d="underOutline(sk)"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-draw-path"
       />
     </template>
 
@@ -84,6 +92,7 @@
         :d="bracketData(sk).outline"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-draw-path"
       />
       <text
         v-if="sk.label && bracketData(sk).labelPos"
@@ -433,58 +442,49 @@ function freehandOutline(sk) {
 // Circle
 // ═══════════════════════════════════════════════
 
-function circleOutline(sk) {
+// ═══════════════════════════════════════════════
+// Circle: stroke mode with dasharray draw animation
+// ═══════════════════════════════════════════════
+
+function circleGeometry(sk) {
   let cx, cy, rx, ry
   if (sk.target) {
     const r = cardRect(sk.target)
     if (!r) return null
     cx = r.cx; cy = r.cy
-    // Limit aspect ratio to prevent pointy ends on very wide/flat cards
     let rawRx = r.w / 2 + 20, rawRy = r.h / 2 + 16
     const ratio = rawRx / rawRy
-    if (ratio > 1.8) rawRy = rawRx / 1.8 // don't let it get too flat
-    if (ratio < 0.55) rawRx = rawRy * 0.55 // don't let it get too tall
+    if (ratio > 1.8) rawRy = rawRx / 1.8
+    if (ratio < 0.55) rawRx = rawRy * 0.55
     rx = rawRx; ry = rawRy
   } else if (sk.cx != null) {
     cx = pctX(sk.cx); cy = pctY(sk.cy)
     rx = pctX(sk.r || 5); ry = pctY(sk.r || 5)
   } else return null
 
-  // Smooth hand-drawn circle: gentle shape variation, NO jitter/wobble.
-  // Like a confident single pen stroke — smooth but not mathematically perfect.
-
   const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-
   const steps = 72
-  // Tiny gap or slight overlap — feels hand-drawn but nearly closed
-  const gapSign = (seed % 3 === 0) ? -1 : 1 // sometimes overlap, sometimes gap
-  const gapSize = (0.008 + (seed % 3) * 0.005) * Math.PI * 2 // ~3-8°
+  const gapSign = (seed % 3 === 0) ? -1 : 1
+  const gapSize = (0.008 + (seed % 3) * 0.005) * Math.PI * 2
   const totalAngle = Math.PI * 2 - gapSign * gapSize
 
-  // Multiple layers of smooth distortion — each circle looks unique
   const rawPts = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * totalAngle
-    // Layer 1: broad shape (2-3 lobes) — gentle overall asymmetry
     const d1 = 0.03 * Math.sin(t * (2 + seed % 2) + seed * 0.3)
-    // Layer 2: medium detail (3-4 lobes) — subtle character
     const d2 = 0.015 * Math.sin(t * (3 + seed % 2) + seed * 1.7)
     
     const shape = 1 + d1 + d2
-    rawPts.push({
-      x: cx + rx * shape * Math.cos(t),
-      y: cy + ry * shape * Math.sin(t),
-    })
+    rawPts.push({ x: cx + rx * shape * Math.cos(t), y: cy + ry * shape * Math.sin(t) })
   }
 
-  // Upsample with Catmull-Rom for silky smooth curves before freehand
+  // Catmull-Rom smooth
   const smooth = []
   for (let i = 0; i < rawPts.length - 1; i++) {
     const p0 = rawPts[Math.max(0, i - 1)]
     const p1 = rawPts[i]
     const p2 = rawPts[i + 1]
     const p3 = rawPts[Math.min(rawPts.length - 1, i + 2)]
-    // 3 sub-samples per segment
     for (let s = 0; s < 3; s++) {
       const t = s / 3
       const t2 = t * t, t3 = t2 * t
@@ -496,8 +496,29 @@ function circleOutline(sk) {
   }
   smooth.push(rawPts[rawPts.length - 1])
 
-  // Open freehand path — tldraw-style filled polygon
-  return pathToFreehand(smooth, SIZE, false)
+  // Compute path length
+  let len = 0
+  for (let i = 1; i < smooth.length; i++) {
+    const dx = smooth[i].x - smooth[i-1].x, dy = smooth[i].y - smooth[i-1].y
+    len += Math.sqrt(dx*dx + dy*dy)
+  }
+
+  return { pts: smooth, len }
+}
+
+function circleStrokePath(sk) {
+  const geo = circleGeometry(sk)
+  if (!geo) return null
+  let d = `M ${geo.pts[0].x} ${geo.pts[0].y}`
+  for (let i = 1; i < geo.pts.length; i++) {
+    d += ` L ${geo.pts[i].x} ${geo.pts[i].y}`
+  }
+  return d
+}
+
+function circlePathLen(sk) {
+  const geo = circleGeometry(sk)
+  return geo ? geo.len : 1000
 }
 
 
@@ -623,23 +644,22 @@ function bracketData(sk) {
   }
 }
 
-/* Circle uses a different animation — radial reveal instead of left-to-right clip */
-.sk-circle {
-  animation: circle-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* Stroke-based draw animation (circle, etc.) — draws along the path */
+.sk-stroke-draw {
+  stroke-dasharray: var(--path-len);
+  stroke-dashoffset: var(--path-len);
+  animation: stroke-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes circle-draw {
+@keyframes stroke-draw {
   0% {
-    opacity: 0;
-    transform: scale(0.85);
-    transform-origin: center;
+    stroke-dashoffset: var(--path-len);
+    opacity: 0.3;
   }
-  40% {
-    opacity: 1;
-  }
+  10% { opacity: 1; }
   100% {
+    stroke-dashoffset: 0;
     opacity: 1;
-    transform: scale(1);
   }
 }
 .sk-text {
