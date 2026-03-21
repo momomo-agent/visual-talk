@@ -198,12 +198,33 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
-  function clear() {
-    cards.clear()
-    selectedIds.value.clear()
-    greetingVisible.value = true
-    isStreaming.value = false
-    snapshotGen++
+  function clear({ animate = true } = {}) {
+    const gen = ++snapshotGen
+
+    if (!animate || cards.size === 0) {
+      cards.clear()
+      selectedIds.value.clear()
+      greetingVisible.value = true
+      isStreaming.value = false
+      return
+    }
+
+    // Push everything back into the distance
+    cards.forEach(card => {
+      card.opacity = 0
+      card.z = (card.z || 0) - 600
+      card.scale = (card.scale || 1) * 0.3
+      card.blur = 12
+      card.pointerEvents = 'none'
+    })
+
+    setTimeout(() => {
+      if (snapshotGen !== gen) return
+      cards.clear()
+      selectedIds.value.clear()
+      greetingVisible.value = true
+      isStreaming.value = false
+    }, 800)
   }
 
   function restoreFrom(snapshot) {
