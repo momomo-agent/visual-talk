@@ -46,6 +46,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       childIds: [],
       lastChildId: null,
       userMessage: userMessage || '',
+      aiResponse: '',
       timestamp: Date.now(),
       operations: [],
     })
@@ -322,6 +323,66 @@ export const useTimelineStore = defineStore('timeline', () => {
     canvasCache.clear()
   }
 
+  function setAiResponse(nodeId, response) {
+    const node = nodes.get(nodeId)
+    if (node) node.aiResponse = response
+  }
+
+  function setNodeCounter(n) { nodeCounter = n }
+
+  // --- Serialization (for forest persistence) ---
+
+  function toJSON() {
+    const nodesData = {}
+    nodes.forEach((node, id) => {
+      nodesData[id] = {
+        id: node.id,
+        parentId: node.parentId,
+        childIds: [...node.childIds],
+        lastChildId: node.lastChildId,
+        userMessage: node.userMessage,
+        aiResponse: node.aiResponse || '',
+        timestamp: node.timestamp,
+        operations: JSON.parse(JSON.stringify(node.operations)),
+      }
+    })
+    return {
+      version: 1,
+      nodeCounter,
+      activeTip: activeTip.value,
+      nodes: nodesData,
+    }
+  }
+
+  function fromJSON(data) {
+    reset()
+    if (!data || !data.nodes) return
+
+    const entries = Object.values(data.nodes).sort((a, b) => a.id - b.id)
+    for (const nd of entries) {
+      nodes.set(nd.id, {
+        id: nd.id,
+        parentId: nd.parentId ?? null,
+        childIds: nd.childIds || [],
+        lastChildId: nd.lastChildId ?? null,
+        userMessage: nd.userMessage || '',
+        aiResponse: nd.aiResponse || '',
+        timestamp: nd.timestamp || Date.now(),
+        operations: nd.operations || [],
+      })
+    }
+
+    if (data.activeTip != null && nodes.has(data.activeTip)) {
+      activeTip.value = data.activeTip
+    }
+    if (data.nodeCounter != null) {
+      nodeCounter = data.nodeCounter
+    }
+    if (activeTip.value != null) {
+      restoreToNode(activeTip.value)
+    }
+  }
+
   /**
    * Find cards by title substring in the computed canvas state.
    * Searches in timeline data (not canvas view layer).
@@ -409,11 +470,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     restoreToNode,
     getBubbleInfo,
     reset,
+    setAiResponse,
+    setNodeCounter,
     resetLiveState,
     findCardsByKey,
     findCardsByTitle,
     getCanvasContext,
     getSelectedContext,
     getPathFromRoot,
+    toJSON,
+    fromJSON,
   }
 })

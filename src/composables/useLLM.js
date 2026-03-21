@@ -78,6 +78,7 @@ export function useLLM() {
       systemPrompt: SYSTEM,
       maxTokens: 4096,
       stream: true,
+      persist: 'localStorage',
       tools: [{
         name: 'web_search',
         description: 'Search the web for information, images, news. Use for ANY question needing real-world facts, current events, image URLs, or verification.',

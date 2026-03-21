@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useConfigStore } from '../stores/config.js'
 import { useTimelineStore } from '../stores/timeline.js'
+import { useForestStore } from '../stores/forest.js'
 import { useLLM } from './useLLM.js'
 import { parseResponse } from '../lib/parser.js'
 
@@ -163,6 +164,7 @@ export function useSend({ tts } = {}) {
       const state = { pushRecorded: false, lastBlockCount: 0 }
       let lastCommandCount = 0
       let speechHandled = false
+      let reply = null
 
       try {
         const cfg = configStore.getConfig()
@@ -171,7 +173,7 @@ export function useSend({ tts } = {}) {
           return 'need-config'
         }
 
-        const reply = await callLLM(prompt,
+        reply = await callLLM(prompt,
           // onToken — streaming callback
           (partial) => {
             const { blocks, commands } = parseResponse(partial)
@@ -221,6 +223,14 @@ export function useSend({ tts } = {}) {
         isThinking.value = false
         canvas.isStreaming = false
         timeline.resetLiveState()
+
+        // Store AI response on timeline node
+        if (reply) timeline.setAiResponse(nodeId, reply)
+
+        // Persist after each round
+        const forest = useForestStore()
+        forest.autoName(forest.activeTreeId, userMessage)
+        forest.scheduleSave()
       }
     }
     sendProcessing.value = false
