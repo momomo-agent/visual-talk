@@ -5,6 +5,7 @@
     :viewBox="`0 0 ${width} ${height}`"
     :width="width"
     :height="height"
+    :data-card-pos="cardPositionVersion"
   >
     <g v-for="[id, sk] in sketches" :key="id">
       <!-- Arrow between cards -->
@@ -94,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSketchStore } from '../stores/sketch.js'
 import { useCanvasStore } from '../stores/canvas.js'
@@ -108,14 +109,31 @@ const sketchColor = '#d4930d'
 const baseStrokeW = 2.0
 const SIZE = 4.5 // slightly larger than tldraw "m" (3.5) for visibility on dark bg
 
+// Track card positions reactively — touch x/y of every card to trigger re-render on move
+const cardPositionVersion = computed(() => {
+  let v = 0
+  cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) })
+  return v
+})
+
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
+const spaceRef = ref(null)
 
 function onResize() {
   width.value = window.innerWidth
   height.value = window.innerHeight
 }
-onMounted(() => window.addEventListener('resize', onResize))
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  // Get actual canvas-space dimensions
+  const space = document.querySelector('.canvas-space')
+  if (space) {
+    spaceRef.value = space
+    width.value = space.offsetWidth || window.innerWidth
+    height.value = space.offsetHeight || window.innerHeight
+  }
+})
 onUnmounted(() => window.removeEventListener('resize', onResize))
 
 function pctX(v) { return (v / 100) * width.value }
@@ -230,10 +248,22 @@ function pathToFreehand(pathPoints, size = SIZE) {
 }
 
 // ═══════════════════════════════════════════════
-// Card geometry
+// Card geometry — read actual DOM positions
 // ═══════════════════════════════════════════════
 
 function cardRect(key) {
+  // Find the DOM element by LLM-assigned key
+  const el = document.querySelector(`[data-block-key="${key}"]`)
+    || document.querySelector(`[data-content-key="${key}"]`)
+  if (el) {
+    // offsetLeft/Top/Width/Height are layout values, not affected by CSS transforms
+    const x = el.offsetLeft
+    const y = el.offsetTop
+    const w = el.offsetWidth
+    const h = el.offsetHeight
+    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
+  }
+  // Fallback: use store data (percentage-based)
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c

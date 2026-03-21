@@ -4,6 +4,8 @@
     class="v-block"
     :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
     :style="cardStyle"
+    :data-content-key="card.contentKey || card.data?.key || ''"
+    :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
