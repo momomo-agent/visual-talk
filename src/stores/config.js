@@ -19,7 +19,7 @@ export const useConfigStore = defineStore('config', () => {
   const proxyEnabled = ref(false)
   const proxyUrl = ref('')
   const sketchEnabled = ref(true)
-  const sketchFont = ref('ChenYuluoyan')
+  const sketchFont = ref('Yozai')
 
   function load() {
     try {

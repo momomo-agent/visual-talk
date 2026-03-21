@@ -113,10 +113,10 @@ const { sketchEnabled, sketchFont } = storeToRefs(configStore)
 const fontFamily = computed(() => {
   const fonts = {
     ChenYuluoyan: "'ChenYuluoyan', 'Shantell Sans', cursive",
-    HuiFont: "'HuiFont', 'Shantell Sans', cursive",
     Yozai: "'Yozai', 'Shantell Sans', cursive",
+    LXGWWenKai: "'LXGW WenKai', 'Shantell Sans', cursive",
   }
-  return fonts[sketchFont.value] || fonts.ChenYuluoyan
+  return fonts[sketchFont.value] || fonts.Yozai
 })
 
 const sketchColor = '#e8a849'
