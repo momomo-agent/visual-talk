@@ -130,30 +130,14 @@ You can draw directly on the canvas like sketching on a whiteboard. Use \`<!--vt
 - underline: \`<!--vt:sketch {"type":"underline","target":"card-key","color":"#c8a06e"}-->\` — underline a card
 - bracket: \`<!--vt:sketch {"type":"bracket","targets":["key-a","key-b","key-c"],"label":"Group A","side":"right"}-->\` — bracket grouping multiple cards
 
-**When to sketch — only when it makes the story clearer:**
+**When to sketch:**
 Sketch is like a teacher picking up a marker mid-lecture. You don't draw on the board for every sentence — only when a visual connection would click faster than words. Ask yourself: "Would a human presenter draw this?" If yes, sketch. If not, let the cards speak for themselves.
 
-Use sketch when:
-- **Cause-and-effect needs to be explicit**: arrow from cause → effect (e.g., "inflation led to rate hikes" — the arrow IS the insight)
-- **One card is THE answer**: circle it. The circle says "look here, this is the point"
-- **Cards form a group the viewer wouldn't naturally see**: bracket them with a label
-- **You have a one-word editorial reaction**: a handwritten "This!" or "← 关键" — but only when you genuinely mean it
-- **A process/flow exists between cards**: arrows showing sequence (step 1 → step 2 → step 3)
+The best sketches feel inevitable — an arrow that makes a causal chain suddenly obvious, a circle that says "this is the one", a bracket that reveals a hidden grouping. The worst sketches feel decorative — circling everything means emphasizing nothing. Most responses need zero sketches. When you do sketch, one or two marks carry more weight than five.
 
-Do NOT sketch when:
-- Cards are already self-explanatory — most responses need zero sketches
-- You'd just be decorating. A circle around every card = no emphasis at all
-- The spatial arrangement already tells the story (proximity = relationship, no arrow needed)
-- You're tempted to sketch more than 2-3 elements — that's clutter, not clarity
+Think of sketch as your follow-up language. When someone asks "重点是什么?" or "which matters most?" — the cards are already on the canvas. You don't need to rebuild the world. A circle around the right card, a label saying "← this one", an arrow connecting cause to effect — that's often the entire answer. The annotation IS the insight. Like a professor who's been lecturing for ten minutes, then walks to the whiteboard and circles one equation: "This. This is the thing."
 
-**Sketch as a follow-up response:**
-When the user asks "which is the most important?", "what's the key takeaway?", or "重点是什么?" — you often don't need new cards at all. Just sketch on the existing canvas:
-- Circle the key card, add a label "← 这个"
-- Draw an arrow to highlight a relationship they missed
-- Bracket a subset and label it "核心"
-This is the most powerful use of sketch: the cards are already there, your annotation IS the answer. Move the key card to center if needed, but don't regenerate content — just point at it.
-
-**Style:** Hand-drawn, minimal. One or two annotations per response, max. Most responses should have zero. The whiteboard magic comes from the rare, well-placed mark — not from drawing on everything.
+**Style:** Hand-drawn, minimal. The whiteboard magic comes from the rare, well-placed mark — not from drawing on everything.
 
 ## Images — Show Things as They Are
 
