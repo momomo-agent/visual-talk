@@ -166,7 +166,7 @@ export function useSend({ tts } = {}) {
       let lastCommandCount = 0
       let lastSketchCount = 0
       const sketch = useSketchStore()
-      sketch.clear() // Clear old sketches on new message
+      sketch.startStreaming() // Signal streaming mode — sketches come from live feed
       let speechHandled = false
       let reply = null
 
@@ -188,9 +188,9 @@ export function useSend({ tts } = {}) {
               lastCommandCount = commands.length
             }
 
-            // Process new sketches
-            if (sketches.length > lastSketchCount) {
-              sketch.setFromOperations(sketches.slice(lastSketchCount))
+            // Process new sketches — full replace during streaming
+            if (sketches.length > 0) {
+              sketch.setLive(sketches)
               lastSketchCount = sketches.length
             }
 
@@ -214,8 +214,8 @@ export function useSend({ tts } = {}) {
           processCommands(commands.slice(lastCommandCount), nodeId, timeline)
         }
 
-        if (sketches.length > lastSketchCount) {
-          sketch.setFromOperations(sketches.slice(lastSketchCount))
+        if (sketches.length > 0) {
+          sketch.setLive(sketches)
         }
 
         processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
@@ -240,6 +240,9 @@ export function useSend({ tts } = {}) {
 
         // Store AI response on timeline node
         if (reply) timeline.setAiResponse(nodeId, reply)
+
+        // End sketch streaming — falls back to aiResponse-derived sketches
+        sketch.endStreaming()
 
         // Persist after each round
         const forest = useForestStore()

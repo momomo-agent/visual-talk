@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { useCanvasStore } from './canvas.js'
-import { useSketchStore } from './sketch.js'
 import { nextId } from '../lib/id.js'
 import { CanvasState } from '../lib/canvas-state.js'
-import { parseResponse } from '../lib/parser.js'
 import { getCardTitle, matchTitle, buildCanvasContext, buildSelectedContext } from '../lib/card-utils.js'
 
 /**
@@ -288,17 +286,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const canvas = useCanvasStore()
     const computedCanvas = computeCanvas(nodeId)
     canvas.restoreFrom(computedCanvas)
-
-    // Restore sketches from the node's aiResponse
-    const sketch = useSketchStore()
-    sketch.clear()
-    const node = nodes.get(nodeId)
-    if (node?.aiResponse) {
-      const { sketches } = parseResponse(node.aiResponse)
-      if (sketches.length > 0) {
-        sketch.setFromOperations(sketches)
-      }
-    }
+    // Sketch restore is automatic — sketch store watches currentNode
   }
 
   // --- Bubble display info ---

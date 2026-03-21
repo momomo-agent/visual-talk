@@ -1,46 +1,113 @@
 import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
+import { reactive, ref, watch } from 'vue'
+import { useTimelineStore } from './timeline.js'
+import { parseResponse } from '../lib/parser.js'
 
 /**
- * Sketch Store — manages canvas overlay annotations
+ * Sketch Store — derived from timeline node's aiResponse
  * 
- * Types:
- * - arrow: { from: cardKey, to: cardKey, label?, color? }
- * - line: { points: [[x,y]...], color?, width? }
- * - circle: { target: cardKey, color? } OR { cx, cy, r, color? }
- * - label: { text, x, y, color? }
- * - underline: { target: cardKey, color? }
+ * Architecture:
+ * - Non-streaming: sketches are computed from currentNode.aiResponse
+ * - Streaming: useSend pushes live sketches via setLive()
+ * - When streaming ends, live is cleared and we fall back to aiResponse
+ * 
+ * This means sketches automatically follow navigation (timeline node changes)
+ * without any manual sync.
  */
 export const useSketchStore = defineStore('sketch', () => {
+  // Live sketches during streaming (set by useSend)
+  const liveSketches = reactive(new Map())
+  const isStreaming = ref(false)
+  let liveIdCounter = 0
+
+  // The actual sketches exposed to SketchOverlay
+  // During streaming → liveSketches
+  // Otherwise → parsed from currentNode.aiResponse
   const sketches = reactive(new Map())
-  let idCounter = 0
+
+  // Watch timeline's current node for non-streaming updates
+  let unwatchTimeline = null
+
+  function initWatcher() {
+    if (unwatchTimeline) return
+    const timeline = useTimelineStore()
+    unwatchTimeline = watch(
+      () => timeline.currentNode,
+      (node) => {
+        if (isStreaming.value) return // Don't override live sketches
+        syncFromNode(node)
+      },
+      { immediate: true }
+    )
+  }
+
+  function syncFromNode(node) {
+    sketches.clear()
+    if (!node?.aiResponse) return
+    const { sketches: parsed } = parseResponse(node.aiResponse)
+    let id = 0
+    for (const op of parsed) {
+      sketches.set(`sk-${id++}`, { id: `sk-${id}`, ...op })
+    }
+  }
+
+  // Called by useSend when streaming starts
+  function startStreaming() {
+    isStreaming.value = true
+    liveSketches.clear()
+    sketches.clear()
+    liveIdCounter = 0
+  }
+
+  // Called by useSend to push live sketch updates during streaming
+  function setLive(ops) {
+    liveSketches.clear()
+    liveIdCounter = 0
+    for (const op of ops) {
+      const id = `sk-${liveIdCounter++}`
+      liveSketches.set(id, { id, ...op })
+    }
+    // Sync to sketches
+    sketches.clear()
+    liveSketches.forEach((v, k) => sketches.set(k, v))
+  }
+
+  // Called by useSend when streaming ends
+  function endStreaming() {
+    isStreaming.value = false
+    liveSketches.clear()
+    // Fall back to aiResponse (which should now be saved on the node)
+    const timeline = useTimelineStore()
+    syncFromNode(timeline.currentNode)
+  }
+
+  // Legacy API — used during init
+  function clear() {
+    sketches.clear()
+    liveSketches.clear()
+  }
+
+  // Kept for backward compat but delegates to setLive
+  function setFromOperations(ops) {
+    setLive(ops)
+  }
 
   function add(sketch) {
-    const id = `sk-${idCounter++}`
+    const id = `sk-${liveIdCounter++}`
+    liveSketches.set(id, { id, ...sketch })
     sketches.set(id, { id, ...sketch })
     return id
   }
 
-  function remove(id) {
-    sketches.delete(id)
-  }
-
-  function clear() {
-    sketches.clear()
-    idCounter = 0
-  }
-
-  function setFromOperations(ops) {
-    for (const op of ops) {
-      add(op)
-    }
-  }
-
   return {
     sketches,
+    isStreaming,
     add,
-    remove,
     clear,
     setFromOperations,
+    startStreaming,
+    setLive,
+    endStreaming,
+    initWatcher,
   }
 })

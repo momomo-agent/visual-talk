@@ -39,6 +39,7 @@ import { useTTS } from './composables/useTTS.js'
 import { useSTT } from './composables/useSTT.js'
 import { useTimeline } from './composables/useTimeline.js'
 import { useConfigStore } from './stores/config.js'
+import { useSketchStore } from './stores/sketch.js'
 import { useTimelineStore } from './stores/timeline.js'
 import { useForestStore } from './stores/forest.js'
 
@@ -52,6 +53,8 @@ let lastInputWasVoice = false
 // Initialize forest (restore persisted state)
 onMounted(async () => {
   await forest.init()
+  // Start sketch watcher after forest is ready (timeline has data)
+  useSketchStore().initWatcher()
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
 })
