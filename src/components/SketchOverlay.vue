@@ -404,32 +404,58 @@ function bracketData(sk) {
   const rects = sk.targets.map(cardRect).filter(Boolean)
   if (!rects.length) return null
 
-  const right = sk.side === 'right'
-  const minY = Math.min(...rects.map(r => r.y)) - 10
-  const maxY = Math.max(...rects.map(r => r.y + r.h)) + 10
-  const edge = right
-    ? Math.max(...rects.map(r => r.x + r.w)) + 14
-    : Math.min(...rects.map(r => r.x)) - 14
-  const bump = right ? 16 : -16
-  const midY = (minY + maxY) / 2
+  const side = sk.side || 'right'
+  const minX = Math.min(...rects.map(r => r.x))
+  const maxX = Math.max(...rects.map(r => r.x + r.w))
+  const minY = Math.min(...rects.map(r => r.y))
+  const maxY = Math.max(...rects.map(r => r.y + r.h))
 
-  // Top half
-  const topPts = sampleBezier(
-    { x: edge, y: minY },
-    { x: edge + bump, y: minY },
-    { x: edge + bump, y: midY },
-    12
-  )
-  // Bottom half
-  const botPts = sampleBezier(
-    { x: edge + bump, y: midY },
-    { x: edge + bump, y: maxY },
-    { x: edge, y: maxY },
-    12
-  )
-  const allPts = [...topPts, ...botPts.slice(1)]
+  let allPts, labelPos
+
+  if (side === 'top' || side === 'bottom') {
+    // Horizontal bracket
+    const y = side === 'top' ? minY - 14 : maxY + 14
+    const bump = side === 'top' ? -16 : 16
+    const midX = (minX + maxX) / 2
+
+    const leftPts = sampleBezier(
+      { x: minX - 10, y },
+      { x: minX - 10, y: y + bump },
+      { x: midX, y: y + bump },
+      12
+    )
+    const rightPts = sampleBezier(
+      { x: midX, y: y + bump },
+      { x: maxX + 10, y: y + bump },
+      { x: maxX + 10, y },
+      12
+    )
+    allPts = [...leftPts, ...rightPts.slice(1)]
+    labelPos = [midX, y + bump * 2.2]
+  } else {
+    // Vertical bracket (left/right)
+    const isRight = side === 'right'
+    const edge = isRight ? maxX + 14 : minX - 14
+    const bump = isRight ? 16 : -16
+    const midY = (minY + maxY) / 2
+
+    const topPts = sampleBezier(
+      { x: edge, y: minY - 10 },
+      { x: edge + bump, y: minY - 10 },
+      { x: edge + bump, y: midY },
+      12
+    )
+    const botPts = sampleBezier(
+      { x: edge + bump, y: midY },
+      { x: edge + bump, y: maxY + 10 },
+      { x: edge, y: maxY + 10 },
+      12
+    )
+    allPts = [...topPts, ...botPts.slice(1)]
+    labelPos = [edge + bump * 2.2, midY + 5]
+  }
+
   const outline = pathToFreehand(allPts, SIZE)
-  const labelPos = [edge + bump * 2.2, midY + 5]
   return { outline, labelPos }
 }
 </script>
@@ -439,7 +465,7 @@ function bracketData(sk) {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  z-index: 200;
   overflow: visible;
 }
 .sk-text {
