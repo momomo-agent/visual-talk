@@ -161,36 +161,11 @@ onUnmounted(() => {
 // Per-sketch Z: match the associated card's translateZ
 // ═══════════════════════════════════════════════
 
-function cardZ(key) {
-  let found = null
-  cards.value.forEach(c => {
-    if (c.contentKey === key || c.data?.key === key) found = c
-  })
-  return found ? (found.z || 0) : 0
-}
-
 function sketchZ(sk) {
-  // Get the Z of associated card(s), add 1 to float just above
-  if (sk.type === 'circle' || sk.type === 'underline') {
-    return cardZ(sk.target) + 1
-  }
-  if (sk.type === 'arrow') {
-    const z1 = cardZ(sk.from)
-    const z2 = cardZ(sk.to)
-    return Math.max(z1, z2) + 1
-  }
-  if (sk.type === 'bracket') {
-    if (!sk.targets?.length) return 1
-    const zs = sk.targets.map(cardZ)
-    return Math.max(...zs) + 1
-  }
-  if (sk.type === 'label' && sk.target) {
-    return cardZ(sk.target) + 1
-  }
-  // Fallback: above everything
+  // Sketches always float above ALL cards — not just their target card
   let maxZ = 0
-  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z })
-  return maxZ + 1
+  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z || 0 })
+  return maxZ + 10
 }
 
 function layerStyle(sk) {
@@ -348,10 +323,16 @@ function measureDims() {
   })
 }
 
-// Measure after layout changes
+// Measure after layout changes — multiple passes to catch rendering at different stages
 onMounted(() => {
-  setTimeout(measureDims, 500)
-  watch(() => cards.value.size, () => setTimeout(measureDims, 300))
+  measureDims()
+  setTimeout(measureDims, 300)
+  watch(() => cards.value.size, () => {
+    // Cards just changed — measure multiple times as they render
+    requestAnimationFrame(measureDims)
+    setTimeout(measureDims, 100)
+    setTimeout(measureDims, 400)
+  })
 })
 
 function cardRect(key) {
