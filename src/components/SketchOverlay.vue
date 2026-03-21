@@ -197,6 +197,7 @@ function cardZ(key) {
 }
 
 function sketchZ(sk) {
+  void tick.value
   // Get the Z of associated card(s), add 1 to float just above
   if (sk.type === 'circle' || sk.type === 'underline') {
     return cardZ(sk.target) + 1
@@ -404,6 +405,7 @@ function edgePoint(rect, tx, ty) {
 // ═══════════════════════════════════════════════
 
 function arrowData(sk) {
+  void tick.value // reactive dependency — re-compute when cards animate
   const fromR = cardRect(sk.from)
   const toR = cardRect(sk.to)
   if (!fromR || !toR) return null
@@ -471,6 +473,7 @@ function freehandOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function circleOutline(sk) {
+  void tick.value
   let cx, cy, rx, ry
   if (sk.target) {
     const r = cardRect(sk.target)
@@ -544,6 +547,7 @@ function circleOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function labelPos(sk) {
+  void tick.value
   if (sk.target) {
     const r = cardRect(sk.target)
     if (r) {
@@ -563,6 +567,7 @@ function labelPos(sk) {
 // ═══════════════════════════════════════════════
 
 function underOutline(sk) {
+  void tick.value
   const r = cardRect(sk.target)
   if (!r) return null
   const y = r.y + r.h + 8
@@ -577,6 +582,7 @@ function underOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function bracketData(sk) {
+  void tick.value
   if (!sk.targets?.length) return null
   const rects = sk.targets.map(cardRect).filter(Boolean)
   if (!rects.length) return null
