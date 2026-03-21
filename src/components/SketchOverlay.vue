@@ -1,4 +1,5 @@
-<template v-if="sketchEnabled">
+<template>
+  <div v-if="sketchEnabled" style="position: absolute; inset: 0; pointer-events: none;">
   <!--
     Each sketch element gets its own mini-SVG with the same translateZ
     as its associated card(s). This eliminates perspective parallax
@@ -94,6 +95,7 @@
       >{{ sk.label }}</text>
     </template>
   </svg>
+  </div>
 </template>
 
 <script setup>
