@@ -123,11 +123,38 @@ const sketchColor = '#e8a849'
 const SIZE = 5.5
 
 // Track card positions reactively
+// tick increments during card animations to keep sketches in sync
+const tick = ref(0)
 const cardPositionVersion = computed(() => {
-  let v = 0
-  cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) })
+  let v = tick.value
+  cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) + (c.z || 0) })
   return v
 })
+
+// Animate sketch positions during card transitions
+let animFrame = 0
+function startPositionSync() {
+  // Run rAF loop for ~1.2s to cover card CSS transitions (1s)
+  const end = performance.now() + 1200
+  function step() {
+    tick.value++
+    if (performance.now() < end) {
+      animFrame = requestAnimationFrame(step)
+    }
+  }
+  cancelAnimationFrame(animFrame)
+  animFrame = requestAnimationFrame(step)
+}
+
+// Watch for card position/z changes and sync sketch animation
+watch(
+  () => {
+    let v = 0
+    cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) + (c.z || 0) })
+    return v
+  },
+  () => startPositionSync()
+)
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
@@ -150,7 +177,10 @@ onMounted(() => {
     height.value = space.offsetHeight || window.innerHeight
   }
 })
-onUnmounted(() => window.removeEventListener('resize', onResize))
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  cancelAnimationFrame(animFrame)
+})
 
 // ═══════════════════════════════════════════════
 // Per-sketch Z: match the associated card's translateZ
@@ -324,43 +354,35 @@ function pathToFreehandClosed(pathPoints, size = SIZE) {
 }
 
 // ═══════════════════════════════════════════════
-// Card geometry — read actual DOM positions
+// Card geometry — read actual DOM positions via getBoundingClientRect
+// rAF loop during card animations keeps sketch in sync with CSS transitions
 // ═══════════════════════════════════════════════
 
 function cardRect(key) {
+  const space = document.querySelector('.canvas-space')
   const el = document.querySelector(`[data-block-key="${key}"]`)
     || document.querySelector(`[data-content-key="${key}"]`)
-  if (el) {
-    // Use position relative to .canvas-space parent for accurate alignment
-    const space = document.querySelector('.canvas-space')
-    if (space) {
-      const sr = space.getBoundingClientRect()
-      const er = el.getBoundingClientRect()
-      // Account for perspective scaling: cards at different Z have different
-      // apparent positions via getBoundingClientRect, but SVG is at Z=cardZ+1
-      // which is very close to the card's Z, so the rect is close enough
-      const x = er.left - sr.left
-      const y = er.top - sr.top
-      const w = er.width
-      const h = er.height
-      return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
-    }
-    // Fallback to offset
-    const x = el.offsetLeft
-    const y = el.offsetTop
-    const w = el.offsetWidth
-    const h = el.offsetHeight
+  if (el && space) {
+    const sr = space.getBoundingClientRect()
+    const er = el.getBoundingClientRect()
+    const x = er.left - sr.left
+    const y = er.top - sr.top
+    const w = er.width
+    const h = er.height
     return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
   }
+
+  // Fallback: calculate from store data
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c
   })
   if (!found) return null
+
   const x = pctX(found.x)
   const y = pctY(found.y)
-  const w = found.w ? pctX(found.w) : 200
-  const h = 130
+  let w = found.w ? pctX(found.w) : 200
+  let h = 130
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
 }
 
