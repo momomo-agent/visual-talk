@@ -457,7 +457,15 @@ function bracketData(sk) {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 200;
+  /*
+   * Z-layering in preserve-3d:
+   * Cards at Z 0–120px. SVG at Z 200px → always in front.
+   * Perspective (1400px) magnifies near objects: scale = 1400/(1400-200) = 1.167x
+   * Counter-scale 0.857 cancels this, keeping SVG coords = card layout coords.
+   * transform-origin 50% 50% matches perspective-origin.
+   */
+  transform: translateZ(200px) scale(0.857);
+  transform-origin: 50% 50%;
   overflow: visible;
 }
 .sk-text {
