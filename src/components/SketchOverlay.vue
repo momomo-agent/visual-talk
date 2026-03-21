@@ -47,15 +47,12 @@
       />
     </template>
 
-    <!-- Circle / ellipse — rendered as a smooth stroke, not filled polygon -->
+    <!-- Circle / ellipse -->
     <template v-else-if="sk.type === 'circle' && circleOutline(sk)">
       <path
-        :d="circlePathD(sk)"
-        fill="none"
-        :stroke="sk.color || sketchColor"
-        :stroke-width="SIZE * 1.1"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+        :d="circleOutline(sk)"
+        :fill="sk.color || sketchColor"
+        stroke="none"
       />
     </template>
 
@@ -442,46 +439,41 @@ function circleOutline(sk) {
   const lobes = 2 + (seed % 2)
   const distortAmt = 0.055 // 5.5% — noticeable but smooth
 
-  const pts = []
+  const rawPts = []
   for (let i = 0; i <= steps; i++) {
     const t = (i / steps) * totalAngle
     // Smooth sinusoidal distortion — no noise, no jitter
     const shape = 1 + distortAmt * Math.sin(t * lobes + seed * 0.3)
-    pts.push({
+    rawPts.push({
       x: cx + rx * shape * Math.cos(t),
       y: cy + ry * shape * Math.sin(t),
     })
   }
 
-  // Build as SVG stroke path (not filled polygon) for smooth, even-width lines
-  // Return a special marker so the template can render it as a <path stroke=...>
-  return { pts, isStroke: true }
+  // Upsample with Catmull-Rom for silky smooth curves before freehand
+  const smooth = []
+  for (let i = 0; i < rawPts.length - 1; i++) {
+    const p0 = rawPts[Math.max(0, i - 1)]
+    const p1 = rawPts[i]
+    const p2 = rawPts[i + 1]
+    const p3 = rawPts[Math.min(rawPts.length - 1, i + 2)]
+    // 3 sub-samples per segment
+    for (let s = 0; s < 3; s++) {
+      const t = s / 3
+      const t2 = t * t, t3 = t2 * t
+      smooth.push({
+        x: 0.5 * ((2*p1.x) + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+        y: 0.5 * ((2*p1.y) + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+      })
+    }
+  }
+  smooth.push(rawPts[rawPts.length - 1])
+
+  // Open freehand path — tldraw-style filled polygon
+  return pathToFreehand(smooth, SIZE, false)
 }
 
-function circlePathD(sk) {
-  const data = circleOutline(sk)
-  if (!data?.pts) return ''
-  const pts = data.pts
-  if (pts.length < 3) return ''
-  
-  // Catmull-Rom → cubic bezier for ultra-smooth curves (no sharp corners)
-  let d = `M${f(pts[0].x)},${f(pts[0].y)}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)]
-    const p1 = pts[i]
-    const p2 = pts[i + 1]
-    const p3 = pts[Math.min(pts.length - 1, i + 2)]
-    
-    // Catmull-Rom to cubic bezier control points
-    const cp1x = p1.x + (p2.x - p0.x) / 6
-    const cp1y = p1.y + (p2.y - p0.y) / 6
-    const cp2x = p2.x - (p3.x - p1.x) / 6
-    const cp2y = p2.y - (p3.y - p1.y) / 6
-    
-    d += `C${f(cp1x)},${f(cp1y)} ${f(cp2x)},${f(cp2y)} ${f(p2.x)},${f(p2.y)}`
-  }
-  return d
-}
+
 
 // ═══════════════════════════════════════════════
 // Label
