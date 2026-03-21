@@ -29,68 +29,14 @@ export const useForestStore = defineStore('forest', () => {
     return 'tree_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6)
   }
 
-  // --- Serialize/deserialize timeline state ---
+  // --- Serialize/deserialize via timeline's own API ---
 
   function serializeTimeline() {
-    const timeline = useTimelineStore()
-    const nodesData = {}
-    timeline.nodes.forEach((node, id) => {
-      nodesData[id] = {
-        id: node.id,
-        parentId: node.parentId,
-        childIds: [...node.childIds],
-        lastChildId: node.lastChildId,
-        userMessage: node.userMessage,
-        aiResponse: node.aiResponse || '',
-        timestamp: node.timestamp,
-        operations: JSON.parse(JSON.stringify(node.operations)),
-      }
-    })
-    return {
-      nodeCounter: timeline.nodes.size > 0
-        ? Array.from(timeline.nodes.keys()).reduce((a, b) => Math.max(a, b), 0) + 1
-        : 0,
-      activeTip: timeline.activeTip,
-      nodes: nodesData,
-    }
+    return useTimelineStore().toJSON()
   }
 
   function deserializeTimeline(data) {
-    const timeline = useTimelineStore()
-    timeline.reset()
-
-    if (!data || !data.nodes) return
-
-    // Restore nodes — must use timeline's internal reactive system
-    const nodeEntries = Object.values(data.nodes).sort((a, b) => a.id - b.id)
-    for (const nd of nodeEntries) {
-      // Directly populate the reactive Map
-      timeline.nodes.set(nd.id, {
-        id: nd.id,
-        parentId: nd.parentId ?? null,
-        childIds: nd.childIds || [],
-        lastChildId: nd.lastChildId ?? null,
-        userMessage: nd.userMessage || '',
-        aiResponse: nd.aiResponse || '',
-        timestamp: nd.timestamp || Date.now(),
-        operations: nd.operations || [],
-      })
-    }
-
-    // Restore activeTip
-    if (data.activeTip != null && timeline.nodes.has(data.activeTip)) {
-      timeline.activeTip = data.activeTip
-    }
-
-    // Restore nodeCounter so new nodes don't collide with restored ones
-    if (data.nodeCounter != null) {
-      timeline.setNodeCounter(data.nodeCounter)
-    }
-
-    // Restore canvas to activeTip
-    if (timeline.activeTip != null) {
-      timeline.restoreToNode(timeline.activeTip)
-    }
+    useTimelineStore().fromJSON(data)
   }
 
   // --- Tree operations ---
