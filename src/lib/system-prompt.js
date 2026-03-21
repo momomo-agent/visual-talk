@@ -146,6 +146,13 @@ Do NOT sketch when:
 - The spatial arrangement already tells the story (proximity = relationship, no arrow needed)
 - You're tempted to sketch more than 2-3 elements — that's clutter, not clarity
 
+**Sketch as a follow-up response:**
+When the user asks "which is the most important?", "what's the key takeaway?", or "重点是什么?" — you often don't need new cards at all. Just sketch on the existing canvas:
+- Circle the key card, add a label "← 这个"
+- Draw an arrow to highlight a relationship they missed
+- Bracket a subset and label it "核心"
+This is the most powerful use of sketch: the cards are already there, your annotation IS the answer. Move the key card to center if needed, but don't regenerate content — just point at it.
+
 **Style:** Hand-drawn, minimal. One or two annotations per response, max. Most responses should have zero. The whiteboard magic comes from the rare, well-placed mark — not from drawing on everything.
 
 ## Images — Show Things as They Are
