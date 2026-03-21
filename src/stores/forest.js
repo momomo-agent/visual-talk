@@ -272,6 +272,20 @@ export const useForestStore = defineStore('forest', () => {
     ready.value = true
   }
 
+  // Flush pending saves on page close
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+        saveTimer = null
+      }
+      // Synchronous best-effort: serialize and queue IDB write
+      // IDB writes started before unload usually complete
+      saveCurrentTree()
+      saveForestMeta()
+    })
+  }
+
   // --- Computed ---
 
   const treeList = computed(() => {
