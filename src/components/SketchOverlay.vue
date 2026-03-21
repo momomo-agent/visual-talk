@@ -54,6 +54,7 @@
         :d="circleOutline(sk)"
         :fill="sk.color || sketchColor"
         stroke="none"
+        class="sk-circle"
       />
     </template>
 
@@ -638,6 +639,26 @@ function bracketData(sk) {
   100% {
     opacity: 1;
     clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Circle uses a different animation — radial reveal instead of left-to-right clip */
+.sk-circle {
+  animation: circle-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes circle-draw {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+    transform-origin: center;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 .sk-text {
