@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSketchStore } from '../stores/sketch.js'
 import { useCanvasStore } from '../stores/canvas.js'
@@ -124,39 +124,12 @@ const fontFamily = computed(() => {
 const sketchColor = '#e8a849'
 const SIZE = 5.5
 
-// Track card positions reactively
-// tick increments during card animations to keep sketches in sync
-const tick = ref(0)
+// Track card positions reactively (used as dependency in template via data-card-pos)
 const cardPositionVersion = computed(() => {
-  let v = tick.value
+  let v = 0
   cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) + (c.z || 0) })
   return v
 })
-
-// Animate sketch positions during card transitions
-let animFrame = 0
-function startPositionSync() {
-  // Run rAF loop for ~1.2s to cover card CSS transitions (1s)
-  const end = performance.now() + 1200
-  function step() {
-    tick.value++
-    if (performance.now() < end) {
-      animFrame = requestAnimationFrame(step)
-    }
-  }
-  cancelAnimationFrame(animFrame)
-  animFrame = requestAnimationFrame(step)
-}
-
-// Watch for card position/z changes and sync sketch animation
-watch(
-  () => {
-    let v = 0
-    cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) + (c.z || 0) })
-    return v
-  },
-  () => startPositionSync()
-)
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
@@ -181,7 +154,6 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
-  cancelAnimationFrame(animFrame)
 })
 
 // ═══════════════════════════════════════════════
@@ -197,7 +169,6 @@ function cardZ(key) {
 }
 
 function sketchZ(sk) {
-  void tick.value
   // Get the Z of associated card(s), add 1 to float just above
   if (sk.type === 'circle' || sk.type === 'underline') {
     return cardZ(sk.target) + 1
@@ -357,25 +328,33 @@ function pathToFreehandClosed(pathPoints, size = SIZE) {
 }
 
 // ═══════════════════════════════════════════════
-// Card geometry — read actual DOM positions via getBoundingClientRect
-// rAF loop during card animations keeps sketch in sync with CSS transitions
+// Card geometry — computed from store data (reactive)
+// DOM is only used for height (content-dependent, not in store).
+// No rAF polling needed — Vue reactivity handles updates automatically.
 // ═══════════════════════════════════════════════
 
-function cardRect(key) {
-  const space = document.querySelector('.canvas-space')
-  const el = document.querySelector(`[data-block-key="${key}"]`)
-    || document.querySelector(`[data-content-key="${key}"]`)
-  if (el && space) {
-    const sr = space.getBoundingClientRect()
-    const er = el.getBoundingClientRect()
-    const x = er.left - sr.left
-    const y = er.top - sr.top
-    const w = er.width
-    const h = er.height
-    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
-  }
+// Cache measured heights by contentKey (DOM heights don't change often)
+const measuredHeights = reactive({})
 
-  // Fallback: calculate from store data
+function measureHeights() {
+  document.querySelectorAll('[data-block-key]').forEach(el => {
+    const key = el.dataset.blockKey
+    if (key) measuredHeights[key] = el.offsetHeight
+  })
+  document.querySelectorAll('[data-content-key]').forEach(el => {
+    const key = el.dataset.contentKey
+    if (key) measuredHeights[key] = el.offsetHeight
+  })
+}
+
+// Measure after layout changes
+onMounted(() => {
+  setTimeout(measureHeights, 500)
+  // Re-measure when cards change
+  watch(() => cards.value.size, () => setTimeout(measureHeights, 300))
+})
+
+function cardRect(key) {
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c
@@ -384,8 +363,9 @@ function cardRect(key) {
 
   const x = pctX(found.x)
   const y = pctY(found.y)
-  let w = found.w ? pctX(found.w) : 200
-  let h = 130
+  const w = found.w ? pctX(found.w) : 200
+  const h = measuredHeights[key] || measuredHeights[found.contentKey] || 130
+
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
 }
 
@@ -405,7 +385,6 @@ function edgePoint(rect, tx, ty) {
 // ═══════════════════════════════════════════════
 
 function arrowData(sk) {
-  void tick.value // reactive dependency — re-compute when cards animate
   const fromR = cardRect(sk.from)
   const toR = cardRect(sk.to)
   if (!fromR || !toR) return null
@@ -473,7 +452,6 @@ function freehandOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function circleOutline(sk) {
-  void tick.value
   let cx, cy, rx, ry
   if (sk.target) {
     const r = cardRect(sk.target)
@@ -547,7 +525,6 @@ function circleOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function labelPos(sk) {
-  void tick.value
   if (sk.target) {
     const r = cardRect(sk.target)
     if (r) {
@@ -567,7 +544,6 @@ function labelPos(sk) {
 // ═══════════════════════════════════════════════
 
 function underOutline(sk) {
-  void tick.value
   const r = cardRect(sk.target)
   if (!r) return null
   const y = r.y + r.h + 8
@@ -582,7 +558,6 @@ function underOutline(sk) {
 // ═══════════════════════════════════════════════
 
 function bracketData(sk) {
-  void tick.value
   if (!sk.targets?.length) return null
   const rects = sk.targets.map(cardRect).filter(Boolean)
   if (!rects.length) return null
