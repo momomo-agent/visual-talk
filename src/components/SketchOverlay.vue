@@ -493,12 +493,14 @@ function bracketData(sk) {
   inset: 0;
   pointer-events: none;
   /*
-   * In preserve-3d, z-index is ignored. Elements at same translateZ
-   * use DOM order (painter's algorithm) — later DOM = on top.
-   * SketchOverlay is after all BlockCards in DOM, so it renders on top.
-   * translateZ(0) keeps it in the same plane as cards for perfect alignment.
+   * In preserve-3d, elements need an explicit 3D transform to participate
+   * in Z-ordering. Cards have translateZ(0) scale(1) — a 3D transform.
+   * translateZ(1px) ensures the SVG is treated as a 3D layer AND sits
+   * 1px in front of Z=0 cards. The 1px offset is imperceptible
+   * (< 0.1% of 1400px perspective) but guarantees correct layering.
+   * Selected cards at Z=120 still float above (intentional).
    */
-  transform: translateZ(0px);
+  transform: translateZ(1px);
   overflow: visible;
 }
 .sk-text {
