@@ -108,7 +108,7 @@ const canvasStore = useCanvasStore()
 const { sketches } = storeToRefs(sketchStore)
 const { cards } = storeToRefs(canvasStore)
 
-const sketchColor = '#d4930d'
+const sketchColor = '#e8a849'
 const SIZE = 5.5
 
 // Track card positions reactively
@@ -291,9 +291,17 @@ function pathToFreehand(pathPoints, size = SIZE, closed = false) {
 function pathToFreehandClosed(pathPoints, size = SIZE) {
   if (pathPoints.length < 2) return ''
   const radius = size * 0.5
+  const n = pathPoints.length
   const pts = pathPoints.map((pt, i) => {
-    const jitter = Math.sin(i * 7.3) * 0.3
-    return { ...pt, radius: Math.max(0.5, radius + jitter), pressure: 0.5 }
+    // Simulate a real pen stroke around a circle:
+    // - Starts thin (pen just touched down)
+    // - Gets confident/thick in the middle
+    // - Thins again near closure (lifting off)
+    const progress = i / n
+    const strokeEnvelope = Math.sin(progress * Math.PI) // 0→1→0 arc
+    const thickRadius = radius * (0.6 + 0.8 * strokeEnvelope) // thin at ends, thick in middle
+    const jitter = Math.sin(i * 7.3 + i * i * 0.01) * 0.5
+    return { ...pt, radius: Math.max(0.5, thickRadius + jitter), pressure: 0.5 }
   })
   return getOutline(pts, true)
 }
@@ -412,19 +420,48 @@ function circleOutline(sk) {
     const r = cardRect(sk.target)
     if (!r) return null
     cx = r.cx; cy = r.cy
-    rx = r.w / 2 + 16; ry = r.h / 2 + 12
+    rx = r.w / 2 + 20; ry = r.h / 2 + 16
   } else if (sk.cx != null) {
     cx = pctX(sk.cx); cy = pctY(sk.cy)
     rx = pctX(sk.r || 5); ry = pctY(sk.r || 5)
   } else return null
 
-  const steps = 48
+  // A real hand-drawn circle is NOT a closed shape — it's an open stroke
+  // that goes slightly past 360°. Draw it as an open freehand path
+  // with pressure variation (thin start → thick middle → thin end).
+
+  const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  const sRand = (i, freq) => Math.sin(seed * 0.7 + i * freq) * Math.cos(seed * 1.3 + i * freq * 0.7)
+
+  const steps = 72
+  // Overshoot: go ~20-40° past full circle (like a real hand)
+  const overshoot = (0.06 + (seed % 5) * 0.02) * Math.PI * 2 // ~20-55°
+  const totalAngle = Math.PI * 2 + overshoot
+
+  const lobes = 2 + (seed % 2)
+  const avgR = (rx + ry) / 2
+  const distortAmt = 0.05
+  const wobbleAmt = Math.min(8, avgR * 0.025)
+
   const pts = []
-  for (let i = 0; i < steps; i++) {
-    const t = (i / steps) * Math.PI * 2
-    pts.push({ x: cx + rx * Math.cos(t), y: cy + ry * Math.sin(t) })
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * totalAngle
+
+    const loFreq = 1 + distortAmt * Math.sin(t * lobes + seed * 0.3)
+    const asymmetry = 1 + 0.02 * Math.sin(t + seed * 0.5)
+    const wobble = sRand(i, 0.6) * wobbleAmt
+
+    const curRx = rx * loFreq * asymmetry + wobble
+    const curRy = ry * loFreq / asymmetry - wobble * 0.6
+
+    pts.push({
+      x: cx + curRx * Math.cos(t),
+      y: cy + curRy * Math.sin(t),
+    })
   }
-  return pathToFreehandClosed(pts, SIZE)
+
+  // Use open freehand (not closed) — this IS a single stroke, not a ring
+  return pathToFreehand(pts, SIZE, false)
 }
 
 // ═══════════════════════════════════════════════
