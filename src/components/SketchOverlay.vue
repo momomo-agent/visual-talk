@@ -431,9 +431,10 @@ function circleOutline(sk) {
   const seed = (sk.target || sk.id || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
 
   const steps = 72
-  // Very short overshoot — just enough to feel human, not mechanical
-  const overshoot = (0.02 + (seed % 3) * 0.008) * Math.PI * 2 // ~7-16°
-  const totalAngle = Math.PI * 2 + overshoot
+  // Leave a small gap — don't close the circle. Like a confident pen stroke
+  // that stops just short of where it started.
+  const gap = (0.03 + (seed % 4) * 0.01) * Math.PI * 2 // ~11-25° gap
+  const totalAngle = Math.PI * 2 - gap
 
   // Gentle low-frequency shape distortion — 2-3 smooth bumps
   const lobes = 2 + (seed % 2)
