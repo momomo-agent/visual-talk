@@ -7,119 +7,121 @@
     :height="height"
   >
     <defs>
-      <marker id="sk-arrowhead" markerWidth="10" markerHeight="7"
-        refX="9" refY="3.5" orient="auto" fill="currentColor">
-        <polygon points="0 0, 10 3.5, 0 7" />
+      <!-- Hand-drawn arrowhead -->
+      <marker id="sk-arrow-end" markerWidth="12" markerHeight="8"
+        refX="10" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M1,1 L10,4 L1,7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </marker>
     </defs>
-    <g v-for="[id, sk] in sketches" :key="id" :style="{ color: sk.color || '#c8a06e' }">
+
+    <g v-for="[id, sk] in sketches" :key="id" :style="{ color: sk.color || sketchColor }">
       <!-- Arrow between cards -->
-      <g v-if="sk.type === 'arrow'" class="sk-arrow">
+      <template v-if="sk.type === 'arrow' && arrowData(sk)">
         <path
-          v-if="arrowPath(sk)"
-          :d="arrowPath(sk)"
+          v-for="(d, di) in sketchPaths(arrowData(sk).path)"
+          :key="'a'+di"
+          :d="d"
           fill="none"
           stroke="currentColor"
-          :stroke-width="sk.width || 2"
+          :stroke-width="1.8 - di * 0.3"
+          :opacity="1 - di * 0.25"
           stroke-linecap="round"
-          marker-end="url(#sk-arrowhead)"
-          :style="sketchFilter"
+          :marker-end="di === 0 ? 'url(#sk-arrow-end)' : ''"
         />
         <text
-          v-if="sk.label && arrowMid(sk)"
-          :x="arrowMid(sk)[0]"
-          :y="arrowMid(sk)[1] - 8"
+          v-if="sk.label && arrowData(sk).mid"
+          :x="arrowData(sk).mid[0]"
+          :y="arrowData(sk).mid[1] - 10"
           fill="currentColor"
-          font-size="12"
+          font-size="14"
           text-anchor="middle"
-          :style="labelStyle"
+          class="sk-text"
         >{{ sk.label }}</text>
-      </g>
+      </template>
 
       <!-- Free-form line -->
-      <g v-else-if="sk.type === 'line'" class="sk-line">
+      <template v-else-if="sk.type === 'line' && linePts(sk)">
         <path
-          :d="linePath(sk)"
+          v-for="(d, di) in sketchPaths(lineD(sk))"
+          :key="'l'+di"
+          :d="d"
           fill="none"
           stroke="currentColor"
-          :stroke-width="sk.width || 2"
+          :stroke-width="(sk.width || 2) - di * 0.4"
+          :opacity="1 - di * 0.25"
           stroke-linecap="round"
           stroke-linejoin="round"
-          :style="sketchFilter"
         />
-      </g>
+      </template>
 
-      <!-- Circle around card or position -->
-      <g v-else-if="sk.type === 'circle'" class="sk-circle">
-        <ellipse
-          v-if="circlePos(sk)"
-          :cx="circlePos(sk).cx"
-          :cy="circlePos(sk).cy"
-          :rx="circlePos(sk).rx"
-          :ry="circlePos(sk).ry"
+      <!-- Circle around card -->
+      <template v-else-if="sk.type === 'circle' && circleData(sk)">
+        <path
+          v-for="(d, di) in sketchPaths(circleD(sk))"
+          :key="'c'+di"
+          :d="d"
           fill="none"
           stroke="currentColor"
-          :stroke-width="sk.width || 2.5"
+          :stroke-width="(sk.width || 2) - di * 0.3"
+          :opacity="0.7 - di * 0.15"
           stroke-linecap="round"
-          :stroke-dasharray="sk.dashed ? '8 6' : 'none'"
-          :style="sketchFilter"
         />
-      </g>
+      </template>
 
       <!-- Text label -->
-      <g v-else-if="sk.type === 'label'" class="sk-label">
+      <template v-else-if="sk.type === 'label'">
         <text
-          :x="pct(sk.x)"
-          :y="pct(sk.y)"
+          :x="pctX(sk.x)"
+          :y="pctY(sk.y)"
           fill="currentColor"
-          :font-size="sk.size || 16"
-          :style="labelStyle"
+          :font-size="sk.size || 18"
+          class="sk-text"
         >{{ sk.text }}</text>
-      </g>
+      </template>
 
-      <!-- Underline a card -->
-      <g v-else-if="sk.type === 'underline'" class="sk-underline">
-        <line
-          v-if="underlinePos(sk)"
-          :x1="underlinePos(sk).x1"
-          :y1="underlinePos(sk).y"
-          :x2="underlinePos(sk).x2"
-          :y2="underlinePos(sk).y"
-          stroke="currentColor"
-          :stroke-width="sk.width || 3"
-          stroke-linecap="round"
-          :style="sketchFilter"
-        />
-      </g>
-
-      <!-- Bracket grouping -->
-      <g v-else-if="sk.type === 'bracket'" class="sk-bracket">
+      <!-- Underline -->
+      <template v-else-if="sk.type === 'underline' && underData(sk)">
         <path
-          v-if="bracketPath(sk)"
-          :d="bracketPath(sk)"
+          v-for="(d, di) in sketchPaths(underData(sk))"
+          :key="'u'+di"
+          :d="d"
           fill="none"
           stroke="currentColor"
-          :stroke-width="sk.width || 2"
+          :stroke-width="(sk.width || 2.5) - di * 0.4"
+          :opacity="0.7 - di * 0.15"
+          stroke-linecap="round"
+        />
+      </template>
+
+      <!-- Bracket -->
+      <template v-else-if="sk.type === 'bracket' && bracketData(sk)">
+        <path
+          v-for="(d, di) in sketchPaths(bracketData(sk).path)"
+          :key="'b'+di"
+          :d="d"
+          fill="none"
+          stroke="currentColor"
+          :stroke-width="(sk.width || 2) - di * 0.3"
+          :opacity="0.7 - di * 0.15"
           stroke-linecap="round"
           stroke-linejoin="round"
-          :style="sketchFilter"
         />
         <text
-          v-if="sk.label && bracketLabel(sk)"
-          :x="bracketLabel(sk)[0]"
-          :y="bracketLabel(sk)[1]"
+          v-if="sk.label && bracketData(sk).labelPos"
+          :x="bracketData(sk).labelPos[0]"
+          :y="bracketData(sk).labelPos[1]"
           fill="currentColor"
-          font-size="13"
+          font-size="14"
           text-anchor="middle"
-          :style="labelStyle"
+          class="sk-text"
         >{{ sk.label }}</text>
-      </g>
+      </template>
     </g>
   </svg>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSketchStore } from '../stores/sketch.js'
 import { useCanvasStore } from '../stores/canvas.js'
@@ -128,6 +130,8 @@ const sketchStore = useSketchStore()
 const canvasStore = useCanvasStore()
 const { sketches } = storeToRefs(sketchStore)
 const { cards } = storeToRefs(canvasStore)
+
+const sketchColor = '#c8a06e'
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
@@ -140,114 +144,148 @@ function onResize() {
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => window.removeEventListener('resize', onResize))
 
-// Convert percentage to pixels
-function pct(v) { return typeof v === 'number' ? v * width.value / 100 : 0 }
-function pctY(v) { return typeof v === 'number' ? v * height.value / 100 : 0 }
+function pctX(v) { return (v / 100) * width.value }
+function pctY(v) { return (v / 100) * height.value }
 
-// Find card center by key
+// --- Card geometry ---
 function cardRect(key) {
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c
   })
   if (!found) return null
-  const x = pct(found.x)
+  const x = pctX(found.x)
   const y = pctY(found.y)
-  const w = found.w ? pct(found.w) : 200
-  const h = 120 // approximate card height
+  const w = found.w ? pctX(found.w) : 200
+  const h = 130
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
 }
 
-// Sketchy jitter — adds subtle hand-drawn feel
-function jitter(v, amount = 1.5) {
-  return v + (Math.random() - 0.5) * amount
+// Find the point on the edge of rect closest to target point
+function edgePoint(rect, tx, ty) {
+  const cx = rect.cx, cy = rect.cy
+  const dx = tx - cx, dy = ty - cy
+  if (dx === 0 && dy === 0) return { x: cx, y: cy }
+
+  const hw = rect.w / 2 + 8  // padding
+  const hh = rect.h / 2 + 8
+
+  // Which edge does the line from center to target cross first?
+  const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity
+  const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity
+  const s = Math.min(sx, sy)
+
+  return { x: cx + dx * s, y: cy + dy * s }
 }
 
-const sketchFilter = { filter: 'url(#none)' } // placeholder for roughness
-const labelStyle = { fontFamily: "'Caveat', 'Segoe Print', cursive", fontWeight: 400 }
-
-// Arrow path between two cards
-function arrowPath(sk) {
-  const from = cardRect(sk.from)
-  const to = cardRect(sk.to)
-  if (!from || !to) return null
-
-  const x1 = jitter(from.cx)
-  const y1 = jitter(from.cy)
-  const x2 = jitter(to.cx)
-  const y2 = jitter(to.cy)
-
-  // Bezier with slight curve
-  const mx = (x1 + x2) / 2 + (y2 - y1) * 0.15
-  const my = (y1 + y2) / 2 - (x2 - x1) * 0.15
-  return `M${x1},${y1} Q${mx},${my} ${x2},${y2}`
+// --- Hand-drawn jitter ---
+// Generate 2-3 slightly offset copies of a path for that hand-drawn feel
+function sketchPaths(pathD) {
+  if (!pathD) return []
+  const paths = [pathD]
+  // Add 2 jittered copies
+  for (let pass = 1; pass <= 2; pass++) {
+    const seed = pass * 17
+    paths.push(pathD.replace(/(-?\d+\.?\d*)/g, (match, num, offset) => {
+      const n = parseFloat(num)
+      if (isNaN(n) || Math.abs(n) < 2) return match
+      const jit = (Math.sin(offset * 0.7 + seed) * 1.2 + Math.cos(offset * 1.3 + seed) * 0.8)
+      return (n + jit).toFixed(1)
+    }))
+  }
+  return paths
 }
 
-function arrowMid(sk) {
-  const from = cardRect(sk.from)
-  const to = cardRect(sk.to)
-  if (!from || !to) return null
-  return [(from.cx + to.cx) / 2, (from.cy + to.cy) / 2]
+// --- Arrow ---
+function arrowData(sk) {
+  const fromRect = cardRect(sk.from)
+  const toRect = cardRect(sk.to)
+  if (!fromRect || !toRect) return null
+
+  // Connect from edge to edge
+  const p1 = edgePoint(fromRect, toRect.cx, toRect.cy)
+  const p2 = edgePoint(toRect, fromRect.cx, fromRect.cy)
+
+  // Slight curve perpendicular to the line
+  const dx = p2.x - p1.x, dy = p2.y - p1.y
+  const len = Math.sqrt(dx * dx + dy * dy)
+  const curvature = Math.min(len * 0.15, 40)
+  const mx = (p1.x + p2.x) / 2 - (dy / len) * curvature
+  const my = (p1.y + p2.y) / 2 + (dx / len) * curvature
+
+  const path = `M${p1.x.toFixed(1)},${p1.y.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+  const mid = [mx, my]
+  return { path, mid }
 }
 
-// Free-form line
-function linePath(sk) {
-  if (!sk.points?.length) return ''
-  const pts = sk.points.map(([x, y]) => [pct(x), pctY(y)])
-  if (pts.length < 2) return ''
-  let d = `M${jitter(pts[0][0])},${jitter(pts[0][1])}`
+// --- Free line ---
+function linePts(sk) { return sk.points?.length >= 2 }
+function lineD(sk) {
+  const pts = sk.points.map(([x, y]) => [pctX(x), pctY(y)])
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
   for (let i = 1; i < pts.length; i++) {
-    d += ` L${jitter(pts[i][0])},${jitter(pts[i][1])}`
+    // Use quadratic curves through midpoints for smoother feel
+    if (i < pts.length - 1) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2
+      const my = (pts[i][1] + pts[i + 1][1]) / 2
+      d += ` Q${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`
+    } else {
+      d += ` L${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)}`
+    }
   }
   return d
 }
 
-// Circle position
-function circlePos(sk) {
-  if (sk.target) {
-    const r = cardRect(sk.target)
-    if (!r) return null
-    return { cx: r.cx, cy: r.cy, rx: r.w / 2 + 16, ry: r.h / 2 + 12 }
-  }
-  return {
-    cx: pct(sk.cx),
-    cy: pctY(sk.cy),
-    rx: pct(sk.r || 5),
-    ry: pctY(sk.r || 5),
-  }
+// --- Circle ---
+function circleData(sk) {
+  if (sk.target) return cardRect(sk.target)
+  if (sk.cx != null) return { cx: pctX(sk.cx), cy: pctY(sk.cy), w: pctX(sk.r || 5) * 2, h: pctY(sk.r || 5) * 2 }
+  return null
+}
+function circleD(sk) {
+  const r = circleData(sk)
+  if (!r) return null
+  const rx = r.w / 2 + 12, ry = r.h / 2 + 8
+  const cx = r.cx, cy = r.cy
+  // Hand-drawn ellipse using 4 cubic bezier arcs (slightly irregular)
+  const k = 0.5522848 // circle approximation constant
+  const jx = 3, jy = 2 // asymmetry for hand-drawn feel
+  return `M${(cx - rx + jx).toFixed(1)},${cy.toFixed(1)} `
+    + `C${(cx - rx).toFixed(1)},${(cy - ry * k - jy).toFixed(1)} ${(cx - rx * k + jx).toFixed(1)},${(cy - ry).toFixed(1)} ${cx.toFixed(1)},${(cy - ry + jy).toFixed(1)} `
+    + `C${(cx + rx * k + jx).toFixed(1)},${(cy - ry - jy).toFixed(1)} ${(cx + rx).toFixed(1)},${(cy - ry * k).toFixed(1)} ${(cx + rx - jx).toFixed(1)},${cy.toFixed(1)} `
+    + `C${(cx + rx).toFixed(1)},${(cy + ry * k + jy).toFixed(1)} ${(cx + rx * k - jx).toFixed(1)},${(cy + ry).toFixed(1)} ${cx.toFixed(1)},${(cy + ry - jy).toFixed(1)} `
+    + `C${(cx - rx * k - jx).toFixed(1)},${(cy + ry + jy).toFixed(1)} ${(cx - rx).toFixed(1)},${(cy + ry * k).toFixed(1)} ${(cx - rx + jx).toFixed(1)},${cy.toFixed(1)}Z`
 }
 
-// Underline position
-function underlinePos(sk) {
+// --- Underline ---
+function underData(sk) {
   const r = cardRect(sk.target)
   if (!r) return null
-  return { x1: r.x + 8, x2: r.x + r.w - 8, y: r.y + r.h + 4 }
+  const y = r.y + r.h + 6
+  // Wavy underline
+  const x1 = r.x + 6, x2 = r.x + r.w - 6
+  const mid = (x1 + x2) / 2
+  return `M${x1.toFixed(1)},${y.toFixed(1)} Q${mid.toFixed(1)},${(y + 3).toFixed(1)} ${x2.toFixed(1)},${y.toFixed(1)}`
 }
 
-// Bracket path (left brace grouping multiple cards)
-function bracketPath(sk) {
+// --- Bracket ---
+function bracketData(sk) {
   if (!sk.targets?.length) return null
   const rects = sk.targets.map(cardRect).filter(Boolean)
-  if (rects.length === 0) return null
-  const minY = Math.min(...rects.map(r => r.y)) - 10
-  const maxY = Math.max(...rects.map(r => r.y + r.h)) + 10
-  const side = sk.side === 'right'
-    ? Math.max(...rects.map(r => r.x + r.w)) + 20
-    : Math.min(...rects.map(r => r.x)) - 20
-  const bump = sk.side === 'right' ? 15 : -15
+  if (!rects.length) return null
+
+  const right = sk.side === 'right'
+  const minY = Math.min(...rects.map(r => r.y)) - 12
+  const maxY = Math.max(...rects.map(r => r.y + r.h)) + 12
+  const edge = right
+    ? Math.max(...rects.map(r => r.x + r.w)) + 16
+    : Math.min(...rects.map(r => r.x)) - 16
+  const bump = right ? 18 : -18
   const midY = (minY + maxY) / 2
-  return `M${side},${minY} Q${side + bump},${minY} ${side + bump},${midY} Q${side + bump},${maxY} ${side},${maxY}`
-}
 
-function bracketLabel(sk) {
-  if (!sk.targets?.length) return null
-  const rects = sk.targets.map(cardRect).filter(Boolean)
-  if (rects.length === 0) return null
-  const midY = (Math.min(...rects.map(r => r.y)) + Math.max(...rects.map(r => r.y + r.h))) / 2
-  const side = sk.side === 'right'
-    ? Math.max(...rects.map(r => r.x + r.w)) + 45
-    : Math.min(...rects.map(r => r.x)) - 45
-  return [side, midY]
+  const path = `M${edge.toFixed(1)},${minY.toFixed(1)} Q${(edge + bump).toFixed(1)},${minY.toFixed(1)} ${(edge + bump).toFixed(1)},${midY.toFixed(1)} Q${(edge + bump).toFixed(1)},${maxY.toFixed(1)} ${edge.toFixed(1)},${maxY.toFixed(1)}`
+  const labelPos = [edge + bump * 2, midY + 5]
+  return { path, labelPos }
 }
 </script>
 
@@ -257,11 +295,11 @@ function bracketLabel(sk) {
   inset: 0;
   pointer-events: none;
   z-index: 100;
+  overflow: visible;
 }
-.sk-arrow, .sk-line, .sk-circle, .sk-underline, .sk-bracket {
-  opacity: 0.7;
-}
-.sk-label {
+.sk-text {
+  font-family: 'Shantell Sans', 'Caveat', 'Segoe Print', cursive;
+  font-weight: 400;
   opacity: 0.8;
 }
 </style>
