@@ -8,6 +8,9 @@
     :height="height"
     :data-card-pos="cardPositionVersion"
   >
+    <!-- Compensate perspective magnification from translateZ.
+         Scale toward center (= perspective-origin) to cancel the apparent enlargement. -->
+    <g :transform="`translate(${width/2}, ${height/2}) scale(${pScale}) translate(${-width/2}, ${-height/2})`">
     <g v-for="[id, sk] in sketches" :key="id">
       <!-- Arrow between cards -->
       <template v-if="sk.type === 'arrow' && arrowData(sk)">
@@ -89,6 +92,7 @@
         >{{ sk.label }}</text>
       </template>
     </g>
+    </g><!-- close perspective compensation group -->
   </svg>
 </template>
 
@@ -121,16 +125,16 @@ const sketchZ = computed(() => {
   return maxZ + 10
 })
 
-// Perspective counter-scale: cancel magnification from translateZ
-// scale = (perspective - z) / perspective
-const sketchScale = computed(() => {
-  return (PERSPECTIVE - sketchZ.value) / PERSPECTIVE
-})
-
+// No scale compensation — we compensate inside the SVG coordinate system instead.
+// This avoids the mismatch between CSS transform-origin and perspective-origin.
 const overlayStyle = computed(() => ({
-  transform: `translateZ(${sketchZ.value}px) scale(${sketchScale.value})`,
-  transformOrigin: '50% 50%',
+  transform: `translateZ(${sketchZ.value}px)`,
 }))
+
+// Perspective compensation factor for SVG coordinates.
+// translateZ(Z) makes the element appear larger by P/(P-Z).
+// We shrink coordinates toward perspective-origin to cancel this.
+const pScale = computed(() => (PERSPECTIVE - sketchZ.value) / PERSPECTIVE)
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
