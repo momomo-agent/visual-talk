@@ -1,6 +1,7 @@
 <template>
   <svg
     class="sketch-overlay"
+    :style="overlayStyle"
     xmlns="http://www.w3.org/2000/svg"
     :viewBox="`0 0 ${width} ${height}`"
     :width="width"
@@ -104,6 +105,7 @@ const { cards } = storeToRefs(canvasStore)
 
 const sketchColor = '#d4930d'
 const SIZE = 5.5 // thicker for dark background visibility
+const PERSPECTIVE = 1400
 
 // Track card positions reactively
 const cardPositionVersion = computed(() => {
@@ -111,6 +113,24 @@ const cardPositionVersion = computed(() => {
   cards.value.forEach(c => { v += (c.x || 0) + (c.y || 0) })
   return v
 })
+
+// Dynamic Z: always float above the highest card
+const sketchZ = computed(() => {
+  let maxZ = 0
+  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z })
+  return maxZ + 10
+})
+
+// Perspective counter-scale: cancel magnification from translateZ
+// scale = (perspective - z) / perspective
+const sketchScale = computed(() => {
+  return (PERSPECTIVE - sketchZ.value) / PERSPECTIVE
+})
+
+const overlayStyle = computed(() => ({
+  transform: `translateZ(${sketchZ.value}px) scale(${sketchScale.value})`,
+  transformOrigin: '50% 50%',
+}))
 
 const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
@@ -492,15 +512,10 @@ function bracketData(sk) {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /*
-   * In preserve-3d, elements need an explicit 3D transform to participate
-   * in Z-ordering. Cards have translateZ(0) scale(1) — a 3D transform.
-   * translateZ(1px) ensures the SVG is treated as a 3D layer AND sits
-   * 1px in front of Z=0 cards. The 1px offset is imperceptible
-   * (< 0.1% of 1400px perspective) but guarantees correct layering.
-   * Selected cards at Z=120 still float above (intentional).
-   */
-  transform: translateZ(1px);
+  /* transform set dynamically via overlayStyle computed:
+   * translateZ(maxCardZ + 10) — always above highest card
+   * scale(counterPerspective) — cancel perspective magnification
+   * transform-origin: 50% 50% — match perspective-origin */
   overflow: visible;
 }
 .sk-text {
