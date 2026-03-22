@@ -26,30 +26,29 @@ async function loadMapLibre() {
   return maplibregl
 }
 
-// Dark tile style — Gaode (AMap) tiles with CSS dark filter
-// CartoDB CDN is blocked by GFW in China, Gaode works reliably
+// Dark tile style — CartoDB dark_matter via proxy (direct CDN blocked by GFW)
 const DARK_STYLE = {
   version: 8,
   name: 'Dark',
   sources: {
-    'gaode': {
+    'carto-dark': {
       type: 'raster',
       tiles: [
-        'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=2&style=7&x={x}&y={y}&z={z}',
-        'https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=2&style=7&x={x}&y={y}&z={z}',
-        'https://webrd03.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=2&style=7&x={x}&y={y}&z={z}',
+        'https://proxy.link2web.site/https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site/https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site/https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
       ],
       tileSize: 256,
-      attribution: '&copy; 高德地图',
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
     },
   },
   layers: [
     {
-      id: 'gaode-layer',
+      id: 'carto-dark-layer',
       type: 'raster',
-      source: 'gaode',
+      source: 'carto-dark',
       minzoom: 0,
-      maxzoom: 18,
+      maxzoom: 20,
     },
   ],
 }
@@ -213,11 +212,6 @@ watch(() => props.data, () => {
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.06);
   background: #1a1a1a;
-}
-
-/* Invert Gaode light tiles to dark theme */
-:deep(.maplibregl-canvas) {
-  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.1);
 }
 
 .map-block .footer {
