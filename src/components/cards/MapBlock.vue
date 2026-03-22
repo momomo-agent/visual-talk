@@ -154,14 +154,39 @@ function addRoute(route, color) {
 
   const routeColor = color || COLORS.blue
 
+  // Try OSRM for real road routing, fallback to straight line
+  const coords = route.map(p => `${p[1]},${p[0]}`).join(';') // [lat,lng] → lng,lat
+  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+
+  fetch(osrmUrl)
+    .then(r => r.json())
+    .then(data => {
+      if (data.code === 'Ok' && data.routes?.[0]?.geometry) {
+        drawRouteLine(data.routes[0].geometry, routeColor)
+      } else {
+        drawRouteLine(straightLine(route), routeColor)
+      }
+    })
+    .catch(() => {
+      drawRouteLine(straightLine(route), routeColor)
+    })
+}
+
+function straightLine(route) {
+  return {
+    type: 'LineString',
+    coordinates: route.map(p => [p[1], p[0]]),
+  }
+}
+
+function drawRouteLine(geometry, color) {
+  if (!map) return
+
   map.addSource('route', {
     type: 'geojson',
     data: {
       type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: route.map(p => [p[1], p[0]]), // [lat,lng] → [lng,lat]
-      },
+      geometry,
     },
   })
 
@@ -171,8 +196,8 @@ function addRoute(route, color) {
     type: 'line',
     source: 'route',
     paint: {
-      'line-color': 'rgba(0,0,0,0.4)',
-      'line-width': 6,
+      'line-color': 'rgba(0,0,0,0.2)',
+      'line-width': 5,
     },
   })
 
@@ -182,9 +207,8 @@ function addRoute(route, color) {
     type: 'line',
     source: 'route',
     paint: {
-      'line-color': routeColor,
+      'line-color': color,
       'line-width': 3,
-      'line-dasharray': [2, 1],
     },
   })
 }
