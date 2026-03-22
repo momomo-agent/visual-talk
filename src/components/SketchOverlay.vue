@@ -460,10 +460,15 @@ function arrowData(sk) {
   const len = Math.sqrt(dx * dx + dy * dy)
   if (len < 1) return null
 
-  const curvature = Math.max(len * 0.25, 30)
+  const curvature = Math.max(len * 0.4, 50)
   const nx = -dy / len, ny = dx / len
-  const cpx = (p1.x + p2.x) / 2 + nx * curvature
-  const cpy = (p1.y + p2.y) / 2 + ny * curvature
+  // Choose curve direction: bend away from canvas center for cleaner routing
+  const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2
+  const centerX = width.value / 2, centerY = height.value / 2
+  const awayDot = (midX - centerX) * nx + (midY - centerY) * ny
+  const sign = awayDot >= 0 ? 1 : -1
+  const cpx = midX + nx * curvature * sign
+  const cpy = midY + ny * curvature * sign
 
   const pathPoints = sampleBezier(p1, { x: cpx, y: cpy }, p2, 32)
   const outline = pathToFreehand(pathPoints, SIZE)
