@@ -122,10 +122,14 @@ export const useTimelineStore = defineStore('timeline', () => {
             liveState.apply(op)
           }
         }
-        // Begin the current node
+        // Begin the current node and replay ALL existing ops (except the one just pushed)
         liveState.beginNode()
-        // Pre-scan ALL ops for the current node (including future ones already recorded)
         liveState.preScan(node.operations)
+        // Replay ops that existed before this new one was pushed
+        const existingOps = node.operations.length - 1  // -1 because we already pushed the new op
+        for (let i = 0; i < existingOps; i++) {
+          liveState.apply(node.operations[i])
+        }
       }
 
       // Apply this single operation incrementally
