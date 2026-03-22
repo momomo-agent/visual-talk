@@ -72,7 +72,9 @@ async function tryTmdbFallback(img) {
       return
     }
 
-    const proxyUrl = config.proxyEnabled && config.proxyUrl ? config.proxyUrl : null
+    const proxyUrl = (config.proxyEnabled && config.proxyUrl)
+      ? config.proxyUrl
+      : 'https://proxy.link2web.site'  // Always have a proxy for TMDB (GFW)
 
     // Search movie first, then TV
     let poster = null
