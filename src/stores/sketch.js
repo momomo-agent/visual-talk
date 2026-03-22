@@ -37,7 +37,7 @@ export const useSketchStore = defineStore('sketch', () => {
         if (isStreaming.value) return // Don't override live sketches
         syncFromNode(node)
       },
-      { immediate: true }
+      { immediate: true, flush: 'post' }  // post: sync after DOM updates
     )
   }
 

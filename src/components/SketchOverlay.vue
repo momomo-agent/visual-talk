@@ -164,6 +164,8 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  observer?.disconnect()
+  cancelAnimationFrame(measureRaf)
 })
 
 // ═══════════════════════════════════════════════
@@ -335,26 +337,50 @@ function measureDims() {
   })
 }
 
-// Measure after layout changes
+// Measure after layout changes — MutationObserver for reliable detection
+let measureRaf = 0
+function scheduleMeasure() {
+  cancelAnimationFrame(measureRaf)
+  measureRaf = requestAnimationFrame(measureDims)
+}
+
+let observer = null
 onMounted(() => {
   measureDims()
-  setTimeout(measureDims, 300)
-  watch(() => cards.value.size, () => {
-    requestAnimationFrame(measureDims)
-    setTimeout(measureDims, 100)
-    setTimeout(measureDims, 400)
-  })
-  // Re-measure when card positions change
-  watch(cardPositionVersion, () => requestAnimationFrame(measureDims))
+  // MutationObserver catches card DOM creation/removal reliably
+  const canvas = document.querySelector('.canvas')
+  if (canvas) {
+    observer = new MutationObserver(scheduleMeasure)
+    observer.observe(canvas, { childList: true, subtree: true })
+  }
+  // Also re-measure when card positions change (drag, animation)
+  // Debounced — skip if we'll measure again next frame anyway
+  watch(cardPositionVersion, scheduleMeasure)
 })
 
 function cardRect(key) {
   const dims = measuredDims[key]
-  if (dims) {
+  if (dims && dims.w > 0) {
     return {
       x: dims.x, y: dims.y, w: dims.w, h: dims.h,
       cx: dims.x + dims.w / 2, cy: dims.y + dims.h / 2,
     }
+  }
+
+  // Cache miss — try direct DOM read (new card not yet measured)
+  const canvas = document.querySelector('.canvas')
+  const el = document.querySelector(`[data-block-key="${key}"]`)
+    || document.querySelector(`[data-content-key="${key}"]`)
+  if (el && canvas) {
+    const cr = canvas.getBoundingClientRect()
+    const er = el.getBoundingClientRect()
+    const r = {
+      x: er.left - cr.left, y: er.top - cr.top,
+      w: er.width, h: er.height,
+    }
+    // Cache it for subsequent reads this frame
+    measuredDims[key] = r
+    return { ...r, cx: r.x + r.w / 2, cy: r.y + r.h / 2 }
   }
 
   // Fallback: calculate from store data (inaccurate with perspective)
