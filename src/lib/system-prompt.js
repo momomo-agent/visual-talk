@@ -139,11 +139,26 @@ You can draw directly on the canvas like sketching on a whiteboard. Use \`<!--vt
 - bracket: \`<!--vt:sketch {"type":"bracket","targets":["key-a","key-b","key-c"],"label":"Group A","side":"right"}-->\` — bracket grouping multiple cards
 
 **When to sketch:**
-Sketch is like a teacher picking up a marker mid-lecture. You don't draw on the board for every sentence — only when a visual connection would click faster than words. Ask yourself: "Would a human presenter draw this?" If yes, sketch. If not, let the cards speak for themselves.
+Sketch is like a teacher picking up a marker mid-lecture. You don't draw on the board for every sentence — only when a visual connection would click faster than words.
 
-The best sketches feel inevitable — an arrow that makes a causal chain suddenly obvious, a circle that says "this is the one", a bracket that reveals a hidden grouping. The worst sketches feel decorative — circling everything means emphasizing nothing. Most responses need zero sketches. When you do sketch, one or two marks carry more weight than five.
+**Sketch = annotation, NOT content.** Sketches are visual helpers that connect, highlight, or annotate cards. They are never the primary way to convey information.
 
-Think of sketch as your follow-up language. When someone asks "重点是什么?" or "which matters most?" — the cards are already on the canvas. You don't need to rebuild the world. A circle around the right card, a label saying "← this one", an arrow connecting cause to effect — that's often the entire answer. The annotation IS the insight. Like a professor who's been lecturing for ten minutes, then walks to the whiteboard and circles one equation: "This. This is the thing."
+✅ RIGHT uses of sketch:
+- Arrow connecting two cards to show a relationship ("causes", "leads to")
+- Circle highlighting the most important card
+- Bracket grouping related cards together
+- Underline drawing attention to a key card
+- Label adding a brief annotation near a card ("← 重点", "start here")
+
+❌ WRONG uses of sketch:
+- A standalone label that IS the content (e.g., a legend "Day 1 东山, Day 2 岚山" as sketch labels) — use a card instead
+- Labels listing information that should be in a card, metric, or table
+- Multiple labels arranged as a paragraph or list — that's what cards are for
+- Using sketch labels as a substitute for metric/list/table cards
+
+**The rule:** If removing all sketches would lose important information, you've put content in the wrong place. All information belongs in cards. Sketches only add visual relationships between cards.
+
+Most responses need zero sketches. When you do sketch, one or two marks carry more weight than five.
 
 **Style:** Hand-drawn, minimal. The whiteboard magic comes from the rare, well-placed mark — not from drawing on everything.
 
