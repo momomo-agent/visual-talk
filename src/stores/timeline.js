@@ -458,7 +458,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         aiResponse: node.aiResponse || '',
         timestamp: node.timestamp,
         operations: JSON.parse(JSON.stringify(node.operations)),
-        userOverrides: node.userOverrides ? { ...node.userOverrides } : {},
+        userOverrides: JSON.parse(JSON.stringify(node.userOverrides || {})),
       }
     })
     return {

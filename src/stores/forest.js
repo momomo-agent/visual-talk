@@ -126,7 +126,7 @@ export const useForestStore = defineStore('forest', () => {
 
   async function saveCurrentTree() {
     if (!activeTreeId.value || !trees[activeTreeId.value]) return
-    const data = serializeTimeline()
+    const data = JSON.parse(JSON.stringify(serializeTimeline()))
     trees[activeTreeId.value].updatedAt = Date.now()
 
     if (store) {
