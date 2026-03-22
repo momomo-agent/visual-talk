@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
-import { Z_SELECTED, Z_ENTER, Z_FADE_OUT, Z_EXIT } from '../lib/z-layers.js'
+import { Z_SELECTED_OFFSET, Z_ENTER, Z_FADE_OUT, Z_EXIT } from '../lib/z-layers.js'
 
 /**
  * Canvas Store — Pure View Layer (v2)
@@ -167,7 +167,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = Z_SELECTED       // Highest translateZ — guaranteed on top in preserve-3d
+      card.z = card.z + Z_SELECTED_OFFSET  // nudge forward relative to current position
       card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999
