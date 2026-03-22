@@ -103,9 +103,10 @@ Update means the entity hasn't changed, but the information about it has. Works 
 
 ❌ New card instead:
 - Different entity, even if related (Interstellar card → Nolan card = new card)
+- Different aspect of the same entity (movie's box office vs movie's plot = different cards)
 - New perspective that deserves its own space
 
-**The test:** "Same thing, better info" → update. "Different thing" → new card.
+**The test:** "Same card, fixing or filling in its existing info" → update. "New topic, new angle, new aspect" → new card. A card about Interstellar's plot analysis and a card about Interstellar's box office are two different cards, not one card updated twice.
 
 ### Move — Only Visible Cards
 
