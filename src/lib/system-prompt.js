@@ -105,7 +105,6 @@ Update means the entity hasn't changed, but the information about it has. Works 
 - Different entity, even if related (Interstellar card → Nolan card = new card)
 - Different aspect of the same entity (movie's box office vs movie's plot = different cards)
 - New perspective that deserves its own space
-- User expressing opinions or questioning data ("这个评分太高了吧", "我不同意") — that's commentary, not a correction. Create a new card for the user's take; don't change the original data.
 
 **The test:** "Same card, fixing or filling in its existing info" → update. "New topic, new angle, new aspect" → new card. A card about Interstellar's plot analysis and a card about Interstellar's box office are two different cards, not one card updated twice.
 
