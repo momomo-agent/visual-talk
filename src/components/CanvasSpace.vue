@@ -1,42 +1,42 @@
 <template>
-  <div class="canvas" @click="handleBgClick"
-    :style="{ perspectiveOrigin: `${50 + headX * 50}% ${50 + headY * 35}%` }"
-  >
+  <div class="canvas" ref="canvasRef" @click="handleBgClick">
     <!-- Eye tracking debug overlay -->
     <div v-if="showDebug" class="eye-debug">
       <div class="eye-dot" :style="gazeDotStyle"></div>
       <div class="eye-info">
         {{ isTracking ? `👁 ${method}` : '👁 no face' }}
         <br>head: {{ headX.toFixed(2) }}, {{ headY.toFixed(2) }}
-        <br>gaze: {{ gazeX.toFixed(2) }}, {{ gazeY.toFixed(2) }}
       </div>
     </div>
 
-    <div class="canvas-space" ref="spaceRef">
-      <BlockCard
+    <!-- Cards are rendered here but positioned by CSS3DRenderer -->
+    <div v-show="false" ref="cardContainer">
+      <div
         v-for="[id, card] in cards"
         :key="id"
-        :card="card"
-        :style="getCardParallaxStyle(card)"
-        @toggle-select="(e) => toggleSelect(id, e)"
-        @update-position="(x, y) => updateCardPosition(id, x, y)"
-        @drag-end="(x, y) => onDragEnd(id, x, y)"
-      />
-      <SketchOverlay />
+        :ref="el => setCardRef(id, el)"
+        class="space-card-wrapper"
+      >
+        <BlockCard
+          :card="card"
+          @toggle-select="(e) => toggleSelect(id, e)"
+          @update-position="(x, y) => updateCardPosition(id, x, y)"
+          @drag-end="(x, y) => onDragEnd(id, x, y)"
+        />
+      </div>
     </div>
-    <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
 
-    <!-- Gaze glow — subtle light where user is looking -->
-    <div v-if="isTracking" class="gaze-glow" :style="gazeGlowStyle"></div>
+    <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useTimelineStore } from '../stores/timeline.js'
 import { useEyeTracking } from '../composables/useEyeTracking.js'
+import { EyeSpace } from '../lib/eye-space.js'
 import BlockCard from './BlockCard.vue'
 import SketchOverlay from './SketchOverlay.vue'
 
@@ -45,62 +45,87 @@ const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
+const canvasRef = ref(null)
+const showDebug = ref(true)
+
 // Eye tracking
 const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTracking({
-  smoothing: 0.12,
+  smoothing: 0.2,
   updateRate: 15,
 })
 
-const showDebug = ref(true)
+// 3D space
+let eyeSpace = null
+const cardRefs = new Map()
 
-// Canvas 3D: only shift perspective-origin based on head position
-// This creates natural parallax — elements at different translateZ depths
-// automatically shift by different amounts relative to the perspective point
-const canvasTransform = computed(() => ({
-  perspectiveOrigin: `${50 + headX.value * 30}% ${50 + headY.value * 20}%`,
-}))
-
-// Per-card parallax: higher z = more shift
-const PARALLAX_FACTOR = 80
-
-function getCardParallaxStyle(card) {
-  // No manual translate needed — perspective-origin shift
-  // combined with each card's translateZ creates natural parallax
-  return {}
+function setCardRef(id, el) {
+  if (el) cardRefs.set(id, el)
+  else cardRefs.delete(id)
 }
 
-// Gaze glow
-const gazeGlowStyle = computed(() => ({
-  left: `${gazeX.value * 100}%`,
-  top: `${gazeY.value * 100}%`,
-  opacity: isTracking.value ? 0.12 : 0,
-}))
+// Convert card canvas coords to 3D position
+function cardTo3D(card) {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const x = (card.x / 100) * vw - vw / 2 + (card.w / 100) * vw / 2
+  const y = (card.y / 100) * vh - vh / 2 + 100
+  const z = (card.z || 0) * 3 // amplify z for more depth separation
+  return { x, y, z }
+}
 
-const gazeDotStyle = computed(() => ({
-  left: `${gazeX.value * 100}%`,
-  top: `${gazeY.value * 100}%`,
-}))
+// Sync cards to 3D scene
+function syncCards() {
+  if (!eyeSpace) return
+
+  const activeIds = new Set()
+  for (const [id, card] of cards.value) {
+    activeIds.add(id)
+    const el = cardRefs.get(id)
+    if (!el) continue
+
+    const { x, y, z } = cardTo3D(card)
+
+    if (eyeSpace.objects.has(id)) {
+      eyeSpace.updateObject(id, x, y, z)
+    } else {
+      eyeSpace.addObject(id, el, x, y, z)
+    }
+  }
+
+  // Remove cards that no longer exist
+  for (const id of eyeSpace.objects.keys()) {
+    if (!activeIds.has(id)) eyeSpace.removeObject(id)
+  }
+}
+
+// Watch head position → update 3D camera
+watch([headX, headY], ([hx, hy]) => {
+  if (eyeSpace) eyeSpace.setHeadPosition(hx, hy)
+})
+
+// Watch cards changes → sync to 3D
+watch(cards, () => {
+  nextTick(syncCards)
+}, { deep: true })
 
 function onDragEnd(cardId, x, y) {
   const nodeId = timeline.activeTip
   if (nodeId == null) return
-  timeline.addOperation(nodeId, {
-    op: 'user-move',
-    cardId,
-    to: { x, y },
-  })
+  timeline.addOperation(nodeId, { op: 'user-move', cardId, to: { x, y } })
 }
 
-const spaceRef = ref(null)
 const emit = defineEmits(['click-canvas'])
-
 function handleBgClick(e) {
   if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
   clearSelection()
   emit('click-canvas')
 }
 
-// Toggle debug with 'd' key
+// Debug
+const gazeDotStyle = computed(() => ({
+  left: `${gazeX.value * 100}%`,
+  top: `${gazeY.value * 100}%`,
+}))
 function onKeyDown(e) {
   if (e.key === 'd' && !e.target.matches('input, textarea')) {
     showDebug.value = !showDebug.value
@@ -108,9 +133,13 @@ function onKeyDown(e) {
 }
 
 onMounted(() => {
+  eyeSpace = new EyeSpace(canvasRef.value)
   window.addEventListener('keydown', onKeyDown)
+  nextTick(syncCards)
 })
+
 onUnmounted(() => {
+  if (eyeSpace) eyeSpace.destroy()
   window.removeEventListener('keydown', onKeyDown)
 })
 </script>
@@ -140,14 +169,8 @@ onUnmounted(() => {
   text-align: right;
   line-height: 1.6;
 }
-.gaze-glow {
-  position: fixed;
-  width: 250px; height: 250px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(100,150,255,0.15) 0%, transparent 70%);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 1;
-  transition: left 0.1s, top 0.1s, opacity 0.5s;
+.space-card-wrapper {
+  /* Cards need explicit dimensions for CSS3DObject */
+  width: 300px;
 }
 </style>
