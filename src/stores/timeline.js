@@ -352,7 +352,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!isThisNodesCard) return
 
     node.userOverrides[cardKey] = { x, y }
-    canvasCache.delete(id)
+    invalidateFrom(id)
 
     // If streaming, also apply to liveState so it survives incremental snapshots
     if (id === activeTip.value && liveState) {
