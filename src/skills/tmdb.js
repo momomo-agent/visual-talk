@@ -16,7 +16,7 @@ const GENRES = {
   878:'科幻',10770:'电视电影',53:'惊悚',10752:'战争',37:'西部',
 }
 
-async function tmdbFetch(path, apiKey, params = {}) {
+async function tmdbFetch(path, apiKey, params = {}, proxyUrl) {
   const url = new URL(`${TMDB_BASE}${path}`)
   url.searchParams.set('api_key', apiKey)
   url.searchParams.set('language', 'zh-CN')
@@ -24,9 +24,25 @@ async function tmdbFetch(path, apiKey, params = {}) {
     if (v != null) url.searchParams.set(k, v)
   })
 
-  const res = await fetch(url.toString())
-  if (!res.ok) throw new Error(`TMDB ${res.status}: ${res.statusText}`)
-  return res.json()
+  const targetUrl = url.toString()
+
+  // Try direct first, fall back to proxy (GFW blocks TMDB)
+  try {
+    const res = await fetch(targetUrl)
+    if (!res.ok) throw new Error(`TMDB ${res.status}: ${res.statusText}`)
+    return res.json()
+  } catch (err) {
+    if (!proxyUrl) throw err
+    console.warn('TMDB direct failed, trying proxy:', err.message)
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: targetUrl, method: 'GET', mode: 'raw' }),
+    })
+    const result = await res.json()
+    if (!result.success) throw new Error(result.error || `Proxy failed: ${result.status}`)
+    return typeof result.body === 'string' ? JSON.parse(result.body) : result.body
+  }
 }
 
 function posterUrl(path, size = 'w500') {
@@ -50,7 +66,7 @@ export const tools = [
       const data = await tmdbFetch('/search/movie', config.tmdbKey, {
         query: input.query,
         year: input.year,
-      })
+      }, config.proxyUrl)
       return {
         results: (data.results || []).slice(0, 6).map(m => ({
           id: m.id,
@@ -83,7 +99,7 @@ export const tools = [
       if (!config?.tmdbKey) return { error: 'TMDB API key not configured' }
       const m = await tmdbFetch(`/movie/${input.movie_id}`, config.tmdbKey, {
         append_to_response: 'credits',
-      })
+      }, config.proxyUrl)
       return {
         title: m.title,
         originalTitle: m.original_title,
@@ -120,7 +136,7 @@ export const tools = [
     },
     execute: async (input, config) => {
       if (!config?.tmdbKey) return { error: 'TMDB API key not configured' }
-      const data = await tmdbFetch('/search/tv', config.tmdbKey, { query: input.query })
+      const data = await tmdbFetch('/search/tv', config.tmdbKey, { query: input.query }, config.proxyUrl)
       return {
         results: (data.results || []).slice(0, 6).map(s => ({
           id: s.id,

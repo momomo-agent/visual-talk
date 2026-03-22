@@ -21,6 +21,7 @@ function buildTools(skills, cfg) {
     const skillConfig = {
       tavilyKey: cfg.tavilyKey,
       tmdbKey: cfg.tmdbKey,
+      proxyUrl: 'https://proxy.link2web.site',  // Always available for GFW fallback
     }
     for (const tool of skill.tools) {
       tools.push({
