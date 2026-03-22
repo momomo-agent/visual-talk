@@ -202,7 +202,7 @@ watch(() => props.data, () => {
 .map-block h2 {
   font-size: 14px;
   font-weight: 600;
-  margin: 8px 0 0;
+  margin: 12px 4px 0;
   color: #4a3f35;
 }
 
