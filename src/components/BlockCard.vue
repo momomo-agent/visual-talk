@@ -46,7 +46,7 @@ const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['toggle-select', 'update-position', 'drag-end'])
+const emit = defineEmits(['toggle-select', 'update-position'])
 const blockRef = ref(null)
 const glowBreathing = ref(false)
 
@@ -178,9 +178,6 @@ function onMouseDown(e) {
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    if (isDragging) {
-      emit('drag-end', props.card.x, props.card.y)
-    }
     setTimeout(() => { isDragging = false; dragging.value = false }, 10)
   }
 

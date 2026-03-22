@@ -7,7 +7,6 @@
         :card="card"
         @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
-        @drag-end="(x, y) => onDragEnd(id, x, y)"
       />
       <SketchOverlay />
     </div>
@@ -19,26 +18,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
-import { useTimelineStore } from '../stores/timeline.js'
 import BlockCard from './BlockCard.vue'
 import SketchOverlay from './SketchOverlay.vue'
 
 const canvas = useCanvasStore()
-const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
-
-function onDragEnd(cardId, x, y) {
-  // Record user drag as a 'user-move' operation in the current timeline node
-  // user-move only changes position, preserves z/opacity/scale
-  const nodeId = timeline.activeTip
-  if (nodeId == null) return
-  timeline.addOperation(nodeId, {
-    op: 'user-move',
-    cardId,
-    to: { x, y },
-  })
-}
 
 const spaceRef = ref(null)
 

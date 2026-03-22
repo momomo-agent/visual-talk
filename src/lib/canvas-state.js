@@ -57,9 +57,6 @@ export class CanvasState {
       case 'move':
         this._move(op)
         break
-      case 'user-move':
-        this._userMove(op)
-        break
       case 'remove':
         this.cards.delete(op.cardId)
         break
@@ -173,16 +170,5 @@ export class CanvasState {
     card.zIndex = 100 + Math.floor(targetZ / 10)
     card.pinned = true
     this.currentRoundIds.add(op.cardId)
-  }
-
-  /**
-   * User drag — only updates position, preserves all visual state (z/opacity/scale/blur).
-   * Used when user manually repositions a card on canvas.
-   */
-  _userMove(op) {
-    const card = this.cards.get(op.cardId)
-    if (!card || !op.to) return
-    if (op.to.x != null) card.x = op.to.x
-    if (op.to.y != null) card.y = op.to.y
   }
 }
