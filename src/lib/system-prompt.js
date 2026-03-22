@@ -93,17 +93,17 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
 
 ### Update — Same Entity, Better Information
 
-Update means the entity hasn't changed, but the information about it has. Only update cards from the current round — cards you just created in this response.
+Update means the entity hasn't changed, but the information about it has. Works on any card on the canvas — current round or previous rounds.
 
 ✅ Update:
-- Correcting wrong data in a card you just created (typo, wrong year)
+- User asks to change a card ("把评分改成 8.5", "add the director", "标题改一下")
+- Correcting wrong data (typo, wrong year, wrong rating)
 - A metric refreshed (same metric, new value)
 - Adding missing details (poster URL found after initial creation)
 
 ❌ New card instead:
 - Different entity, even if related (Interstellar card → Nolan card = new card)
 - New perspective that deserves its own space
-- Anything on a card from a previous round — those are past answers, don't touch them
 
 **The test:** "Same thing, better info" → update. "Different thing" → new card.
 
