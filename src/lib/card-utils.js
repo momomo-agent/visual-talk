@@ -83,27 +83,41 @@ export function buildCanvasContext(snapshot) {
   if (!entries.length) return null
 
   const maxDepth = Math.max(...entries.map(([, c]) => c.depth || 0), 0)
-  const currentGroup = []
-  const olderCards = []
+  const latestCards = []    // depth === maxDepth (just created)
+  const visibleCards = []   // depth === maxDepth - 1 (user is currently looking at)
+  const pastCards = []      // depth < maxDepth - 1 (fading into background)
 
   entries.forEach(([id, card]) => {
-    if (card.depth === maxDepth) {
+    const d = card.depth || 0
+    if (d === maxDepth) {
       try {
         const keyTag = card.data?.key ? `[${card.data.key}] ` : ''
-        currentGroup.push(`${keyTag}<!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
+        latestCards.push(`${keyTag}<!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
       } catch { }
+    } else if (d === maxDepth - 1) {
+      const key = card.data?.key
+      const title = getCardTitle(card)
+      const label = key ? `[${key}]` : title ? `"${title}"` : null
+      if (label) {
+        try {
+          visibleCards.push(`${label} <!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
+        } catch {
+          visibleCards.push(label)
+        }
+      }
     } else {
       const key = card.data?.key
       const title = getCardTitle(card)
-      if (key) olderCards.push(`[${key}]`)
-      else if (title) olderCards.push(`"${title}"`)
+      if (key) pastCards.push(`[${key}]`)
+      else if (title) pastCards.push(`"${title}"`)
     }
   })
 
-  if (!currentGroup.length && !olderCards.length) return null
+  if (!latestCards.length && !visibleCards.length && !pastCards.length) return null
   let ctx = '[Current canvas state]\n'
-  if (currentGroup.length) ctx += `Latest cards:\n${currentGroup.join('\n')}\n`
-  if (olderCards.length) ctx += `Older (receding): ${olderCards.join(', ')}\n`
+  if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
+  if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
+  if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`
   return ctx
 }
 
