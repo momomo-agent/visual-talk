@@ -112,22 +112,21 @@ const hovered = ref(false)
 function onMouseEnter() {
   if (props.card.selected || isDragging) return
   hovered.value = true
-  preHover = {
-    scale: props.card.scale,
-    opacity: props.card.opacity,
-    blur: props.card.blur,
+  // Only restore visibility for dimmed cards — don't change z (causes perspective jitter)
+  if (props.card.opacity < 1 || props.card.blur > 0) {
+    preHover = {
+      opacity: props.card.opacity,
+      blur: props.card.blur,
+    }
+    props.card.opacity = 1
+    props.card.blur = 0
   }
-  // Gentle lift: tiny scale bump + restore visibility. No z change.
-  props.card.scale = Math.max(props.card.scale, 1) * 1.02
-  props.card.opacity = 1
-  props.card.blur = 0
 }
 
 function onMouseLeave() {
   if (props.card.selected || isDragging) return
   hovered.value = false
   if (preHover) {
-    props.card.scale = preHover.scale
     props.card.opacity = preHover.opacity
     props.card.blur = preHover.blur
     preHover = null
