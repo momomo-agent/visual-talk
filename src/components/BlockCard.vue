@@ -93,7 +93,7 @@ const cardStyle = computed(() => {
     top: `${c.y}%`,
     width: c.w ? `${c.w}%` : undefined,
     maxWidth: hasImage ? '380px' : undefined,
-    transform: `translateZ(${c.z}px) scale(${c.scale}) translate(var(--parallax-x, 0px), var(--parallax-y, 0px))`,
+    transform: `translateZ(${c.z}px) scale(${c.scale}) translate(var(--parallax-x, 0px), var(--parallax-y, 0px)) rotateX(var(--parallax-rx, 0deg)) rotateY(var(--parallax-ry, 0deg))`,
     opacity: c.opacity,
     zIndex: c.zIndex,
     filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',

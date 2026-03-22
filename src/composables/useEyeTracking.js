@@ -3,25 +3,27 @@ import { ref, onMounted, onUnmounted } from 'vue'
 /**
  * useEyeTracking — head parallax via webcam
  * 
- * Strategy: try Chrome FaceDetector API first (zero deps),
- * fall back to manual face detection via canvas brightness analysis.
+ * Based on munrocket/parallax-effect approach:
+ * - Use eye midpoint (not nose/bounding box) for head position
+ * - EMA smoothing on raw landmark positions
+ * - Eye distance for Z estimation
+ * - Chrome FaceDetector API (zero deps) with canvas skin-color fallback
  * 
- * For gaze: uses eye region crop + pupil position estimation.
+ * Output: x/y in [-1, 1], z proportional to distance
  */
 export function useEyeTracking(options = {}) {
   const {
-    smoothing = 0.08,       // much smoother (lower = more damping)
-    updateRate = 10,
+    smoothEye = 0.3,      // EMA for eye position (higher = more responsive)
+    smoothDist = 0.15,     // EMA for distance
+    defaultDist = 0.12,    // default eye distance ratio for z=1
   } = options
 
   const headX = ref(0)
   const headY = ref(0)
-  const gazeX = ref(0.5)
-  const gazeY = ref(0.5)
+  const headZ = ref(1)
   const isTracking = ref(false)
-  const confidence = ref(0)
   const error = ref(null)
-  const method = ref('none') // 'facedetector' | 'tracking.js' | 'none'
+  const method = ref('none')
 
   let video = null
   let canvas = null
@@ -30,14 +32,12 @@ export function useEyeTracking(options = {}) {
   let animFrame = null
   let detecting = false
 
-  let tHeadX = 0, tHeadY = 0
-  let tGazeX = 0.5, tGazeY = 0.5
-
-  function lerp(a, b, t) { return a + (b - a) * t }
+  // Raw smoothed eye positions (EMA applied directly to landmarks)
+  let eyes = null  // [rightEyeX, rightEyeY, leftEyeX, leftEyeY]
+  let dist = null   // smoothed eye distance
 
   async function init() {
     try {
-      // Setup video
       video = document.createElement('video')
       video.setAttribute('playsinline', '')
       video.setAttribute('autoplay', '')
@@ -50,7 +50,6 @@ export function useEyeTracking(options = {}) {
       video.srcObject = stream
       await video.play()
 
-      // Setup offscreen canvas for analysis
       canvas = document.createElement('canvas')
       canvas.width = 320
       canvas.height = 240
@@ -65,11 +64,7 @@ export function useEyeTracking(options = {}) {
           console.warn('FaceDetector failed:', e)
         }
       }
-
-      if (!detector) {
-        // Fallback: manual face detection via skin color + contour
-        method.value = 'canvas-manual'
-      }
+      if (!detector) method.value = 'canvas-manual'
 
       error.value = null
       startLoop()
@@ -81,7 +76,6 @@ export function useEyeTracking(options = {}) {
 
   async function detectFace() {
     if (!video || video.readyState < 2) return
-
     ctx.drawImage(video, 0, 0, 320, 240)
 
     if (detector && method.value === 'facedetector') {
@@ -90,51 +84,60 @@ export function useEyeTracking(options = {}) {
         if (faces.length > 0) {
           const face = faces[0]
           const box = face.boundingBox
-          const centerX = box.x + box.width / 2
-          const centerY = box.y + box.height / 2
 
-          // Normalize to -1..1 with amplification
-          // Face usually stays in center 40% of frame, so amplify
-          const rawX = (centerX / 320) * 2 - 1
-          const rawY = (centerY / 240) * 2 - 1
-          const newX = Math.max(-1, Math.min(1, rawX * 2.5))
-          const newY = Math.max(-1, Math.min(1, -rawY * 2.5))
-          // Dead zone: ignore tiny movements (noise)
-          if (Math.abs(newX - tHeadX) > 0.02) tHeadX = newX
-          if (Math.abs(newY - tHeadY) > 0.02) tHeadY = newY
-          isTracking.value = true
-          confidence.value = 1
-
-          // Gaze estimation from eye landmarks if available
+          // Use eye landmarks if available, otherwise estimate from box
+          let nextEyes
           if (face.landmarks && face.landmarks.length >= 2) {
-            const rightEye = face.landmarks[0] // {x, y} in image coords
-            const leftEye = face.landmarks[1]
-
-            // Average eye position relative to face box center
-            const eyeMidX = (rightEye[0].x + leftEye[0].x) / 2
-            const eyeMidY = (rightEye[0].y + leftEye[0].y) / 2
-            const boxCenterX = box.x + box.width / 2
-            const boxCenterY = box.y + box.height * 0.35 // eyes are in upper third
-
-            // How far eyes deviate from expected center = gaze direction
-            const deviationX = (eyeMidX - boxCenterX) / box.width
-            const deviationY = (eyeMidY - boxCenterY) / box.height
-
-            tGazeX = Math.max(0, Math.min(1, 0.5 - deviationX * 2))
-            tGazeY = Math.max(0, Math.min(1, 0.5 + deviationY * 2))
+            const re = face.landmarks[0]  // right eye
+            const le = face.landmarks[1]  // left eye
+            // landmarks can be {x,y} or [{x,y}]
+            const rex = re.x ?? re[0]?.x ?? (box.x + box.width * 0.35)
+            const rey = re.y ?? re[0]?.y ?? (box.y + box.height * 0.35)
+            const lex = le.x ?? le[0]?.x ?? (box.x + box.width * 0.65)
+            const ley = le.y ?? le[0]?.y ?? (box.y + box.height * 0.35)
+            nextEyes = [rex, rey, lex, ley]
           } else {
-            // No landmarks — estimate gaze from head position
-            tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.8))
-            tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.8))
+            // Estimate eyes from bounding box
+            nextEyes = [
+              box.x + box.width * 0.35, box.y + box.height * 0.35,
+              box.x + box.width * 0.65, box.y + box.height * 0.35,
+            ]
           }
+
+          // EMA smooth on raw landmarks (like parallax-effect library)
+          if (eyes === null) {
+            eyes = [...nextEyes]
+          } else {
+            for (let i = 0; i < 4; i++) {
+              eyes[i] = eyes[i] * (1 - smoothEye) + nextEyes[i] * smoothEye
+            }
+          }
+
+          // Eye distance for Z
+          const dx = eyes[0] - eyes[2]
+          const dy = eyes[1] - eyes[3]
+          const nextDist = Math.sqrt(dx * dx + dy * dy) / 320
+          if (dist === null) {
+            dist = nextDist
+          } else {
+            dist = dist * (1 - smoothDist) + nextDist * smoothDist
+          }
+
+          // Output: eye midpoint normalized to [-1, 1]
+          const midX = (eyes[0] + eyes[2]) / 320 - 1
+          const midY = 1 - (eyes[1] + eyes[3]) / 320  // flip Y, use width for aspect consistency
+          const z = defaultDist / (dist || defaultDist)
+
+          headX.value = midX
+          headY.value = midY
+          headZ.value = z
+          isTracking.value = true
           return
         }
-      } catch (e) {
-        // FaceDetector might fail on some frames
-      }
+      } catch (e) { /* detection failed this frame */ }
     }
 
-    // Manual fallback: find brightest region (face-like)
+    // Fallback: skin color detection
     const imageData = ctx.getImageData(0, 0, 320, 240)
     const data = imageData.data
     let sumX = 0, sumY = 0, count = 0
@@ -143,14 +146,11 @@ export function useEyeTracking(options = {}) {
       for (let x = 0; x < 320; x += 4) {
         const i = (y * 320 + x) * 4
         const r = data[i], g = data[i + 1], b = data[i + 2]
-        // Skin-color detection (simple YCbCr range)
         const Y = 0.299 * r + 0.587 * g + 0.114 * b
         const Cb = 128 - 0.169 * r - 0.331 * g + 0.5 * b
         const Cr = 128 + 0.5 * r - 0.419 * g - 0.081 * b
         if (Y > 80 && Cb > 77 && Cb < 127 && Cr > 133 && Cr < 173) {
-          sumX += x
-          sumY += y
-          count++
+          sumX += x; sumY += y; count++
         }
       }
     }
@@ -158,39 +158,30 @@ export function useEyeTracking(options = {}) {
     if (count > 50) {
       const cx = sumX / count
       const cy = sumY / count
-      const rawX = (cx / 320) * 2 - 1
-      const rawY = (cy / 240) * 2 - 1
-      tHeadX = Math.max(-1, Math.min(1, rawX * 2.5))
-      tHeadY = Math.max(-1, Math.min(1, -rawY * 2.5))
+      const rawX = (cx / 160) - 1
+      const rawY = 1 - (cy / 160)
+
+      if (eyes === null) {
+        eyes = [cx, cy, cx, cy]
+      } else {
+        eyes[0] = eyes[0] * (1 - smoothEye) + cx * smoothEye
+        eyes[1] = eyes[1] * (1 - smoothEye) + cy * smoothEye
+      }
+
+      headX.value = (eyes[0] / 160) - 1
+      headY.value = 1 - (eyes[1] / 160)
+      headZ.value = 1
       isTracking.value = true
-      confidence.value = Math.min(1, count / 2000)
-      // Gaze follows head when no landmarks
-      tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.8))
-      tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.8))
     } else {
       isTracking.value = false
-      confidence.value = 0
-      tHeadX = lerp(tHeadX, 0, 0.05)
-      tHeadY = lerp(tHeadY, 0, 0.05)
     }
   }
 
-  const interval = 1000 / updateRate
-
   function startLoop() {
-    let lastDetect = 0
-    function loop(now) {
+    function loop() {
       animFrame = requestAnimationFrame(loop)
 
-      headX.value = lerp(headX.value, tHeadX, smoothing)
-      headY.value = lerp(headY.value, tHeadY, smoothing)
-      gazeX.value = lerp(gazeX.value, tGazeX, smoothing)
-      gazeY.value = lerp(gazeY.value, tGazeY, smoothing)
-
-      if (now - lastDetect < interval) return
       if (detecting) return
-      lastDetect = now
-
       detecting = true
       detectFace().finally(() => { detecting = false })
     }
@@ -211,5 +202,5 @@ export function useEyeTracking(options = {}) {
   onMounted(() => init())
   onUnmounted(() => destroy())
 
-  return { headX, headY, gazeX, gazeY, isTracking, confidence, error, method, init, destroy }
+  return { headX, headY, headZ, isTracking, error, method, init, destroy }
 }
