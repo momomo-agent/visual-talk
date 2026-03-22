@@ -28,6 +28,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   const activeTip = ref(null)    // id of the active branch tip (where new messages go)
   const viewingId = ref(null)    // null = live view, number = viewing history
 
+  // Global docked cards — survives across all nodes
+  const dockedCardIds = reactive(new Set())
+
   // Node ID counter
   let nodeCounter = 0
 
@@ -140,6 +143,11 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
       liveState.apply(operation)
 
+      // Apply global docked state to liveState before pushing to canvas
+      liveState.cards.forEach(card => {
+        card.docked = dockedCardIds.has(card.id)
+      })
+
       // Push snapshot to canvas
       const canvas = useCanvasStore()
       canvas.applySnapshot(liveState.cards, { animate: true })
@@ -203,6 +211,11 @@ export const useTimelineStore = defineStore('timeline', () => {
         }
       }
     }
+
+    // Apply global docked state — docked cards stay visible across all nodes
+    state.cards.forEach(card => {
+      card.docked = dockedCardIds.has(card.id)
+    })
 
     canvasCache.set(nodeId, state.cards)
     return state.cards
@@ -407,6 +420,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     viewingId.value = null
     nodeCounter = 0
     canvasCache.clear()
+    dockedCardIds.clear()
   }
 
   function setAiResponse(nodeId, response) {
@@ -419,27 +433,27 @@ export const useTimelineStore = defineStore('timeline', () => {
    * so it persists across navigation and serialization.
    */
   function toggleDockCard(cardId) {
-    const nodeId = viewingId.value ?? activeTip.value
-    if (nodeId == null) return
+    // Toggle in global set
+    if (dockedCardIds.has(cardId)) {
+      dockedCardIds.delete(cardId)
+    } else {
+      dockedCardIds.add(cardId)
+    }
 
-    // Check current state from canvas (what user sees)
+    // Update canvas view immediately
     const canvas = useCanvasStore()
     const card = canvas.cards.get(cardId)
-    if (!card) return
-
-    const newDocked = !card.docked
-    addOperation(nodeId, { op: 'dock', cardId, docked: newDocked })
-
-    // If addOperation didn't update canvas (no liveState), do it directly
-    if (!liveState || nodeId !== activeTip.value) {
-      card.docked = newDocked
-      if (newDocked) {
+    if (card) {
+      card.docked = dockedCardIds.has(cardId)
+      if (card.docked) {
         card.opacity = 1
         card.scale = 1
         card.blur = 0
       }
     }
-    return newDocked
+
+    // Invalidate all cache so computeCanvas picks up docked state
+    canvasCache.clear()
   }
 
   function setNodeCounter(n) { nodeCounter = n }
@@ -466,6 +480,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       nodeCounter,
       activeTip: activeTip.value,
       nodes: nodesData,
+      dockedCardIds: [...dockedCardIds],
     }
   }
 
@@ -493,6 +508,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
     if (data.nodeCounter != null) {
       nodeCounter = data.nodeCounter
+    }
+    // Restore global docked cards
+    dockedCardIds.clear()
+    if (data.dockedCardIds) {
+      for (const id of data.dockedCardIds) dockedCardIds.add(id)
     }
     if (activeTip.value != null) {
       restoreToNode(activeTip.value)
