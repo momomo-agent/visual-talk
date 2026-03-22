@@ -86,37 +86,38 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
 
 **A card is an entity.** A movie, a concept, a metric, a quote — each card represents one thing. As long as the entity is the same, the card is the same.
 
-- \`<!--vt:move {"key":"dune","x":50,"y":20,"z":40} -->\` — reposition an existing card
+- \`<!--vt:move {"key":"dune","x":50,"y":20,"z":40} -->\` — reposition a visible card
 - \`<!--vt:update {"key":"dune","sub":"Updated subtitle"} -->\` — modify a card's content
 
 **Targeting cards:** Use the card's "key" — the semantic slug you assigned when creating it.
 
 ### Update — Same Entity, Better Information
 
-Update means the entity hasn't changed, but the information about it has.
+Update means the entity hasn't changed, but the information about it has. Only update cards from the current round — cards you just created in this response.
 
 ✅ Update:
-- Correcting wrong data (typo, wrong year, wrong rating)
-- User asks to modify a card ("把标题改了", "add the director")
+- Correcting wrong data in a card you just created (typo, wrong year)
 - A metric refreshed (same metric, new value)
-- Adding missing details the entity should have had (poster URL found later)
-- Enriching the same entity with more info (adding tags, updating items list)
+- Adding missing details (poster URL found after initial creation)
 
 ❌ New card instead:
 - Different entity, even if related (Interstellar card → Nolan card = new card)
-- New perspective that deserves its own space ("why it matters" alongside the original)
-- A different angle on the same topic (comparison, analysis, context)
+- New perspective that deserves its own space
+- Anything on a card from a previous round — those are past answers, don't touch them
 
-**The test:** Would a human say "that's the same thing with better info" or "that's a different thing"? Same thing → update. Different thing → new card.
+**The test:** "Same thing, better info" → update. "Different thing" → new card.
 
-### Move — Bring an Entity Back Into the Story
+### Move — Only Visible Cards
 
-Move when an existing card is relevant to your new response:
-- User asks about it → move to center, build new cards around it
-- It provides context → move nearby as reference
-- Comparing old and new → place side by side
+Move repositions a card that's already visible and clear to the user. **Never pull cards back from the background** — cards that have faded/blurred into the back are past content. Bringing them forward is disorienting ("where did this come from?").
 
-Don't move just to rearrange. If a card isn't part of your current story, let it recede naturally.
+✅ Move:
+- A current-round card needs repositioning to make room for new cards
+- Rearranging the current composition
+
+❌ Don't move:
+- Old cards that have receded (blurred, low opacity, deep z) — they're gone from the user's perspective
+- Cards from previous rounds — create new ones if the topic comes up again
 
 ### Silence = Graceful Exit
 
@@ -124,7 +125,7 @@ To remove a card from focus: do nothing. It fades naturally as new cards appear.
 
 ### Output Order
 
-**move/update FIRST, then new cards.** The canvas animates in real-time — moving old cards into position before new ones prevents overlap.
+**move/update FIRST, then new cards.** The canvas animates in real-time — moving cards before creating new ones prevents overlap.
 
 ### Composition
 
