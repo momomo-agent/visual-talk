@@ -6,7 +6,7 @@
  * No DOM, no animation, no reactivity — just data.
  */
 
-const INTRA_PUSH = 30
+import { Z_INTRA_STEP, Z_PINNED, Z_PER_DEPTH } from './z-layers.js'
 
 export class CanvasState {
   constructor() {
@@ -68,10 +68,10 @@ export class CanvasState {
     this.cards.forEach((card, id) => {
       if (this.pinnedIds.has(id) || this.currentRoundIds.has(id)) {
         card.depth = this.depthLevel
-        // Pinned cards stay visible but behind new cards (intraZ = -30)
-        card.intraZ = -INTRA_PUSH
-        card.z = -INTRA_PUSH
-        card.zIndex = 100 + Math.floor(-INTRA_PUSH / 10)
+        // Pinned cards stay visible but behind new cards
+        card.intraZ = Z_PINNED
+        card.z = Z_PINNED
+        card.zIndex = 100 + Math.floor(Z_PINNED / 10)
         card.opacity = 1
         card.scale = 1
         card.blur = 0
@@ -79,7 +79,7 @@ export class CanvasState {
       }
       const d = this.depthLevel - card.depth
       if (d > 0) {
-        card.z = -d * 160
+        card.z = d * Z_PER_DEPTH
         card.scale = Math.max(0.5, 1 - d * 0.12)
         card.opacity = Math.max(0, 1 - d * 0.45)
         card.blur = d >= 1 ? d * 4 : 0
@@ -100,7 +100,7 @@ export class CanvasState {
       const sib = this.cards.get(sibId)
       if (!sib) return
       const curZ = sib.intraZ || 0
-      const pushed = curZ - INTRA_PUSH
+      const pushed = curZ - Z_INTRA_STEP
       sib.intraZ = pushed
       sib.z = pushed
       sib.zIndex = 100 + Math.floor(pushed / 10)
@@ -115,7 +115,7 @@ export class CanvasState {
         if (sz > maxGroupZ) maxGroupZ = sz
       }
     })
-    const intraZ = Math.max(llmZ, maxGroupZ + INTRA_PUSH, groupCount * INTRA_PUSH)
+    const intraZ = Math.max(llmZ, maxGroupZ + Z_INTRA_STEP, groupCount * Z_INTRA_STEP)
 
     this.cards.set(c.id, {
       id: c.id,
@@ -144,10 +144,12 @@ export class CanvasState {
       Object.assign(card.data, op.changes)
     }
     card.depth = this.depthLevel
+    card.intraZ = Z_PINNED
+    card.z = Z_PINNED
     card.opacity = 1
     card.blur = 0
     card.scale = 1
-    card.zIndex = 100
+    card.zIndex = 100 + Math.floor(Z_PINNED / 10)
     card.pinned = true
     this.currentRoundIds.add(op.cardId)
   }
@@ -157,15 +159,15 @@ export class CanvasState {
     if (!card || !op.to) return
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
-    if (op.to.z != null) {
-      card.z = op.to.z
-      card.intraZ = op.to.z
-    }
+    // LLM can specify z, but clamp to PINNED range (never above new cards)
+    const targetZ = op.to.z != null ? Math.min(op.to.z, Z_PINNED) : Z_PINNED
+    card.z = targetZ
+    card.intraZ = targetZ
     card.depth = this.depthLevel
     card.opacity = 1
     card.blur = 0
     card.scale = 1
-    card.zIndex = 100 + Math.floor((card.intraZ || 0) / 10)
+    card.zIndex = 100 + Math.floor(targetZ / 10)
     card.pinned = true
     this.currentRoundIds.add(op.cardId)
   }

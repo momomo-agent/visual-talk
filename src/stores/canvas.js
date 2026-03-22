@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
+import { Z_SELECTED, Z_ENTER, Z_FADE_OUT, Z_EXIT } from '../lib/z-layers.js'
 
 /**
  * Canvas Store — Pure View Layer (v2)
@@ -88,7 +89,7 @@ export const useCanvasStore = defineStore('canvas', () => {
           const card = reactive({
             ...target,
             opacity: 0,
-            z: -200,
+            z: Z_ENTER,
             scale: 0.8,
             blur: 4,
             selected: false,
@@ -127,7 +128,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
       if (animate) {
         card.opacity = 0
-        card.z = -400
+        card.z = Z_FADE_OUT
         card.scale = 0.5
         card.blur = 8
         card.pointerEvents = 'none'
@@ -166,7 +167,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = 400       // Must be highest translateZ in preserve-3d context
+      card.z = Z_SELECTED       // Highest translateZ — guaranteed on top in preserve-3d
       card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999
@@ -212,7 +213,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     // Push everything back into the distance
     cards.forEach(card => {
       card.opacity = 0
-      card.z = (card.z || 0) - 600
+      card.z = Z_EXIT
       card.scale = (card.scale || 1) * 0.3
       card.blur = 12
       card.pointerEvents = 'none'

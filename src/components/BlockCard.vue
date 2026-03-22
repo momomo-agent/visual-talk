@@ -27,6 +27,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { Z_HOVER } from '../lib/z-layers.js'
 import CardBlock from './cards/CardBlock.vue'
 import MetricBlock from './cards/MetricBlock.vue'
 import StepsBlock from './cards/StepsBlock.vue'
@@ -118,7 +119,7 @@ function onMouseEnter() {
     blur: props.card.blur,
   }
   // Push forward — must exceed any card's translateZ in preserve-3d
-  props.card.z = Math.max(200, props.card.z + 80)
+  props.card.z = Math.max(Z_HOVER, props.card.z + 80)
   props.card.scale = 1.05
   props.card.opacity = 1
   props.card.zIndex = 150
