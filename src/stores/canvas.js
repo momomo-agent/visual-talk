@@ -79,6 +79,7 @@ export const useCanvasStore = defineStore('canvas', () => {
           card.type = target.type
           card.data = { ...target.data }
           card.pinned = target.pinned ?? false
+          card.docked = target.docked ?? false
           card.pointerEvents = 'auto'
           // Don't touch card.selected — that's UI state
         }

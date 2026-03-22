@@ -422,15 +422,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     const nodeId = viewingId.value ?? activeTip.value
     if (nodeId == null) return
 
-    // Check current state
-    const snapshot = (nodeId === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(nodeId)
-    const card = snapshot.get(cardId)
+    // Check current state from canvas (what user sees)
+    const canvas = useCanvasStore()
+    const card = canvas.cards.get(cardId)
     if (!card) return
 
     const newDocked = !card.docked
     addOperation(nodeId, { op: 'dock', cardId, docked: newDocked })
+
+    // If addOperation didn't update canvas (no liveState), do it directly
+    if (!liveState || nodeId !== activeTip.value) {
+      card.docked = newDocked
+      if (newDocked) {
+        card.opacity = 1
+        card.scale = 1
+        card.blur = 0
+      }
+    }
     return newDocked
   }
 
