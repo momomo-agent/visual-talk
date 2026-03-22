@@ -9,11 +9,12 @@
 import { Z_INTRA_STEP, Z_PINNED, Z_PER_DEPTH } from './z-layers.js'
 
 export class CanvasState {
-  constructor() {
+  constructor(dockedIds = new Set()) {
     this.cards = new Map()
     this.depthLevel = 0
     this.currentRoundIds = new Set()
     this.pinnedIds = new Set()
+    this.dockedIds = dockedIds  // global docked card IDs
   }
 
   /**
@@ -147,6 +148,8 @@ export class CanvasState {
   _update(op) {
     const card = this.cards.get(op.cardId)
     if (!card) return
+    // Docked cards can't be updated by AI — they're user-owned
+    if (this.dockedIds.has(op.cardId)) return
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
@@ -164,6 +167,8 @@ export class CanvasState {
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
+    // Docked cards can't be moved by AI — user controls their position
+    if (this.dockedIds.has(op.cardId)) return
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
     // LLM can specify z, but clamp to PINNED range (never above new cards)

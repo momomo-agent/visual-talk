@@ -132,7 +132,7 @@ export function buildCanvasContext(snapshot) {
 
   if (!dockedCards.length && !latestCards.length && !visibleCards.length && !pastCards.length) return null
   let ctx = '[Current canvas state]\n'
-  if (dockedCards.length) ctx += `Docked (user keeps these visible — always on screen):\n${dockedCards.join('\n')}\n`
+  if (dockedCards.length) ctx += `Docked (user keeps these visible — DO NOT move, update, or remove these cards):\n${dockedCards.join('\n')}\n`
   if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
   if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
   if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`

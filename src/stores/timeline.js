@@ -115,7 +115,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       // Maintain incremental state for streaming performance
       if (!liveState) {
         // First op in this round — bootstrap from parent state
-        liveState = new CanvasState()
+        liveState = new CanvasState(dockedCardIds)
         const path = getPathFromRoot(nodeId)
         // Replay all nodes EXCEPT the current one (it's being built incrementally)
         for (let i = 0; i < path.length - 1; i++) {
@@ -191,7 +191,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (canvasCache.has(nodeId)) return canvasCache.get(nodeId)
 
     const path = getPathFromRoot(nodeId)
-    const state = new CanvasState()
+    const state = new CanvasState(dockedCardIds)
 
     for (const node of path) {
       state.beginNode()
@@ -216,6 +216,18 @@ export const useTimelineStore = defineStore('timeline', () => {
     state.cards.forEach(card => {
       card.docked = dockedCardIds.has(card.id)
     })
+
+    // If viewing a historical node, inject docked cards from the active tip
+    // that don't exist in this node's replay
+    if (nodeId !== activeTip.value && activeTip.value != null && dockedCardIds.size > 0) {
+      const tipCanvas = computeCanvas(activeTip.value)
+      tipCanvas.forEach((tipCard, tipId) => {
+        if (dockedCardIds.has(tipId) && !state.cards.has(tipId)) {
+          // Clone the card from tip state
+          state.cards.set(tipId, { ...tipCard, docked: true })
+        }
+      })
+    }
 
     canvasCache.set(nodeId, state.cards)
     return state.cards
