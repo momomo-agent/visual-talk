@@ -34,8 +34,7 @@ export async function tmdbFetch(path, apiKey, params = {}, proxyUrl) {
   } catch (err) {
     if (!proxyUrl) throw err
     console.warn('TMDB direct failed, trying proxy:', err.message)
-    const proxyEndpoint = proxyUrl.endsWith('/proxy') ? proxyUrl : `${proxyUrl}/proxy`
-    const res = await fetch(proxyEndpoint, {
+    const res = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: targetUrl, method: 'GET', mode: 'raw' }),
