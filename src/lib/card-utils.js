@@ -78,7 +78,7 @@ export function getCardText(card) {
  * @param {Map} snapshot - Map of cardId → card objects (from computeCanvas or canvas.cards)
  * @returns {string|null}
  */
-export function buildCanvasContext(snapshot) {
+export function buildCanvasContext(snapshot, dockedIds = new Set()) {
   const entries = Array.from(snapshot.entries())
   if (!entries.length) return null
 
@@ -86,8 +86,18 @@ export function buildCanvasContext(snapshot) {
   const latestCards = []    // depth === maxDepth (just created)
   const visibleCards = []   // depth === maxDepth - 1 (user is currently looking at)
   const pastCards = []      // depth < maxDepth - 1 (fading into background)
+  const dockedCards = []    // user-docked cards (DO NOT touch)
 
   entries.forEach(([id, card]) => {
+    // Docked cards go to their own section
+    if (dockedIds.has(id)) {
+      const key = card.data?.key
+      const title = getCardTitle(card)
+      const label = key ? `[${key}]` : title ? `"${title}"` : null
+      if (label) dockedCards.push(`${label} at (${Math.round(card.x)},${Math.round(card.y)})`)
+      return
+    }
+
     const d = card.depth || 0
     if (d === maxDepth) {
       try {
@@ -113,8 +123,9 @@ export function buildCanvasContext(snapshot) {
     }
   })
 
-  if (!latestCards.length && !visibleCards.length && !pastCards.length) return null
+  if (!latestCards.length && !visibleCards.length && !pastCards.length && !dockedCards.length) return null
   let ctx = '[Current canvas state]\n'
+  if (dockedCards.length) ctx += `Docked (user pinned these to sidebar — DO NOT move, update, or reference these cards, they are outside the canvas):\n${dockedCards.join('\n')}\n`
   if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
   if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
   if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`

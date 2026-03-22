@@ -34,6 +34,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   // Cache: computed canvas state per node id
   const canvasCache = new Map()
 
+  // Global docked card IDs — independent of timeline navigation
+  const dockedIds = reactive(new Set())
+
   // --- Tree operations ---
 
   function createNode(parentId, userMessage) {
@@ -407,6 +410,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     viewingId.value = null
     nodeCounter = 0
     canvasCache.clear()
+    dockedIds.clear()
+  }
+
+  /**
+   * Toggle dock state for a card.
+   * Docked cards are rendered in a separate sidebar, not in the canvas.
+   */
+  function toggleDock(cardId) {
+    if (dockedIds.has(cardId)) {
+      dockedIds.delete(cardId)
+    } else {
+      dockedIds.add(cardId)
+    }
   }
 
   function setAiResponse(nodeId, response) {
@@ -438,6 +454,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       nodeCounter,
       activeTip: activeTip.value,
       nodes: nodesData,
+      dockedIds: [...dockedIds],
     }
   }
 
@@ -465,6 +482,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
     if (data.nodeCounter != null) {
       nodeCounter = data.nodeCounter
+    }
+    // Restore docked cards
+    dockedIds.clear()
+    if (data.dockedIds) {
+      for (const id of data.dockedIds) dockedIds.add(id)
     }
     if (activeTip.value != null) {
       restoreToNode(activeTip.value)
@@ -526,7 +548,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const snapshot = (id === activeTip.value && liveState)
       ? liveState.cards
       : computeCanvas(id)
-    return buildCanvasContext(snapshot)
+    return buildCanvasContext(snapshot, dockedIds)
   }
 
   /**
@@ -570,5 +592,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getPathFromRoot,
     toJSON,
     fromJSON,
+    dockedIds,
+    toggleDock,
   }
 })

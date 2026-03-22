@@ -7,6 +7,7 @@
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
+    @dblclick.stop="onDblClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -46,7 +47,7 @@ const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['toggle-select', 'update-position', 'drag-end'])
+const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock'])
 const blockRef = ref(null)
 const glowBreathing = ref(false)
 
@@ -150,6 +151,11 @@ function onClick(e) {
   } else {
     glowBreathing.value = false
   }
+}
+
+function onDblClick(e) {
+  e.stopPropagation()
+  emit('toggle-dock')
 }
 
 function onMouseDown(e) {

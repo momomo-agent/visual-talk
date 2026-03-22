@@ -2,10 +2,11 @@
   <div class="canvas" @click="handleBgClick">
     <div class="canvas-space" ref="spaceRef">
       <BlockCard
-        v-for="[id, card] in cards"
+        v-for="[id, card] in visibleCards"
         :key="id"
         :card="card"
         @toggle-select="(e) => toggleSelect(id, e)"
+        @toggle-dock="() => onToggleDock(id)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
         @drag-end="(x, y) => onDragEnd(card, x, y)"
       />
@@ -16,7 +17,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useTimelineStore } from '../stores/timeline.js'
@@ -26,7 +27,19 @@ import SketchOverlay from './SketchOverlay.vue'
 const canvas = useCanvasStore()
 const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
+const { dockedIds } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
+
+// Filter out docked cards from canvas rendering
+const visibleCards = computed(() => {
+  const entries = []
+  cards.value.forEach((card, id) => {
+    if (!dockedIds.value.has(id)) {
+      entries.push([id, card])
+    }
+  })
+  return entries
+})
 
 const spaceRef = ref(null)
 
@@ -36,6 +49,10 @@ function handleBgClick(e) {
   if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
   clearSelection()
   emit('click-canvas')
+}
+
+function onToggleDock(cardId) {
+  timeline.toggleDock(cardId)
 }
 
 function onDragEnd(card, x, y) {
