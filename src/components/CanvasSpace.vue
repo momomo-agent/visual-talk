@@ -65,7 +65,8 @@ function getCardParallaxStyle(card) {
   const shiftX = headX.value * depth * PARALLAX_FACTOR
   const shiftY = headY.value * depth * PARALLAX_FACTOR * 0.6
   return {
-    transform: `translateZ(${z}px) scale(${card.scale || 1}) translate(${shiftX}px, ${shiftY}px)`,
+    '--parallax-x': `${shiftX}px`,
+    '--parallax-y': `${shiftY}px`,
   }
 }
 

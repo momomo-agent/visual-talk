@@ -100,19 +100,26 @@ export function useEyeTracking(options = {}) {
           confidence.value = 1
 
           // Gaze estimation from eye landmarks if available
-          if (face.landmarks && face.landmarks.length >= 4) {
-            // landmarks: [rightEye, leftEye, nose, mouth]
-            const rightEye = face.landmarks[0]
+          if (face.landmarks && face.landmarks.length >= 2) {
+            const rightEye = face.landmarks[0] // {x, y} in image coords
             const leftEye = face.landmarks[1]
 
-            // Eye center relative to face box = rough gaze
-            const eyeCenterX = (rightEye.x + leftEye.x) / 2
-            const eyeCenterY = (rightEye.y + leftEye.y) / 2
-            const relX = (eyeCenterX - box.x) / box.width
-            const relY = (eyeCenterY - box.y) / box.height
+            // Average eye position relative to face box center
+            const eyeMidX = (rightEye[0].x + leftEye[0].x) / 2
+            const eyeMidY = (rightEye[0].y + leftEye[0].y) / 2
+            const boxCenterX = box.x + box.width / 2
+            const boxCenterY = box.y + box.height * 0.35 // eyes are in upper third
 
-            tGazeX = Math.max(0, Math.min(1, 1 - relX * 1.5 + 0.25))
-            tGazeY = Math.max(0, Math.min(1, relY * 2 - 0.2))
+            // How far eyes deviate from expected center = gaze direction
+            const deviationX = (eyeMidX - boxCenterX) / box.width
+            const deviationY = (eyeMidY - boxCenterY) / box.height
+
+            tGazeX = Math.max(0, Math.min(1, 0.5 - deviationX * 2))
+            tGazeY = Math.max(0, Math.min(1, 0.5 + deviationY * 2))
+          } else {
+            // No landmarks — estimate gaze from head position
+            tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.4))
+            tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.4))
           }
           return
         }
@@ -149,6 +156,9 @@ export function useEyeTracking(options = {}) {
       tHeadY = -((cy / 240) * 2 - 1)
       isTracking.value = true
       confidence.value = Math.min(1, count / 2000)
+      // Gaze follows head when no landmarks
+      tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.4))
+      tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.4))
     } else {
       isTracking.value = false
       confidence.value = 0
