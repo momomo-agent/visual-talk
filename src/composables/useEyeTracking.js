@@ -14,7 +14,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useEyeTracking(options = {}) {
   const {
     smoothing = 0.15,
-    updateRate = 30,
+    updateRate = 15,
   } = options
 
   const headX = ref(0)
@@ -138,6 +138,7 @@ export function useEyeTracking(options = {}) {
 
   let lastDetect = 0
   const interval = 1000 / updateRate
+  let detecting = false // lock to prevent overlapping sends
 
   function startLoop() {
     function loop(now) {
@@ -149,12 +150,18 @@ export function useEyeTracking(options = {}) {
       gazeX.value = lerp(gazeX.value, tGazeX, smoothing)
       gazeY.value = lerp(gazeY.value, tGazeY, smoothing)
 
-      // Send frame to MediaPipe at target rate
+      // Send frame to MediaPipe at target rate (with lock)
       if (now - lastDetect < interval) return
+      if (detecting) return // previous frame still processing
       lastDetect = now
       if (!faceMesh || !video || video.readyState < 2) return
 
-      faceMesh.send({ image: video }).catch(() => {})
+      detecting = true
+      faceMesh.send({ image: video }).catch((e) => {
+        console.warn('faceMesh.send error:', e)
+      }).finally(() => {
+        detecting = false
+      })
     }
     animFrame = requestAnimationFrame(loop)
   }

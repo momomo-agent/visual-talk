@@ -46,7 +46,7 @@ const { toggleSelect, clearSelection, updateCardPosition } = canvas
 // Eye tracking
 const { headX, headY, gazeX, gazeY, isTracking, confidence } = useEyeTracking({
   smoothing: 0.12,
-  updateRate: 30,
+  updateRate: 15,
 })
 
 const showDebug = ref(true)
