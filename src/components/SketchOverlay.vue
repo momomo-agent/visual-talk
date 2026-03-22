@@ -393,14 +393,23 @@ onMounted(() => {
   watch(cardPositionVersion, scheduleMeasure)
 
   // Navigation (restoreFrom) replaces card positions — clear cache and re-measure
-  // after CSS transitions settle
+  // after CSS transitions complete (not a hardcoded delay)
   watch(() => [...cards.value.keys()].join(','), () => {
     // Clear stale positions immediately
     for (const key of Object.keys(measuredDims)) {
       delete measuredDims[key]
     }
-    // Re-measure after transition (cards animate to new positions)
-    setTimeout(measureDims, 350)
+    // Listen for transitionend on the canvas to re-measure when cards settle
+    const canvas = document.querySelector('.canvas-space')
+    if (canvas) {
+      const onSettle = () => {
+        canvas.removeEventListener('transitionend', onSettle)
+        measureDims()
+      }
+      canvas.addEventListener('transitionend', onSettle)
+    }
+    // Fallback: also schedule an immediate measure for cards without transitions
+    scheduleMeasure()
   })
 })
 
