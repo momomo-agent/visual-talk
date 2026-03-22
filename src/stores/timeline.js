@@ -143,8 +143,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       // Push snapshot to canvas
       const canvas = useCanvasStore()
       canvas.applySnapshot(liveState.cards, { animate: true })
-      // Re-apply user overrides so dragged positions aren't lost during streaming
-      applyUserOverrides(nodeId)
     }
   }
 
@@ -192,6 +190,17 @@ export const useTimelineStore = defineStore('timeline', () => {
       state.preScan(node.operations)
       for (const op of node.operations) {
         state.apply(op)
+      }
+      // Apply user drag overrides — merged at the source so all readers get final positions
+      if (node.userOverrides) {
+        for (const [key, pos] of Object.entries(node.userOverrides)) {
+          state.cards.forEach(card => {
+            if ((card.data?.key || '') === key) {
+              card.x = pos.x
+              card.y = pos.y
+            }
+          })
+        }
       }
     }
 
@@ -321,8 +330,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     const canvas = useCanvasStore()
     const computedCanvas = computeCanvas(nodeId)
     canvas.restoreFrom(computedCanvas)
-    // Apply user overrides on top of AI layout
-    applyUserOverrides(nodeId)
     // Sketch restore is automatic — sketch store watches currentNode
   }
 
@@ -346,21 +353,19 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     node.userOverrides[cardKey] = { x, y }
     canvasCache.delete(id)
-  }
 
-  /**
-   * Apply all user overrides for a node to the canvas.
-   */
-  function applyUserOverrides(nodeId) {
-    const node = nodes.get(nodeId)
-    if (!node?.userOverrides) return
-    const canvas = useCanvasStore()
-    for (const [key, pos] of Object.entries(node.userOverrides)) {
-      canvas.applyUserOverride(key, pos.x, pos.y)
+    // If streaming, also apply to liveState so it survives incremental snapshots
+    if (id === activeTip.value && liveState) {
+      liveState.cards.forEach(card => {
+        if ((card.data?.key || '') === cardKey) {
+          card.x = x
+          card.y = y
+        }
+      })
     }
   }
 
-  // --- Bubble display info ---
+    // --- Bubble display info ---
 
   function getBubbleInfo() {
     const node = currentNode.value
