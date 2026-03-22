@@ -70,6 +70,8 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
   columns: array of header strings. rows: array of objects keyed by column name.
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
   Supports YouTube, Bilibili, Google Maps, and generic link previews
+- map: {"key":"trip-map","x":10,"y":5,"z":40,"w":40,"title":"路线地图","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4"}
+  Interactive map with markers and route lines. center/markers/route use [lat, lng]. Colors: use the sketch palette (#e8a849 gold, #ef8f6e pink, #7ec8a4 mint, #8bacd4 blue). Use map when showing locations, travel routes, geographic comparisons, or "where is X".
 
 ## Canvas Commands
 
