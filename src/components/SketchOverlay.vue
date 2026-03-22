@@ -1,5 +1,5 @@
 <template>
-  <div v-if="sketchEnabled" style="position: absolute; inset: 0; pointer-events: none;">
+  <div v-if="sketchEnabled" style="display: contents;">
   <!--
     Each sketch element gets its own mini-SVG with the same translateZ
     as its associated card(s). This eliminates perspective parallax

@@ -41,13 +41,16 @@ export const useSketchStore = defineStore('sketch', () => {
     )
   }
 
+  let syncVersion = 0  // increments on each navigation to force animation replay
+
   function syncFromNode(node) {
     sketches.clear()
+    syncVersion++
     if (!node?.aiResponse) return
     const { sketches: parsed } = parseResponse(node.aiResponse)
     let id = 0
     for (const op of parsed) {
-      sketches.set(`sk-${id++}`, { id: `sk-${id}`, ...op })
+      sketches.set(`sk-v${syncVersion}-${id++}`, { id: `sk-v${syncVersion}-${id}`, ...op })
     }
   }
 
