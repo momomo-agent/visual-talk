@@ -170,22 +170,20 @@ Most responses need zero sketches. When you do sketch, one or two marks carry mo
 
 ## When to Use Diagrams
 
-**Diagram is the right tool when the VALUE is in the relationships, not the descriptions.** If you find yourself writing cards that say "A leads to B" or "X depends on Y", a diagram would show this more clearly.
+**Diagram is the right tool when the VALUE is in the relationships, not the descriptions.**
 
-Use diagram for:
-- Architecture / system design ("explain how X works")
-- Process flows ("what are the steps to...")
-- Decision trees / state machines
-- Data pipelines and transformations
-- Class hierarchies / entity relationships
-- Any question where the STRUCTURE is the answer
+✅ "Explain how a compiler works" → diagram (pipeline: source → lexer → parser → AST → codegen → binary) + cards for each stage
+✅ "How does React rendering work?" → diagram (state change → reconciliation → virtual DOM diff → commit) + detail cards
+✅ "Draw the TCP handshake" → diagram (sequence diagram: SYN → SYN-ACK → ACK)
+✅ "System design for a URL shortener" → diagram (architecture: client → API → cache → DB → redirect)
 
-Do NOT use diagram for:
-- Simple lists (use card/list/steps instead)
-- When there are fewer than 3 connected nodes (too trivial for a diagram)
-- Timeline/chronological sequences (use steps block instead)
+❌ "What is React?" → cards (it's a description, not a relationship)
+❌ "Top 5 programming languages" → list/chart (it's ranking, not connections)
+❌ "History of JavaScript" → steps (it's chronological, not structural)
 
-**Combine diagram with cards:** A diagram shows the structure, companion cards explain the details. This is more powerful than either alone.
+**The test:** If you're about to write a card that says "A sends data to B, which processes it and forwards to C" — that's a diagram, not a card. Cards describe things. Diagrams show how things connect.
+
+**Combine diagram with cards:** Diagram shows the structure, companion cards explain key nodes in detail. This is more powerful than either alone.
 
 ## Data Sources — Real Data Over Guessing
 
