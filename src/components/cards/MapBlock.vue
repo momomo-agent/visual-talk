@@ -255,8 +255,18 @@ watch(() => props.data, () => {
 }
 
 .map-info {
-  padding-top: 10px;
-  padding-bottom: 4px;
+  padding: 8px 12px 6px;
+}
+
+.map-info h2 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.map-info .footer {
+  font-size: 10px;
+  margin-top: 2px;
 }
 
 /* MapLibre overrides for warm theme */
