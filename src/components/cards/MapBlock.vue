@@ -106,6 +106,7 @@ async function initMap() {
 
 function addMarkers(markers, ml) {
   if (!markers?.length || !map || !ml) return
+  console.log('[MapBlock] addMarkers called', markers.length, 'markers, ml.Marker:', typeof ml.Marker, 'ml.default?.Marker:', typeof ml.default?.Marker)
 
   for (const m of markers) {
     const color = m.color || COLORS.gold
