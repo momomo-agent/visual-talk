@@ -14,8 +14,8 @@
  *   PINNED       -30   Old cards pulled back by move/update (behind new)
  *   INTRA_STEP    30   Spacing between sibling cards in same round
  *   FRONT          0   Base z for current-round cards (intraZ adds to this)
- *   HOVER        250   Card being hovered
- *   SELECTED     500   Card actively selected by user
+ *   HOVER        200   Card being hovered (absolute, above all cards)
+ *   SELECTED     250   Card actively selected by user
  *
  * Rules:
  *   1. SELECTED > HOVER > any card's intraZ
@@ -23,9 +23,10 @@
  *   3. Animations start at ENTERING/FADING/EXITING, never in the "live" range
  */
 
-// Interaction layers (UI state, not data)
-export const Z_SELECTED = 500
-export const Z_HOVER = 250
+// Interaction layers — absolute z values, must exceed any card's intraZ
+// Typical max intraZ ≈ 5 cards × 30 = 150, so 200+ is safe
+export const Z_HOVER = 200
+export const Z_SELECTED = 250
 
 // Data layers (computed by CanvasState)
 export const Z_INTRA_STEP = 30        // spacing between sibling cards in a round
@@ -38,8 +39,3 @@ export const Z_PER_DEPTH = -160       // each depth level pushes back by this
 export const Z_ENTER = -200           // fly-in start
 export const Z_FADE_OUT = -400        // removed card destination
 export const Z_EXIT = -600            // clear-all destination
-
-// Derived: max reasonable intraZ for N sibling cards in one round
-// With 10 cards: intraZ = 9 * 30 = 270. HOVER (250) would conflict.
-// But 10+ cards in one round is extreme. For safety:
-export const Z_HOVER_MIN = Z_HOVER    // hover always at least this

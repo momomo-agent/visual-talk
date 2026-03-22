@@ -2,7 +2,7 @@
   <div
     ref="blockRef"
     class="v-block"
-    :class="{ selected: card.selected, hovered: hovered, 'glow-breathe': card.selected && glowBreathing }"
+    :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
     :style="cardStyle"
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
@@ -27,6 +27,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { Z_HOVER } from '../lib/z-layers.js'
 import CardBlock from './cards/CardBlock.vue'
 import MetricBlock from './cards/MetricBlock.vue'
 import StepsBlock from './cards/StepsBlock.vue'
@@ -94,6 +95,7 @@ const cardStyle = computed(() => {
     maxWidth: hasImage ? '380px' : undefined,
     transform: `translateZ(${c.z}px) scale(${c.scale}) translate(var(--parallax-x, 0px), var(--parallax-y, 0px))`,
     opacity: c.opacity,
+    zIndex: c.zIndex,
     filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',
     pointerEvents: c.pointerEvents || 'auto',
     transitionDelay: c.entranceDelay > 0 ? `${c.entranceDelay}s` : '0s',
@@ -107,27 +109,30 @@ let isDragging = false
 let startX = 0, startY = 0, origLeft = 0, origTop = 0
 let preHover = null
 
-const hovered = ref(false)
-
 function onMouseEnter() {
   if (props.card.selected || isDragging) return
-  hovered.value = true
-  // Only restore visibility for dimmed cards — don't change z (causes perspective jitter)
-  if (props.card.opacity < 1 || props.card.blur > 0) {
-    preHover = {
-      opacity: props.card.opacity,
-      blur: props.card.blur,
-    }
-    props.card.opacity = 1
-    props.card.blur = 0
+  preHover = {
+    z: props.card.z,
+    scale: props.card.scale,
+    opacity: props.card.opacity,
+    zIndex: props.card.zIndex,
+    blur: props.card.blur,
   }
+  // Lift to front — absolute z guarantees above all other cards
+  props.card.z = Z_HOVER
+  props.card.scale = 1.02
+  props.card.opacity = 1
+  props.card.zIndex = 150
+  props.card.blur = 0
 }
 
 function onMouseLeave() {
   if (props.card.selected || isDragging) return
-  hovered.value = false
   if (preHover) {
+    props.card.z = preHover.z
+    props.card.scale = preHover.scale
     props.card.opacity = preHover.opacity
+    props.card.zIndex = preHover.zIndex
     props.card.blur = preHover.blur
     preHover = null
   }
