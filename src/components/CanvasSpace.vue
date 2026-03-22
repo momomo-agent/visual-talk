@@ -49,19 +49,28 @@ const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTra
 })
 
 /**
- * Pure parallax via CSS variable --parallax-x/y
+ * Off-axis parallax — physically correct model
  * 
- * Each card shifts based on its z-depth × head position.
- * Higher z = closer to viewer = shifts MORE (opposite to bg).
- * This is how real parallax works — foreground moves more than background.
+ * Think of the screen as a window. The viewer is at distance D from the screen.
+ * A card at depth z behind the screen should shift by:
+ *   offset = headPosition * (z / D)
+ * 
+ * When viewer moves left, objects behind the screen appear to move right
+ * (and objects in front move left). This is real parallax.
+ * 
+ * D (screenDistance) controls sensitivity — smaller = more dramatic effect.
+ * headX/Y is mapped to approximate cm of head movement.
  */
+const SCREEN_DISTANCE = 5 // virtual "distance to screen" in same units as z
+const HEAD_SCALE = 150 // map headX [-1,1] to pixels of shift at z=SCREEN_DISTANCE
+
 function getParallaxStyle(card) {
   const z = card.z || 0
-  // Normalize z: typical range 0-60, map to 0-1 multiplier
-  const depth = z / 40
-  // Shift amount: up to 40px at max depth for full head turn
-  const px = headX.value * depth * 40
-  const py = headY.value * depth * 25
+  // Cards with z > 0 are "in front" of screen → shift same direction as head
+  // Cards with z < 0 would be "behind" → shift opposite (not used currently)
+  const ratio = z / SCREEN_DISTANCE
+  const px = headX.value * ratio * HEAD_SCALE
+  const py = headY.value * ratio * HEAD_SCALE * 0.7
   return {
     '--parallax-x': `${px}px`,
     '--parallax-y': `${py}px`,
