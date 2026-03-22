@@ -8,8 +8,8 @@
         @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
       />
-      <SketchOverlay />
     </div>
+    <SketchOverlay />
     <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
   </div>
 </template>

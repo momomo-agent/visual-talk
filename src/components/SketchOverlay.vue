@@ -1,5 +1,5 @@
 <template>
-  <div v-if="sketchEnabled" style="display: contents;">
+  <div v-if="sketchEnabled" style="position: absolute; inset: 0; pointer-events: none; z-index: 9999;">
   <!--
     Each sketch element gets its own mini-SVG with the same translateZ
     as its associated card(s). This eliminates perspective parallax
@@ -145,10 +145,10 @@ const width = ref(window.innerWidth)
 const height = ref(window.innerHeight)
 
 function onResize() {
-  const space = document.querySelector('.canvas-space')
-  if (space) {
-    width.value = space.offsetWidth || window.innerWidth
-    height.value = space.offsetHeight || window.innerHeight
+  const canvas = document.querySelector('.canvas')
+  if (canvas) {
+    width.value = canvas.offsetWidth || window.innerWidth
+    height.value = canvas.offsetHeight || window.innerHeight
   } else {
     width.value = window.innerWidth
     height.value = window.innerHeight
@@ -156,10 +156,10 @@ function onResize() {
 }
 onMounted(() => {
   window.addEventListener('resize', onResize)
-  const space = document.querySelector('.canvas-space')
-  if (space) {
-    width.value = space.offsetWidth || window.innerWidth
-    height.value = space.offsetHeight || window.innerHeight
+  const canvas = document.querySelector('.canvas')
+  if (canvas) {
+    width.value = canvas.offsetWidth || window.innerWidth
+    height.value = canvas.offsetHeight || window.innerHeight
   }
 })
 onUnmounted(() => {
@@ -170,18 +170,8 @@ onUnmounted(() => {
 // Per-sketch Z: match the associated card's translateZ
 // ═══════════════════════════════════════════════
 
-function sketchZ(sk) {
-  // Sketches always float above ALL cards — not just their target card
-  let maxZ = 0
-  cards.value.forEach(c => { if ((c.z || 0) > maxZ) maxZ = c.z || 0 })
-  return maxZ + 10
-}
-
 function layerStyle(sk) {
-  const z = sketchZ(sk)
-  return {
-    transform: `translateZ(${z}px)`,
-  }
+  return {}  // No 3D transform needed — SVG is outside preserve-3d context
 }
 
 function pctX(v) { return (v / 100) * width.value }
@@ -313,38 +303,61 @@ function pathToFreehandClosed(pathPoints, size = SIZE) {
 }
 
 // ═══════════════════════════════════════════════
-// Card geometry — computed from store data (reactive)
-// DOM is only used for height (content-dependent, not in store).
-// No rAF polling needed — Vue reactivity handles updates automatically.
+// Card geometry — getBoundingClientRect relative to .canvas
+// SVG is outside 3D space, so we read projected screen coordinates
+// which include perspective transforms. Reactive via cardPositionVersion.
 // ═══════════════════════════════════════════════
 
 // Cache measured dimensions by key (content-dependent, not in store)
 const measuredDims = reactive({})
 
 function measureDims() {
+  const canvas = document.querySelector('.canvas')
+  if (!canvas) return
+  const cr = canvas.getBoundingClientRect()
   document.querySelectorAll('[data-block-key]').forEach(el => {
     const key = el.dataset.blockKey
-    if (key) measuredDims[key] = { w: el.offsetWidth, h: el.offsetHeight }
+    if (!key) return
+    const er = el.getBoundingClientRect()
+    measuredDims[key] = {
+      x: er.left - cr.left, y: er.top - cr.top,
+      w: er.width, h: er.height,
+    }
   })
   document.querySelectorAll('[data-content-key]').forEach(el => {
     const key = el.dataset.contentKey
-    if (key) measuredDims[key] = { w: el.offsetWidth, h: el.offsetHeight }
+    if (!key) return
+    const er = el.getBoundingClientRect()
+    measuredDims[key] = {
+      x: er.left - cr.left, y: er.top - cr.top,
+      w: er.width, h: er.height,
+    }
   })
 }
 
-// Measure after layout changes — multiple passes to catch rendering at different stages
+// Measure after layout changes
 onMounted(() => {
   measureDims()
   setTimeout(measureDims, 300)
   watch(() => cards.value.size, () => {
-    // Cards just changed — measure multiple times as they render
     requestAnimationFrame(measureDims)
     setTimeout(measureDims, 100)
     setTimeout(measureDims, 400)
   })
+  // Re-measure when card positions change
+  watch(cardPositionVersion, () => requestAnimationFrame(measureDims))
 })
 
 function cardRect(key) {
+  const dims = measuredDims[key]
+  if (dims) {
+    return {
+      x: dims.x, y: dims.y, w: dims.w, h: dims.h,
+      cx: dims.x + dims.w / 2, cy: dims.y + dims.h / 2,
+    }
+  }
+
+  // Fallback: calculate from store data (inaccurate with perspective)
   let found = null
   cards.value.forEach(c => {
     if (c.contentKey === key || c.data?.key === key) found = c
@@ -353,9 +366,8 @@ function cardRect(key) {
 
   const x = pctX(found.x)
   const y = pctY(found.y)
-  const dims = measuredDims[key] || measuredDims[found.contentKey]
-  const w = dims?.w || (found.w ? pctX(found.w) : 200)
-  const h = dims?.h || 130
+  const w = found.w ? pctX(found.w) : 200
+  const h = 130
 
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
 }
