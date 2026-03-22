@@ -185,18 +185,19 @@ function layerStyle(sk) {
 }
 
 function getSketchZ(sk) {
-  // For arrow/line: use the minimum z of from/to cards (draw behind both)
+  // For arrow/line: render ABOVE the highest associated card
+  // but below Z_HOVER so hover still brings a card on top
   if (sk.from || sk.to || sk.target) {
-    let minZ = Infinity
+    let maxZ = -Infinity
     for (const key of [sk.from, sk.to, sk.target]) {
       if (!key) continue
       const card = findCardByKey(key)
-      if (card) minZ = Math.min(minZ, card.z ?? 0)
+      if (card) maxZ = Math.max(maxZ, card.z ?? 0)
     }
-    return minZ === Infinity ? 0 : minZ - 1
+    return maxZ === -Infinity ? 1 : maxZ + 1
   }
-  // Standalone sketch: put at z=0 (current round level)
-  return -1
+  // Standalone sketch: just above z=0
+  return 1
 }
 
 function findCardByKey(key) {
