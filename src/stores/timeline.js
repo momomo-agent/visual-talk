@@ -49,6 +49,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       aiResponse: '',
       timestamp: Date.now(),
       operations: [],
+      userOverrides: {},  // { cardKey: {x, y} } — user drag adjustments, per-node
     })
 
     nodes.set(id, node)
@@ -142,6 +143,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       // Push snapshot to canvas
       const canvas = useCanvasStore()
       canvas.applySnapshot(liveState.cards, { animate: true })
+      // Re-apply user overrides so dragged positions aren't lost during streaming
+      applyUserOverrides(nodeId)
     }
   }
 
@@ -318,7 +321,45 @@ export const useTimelineStore = defineStore('timeline', () => {
     const canvas = useCanvasStore()
     const computedCanvas = computeCanvas(nodeId)
     canvas.restoreFrom(computedCanvas)
+    // Apply user overrides on top of AI layout
+    applyUserOverrides(nodeId)
     // Sketch restore is automatic — sketch store watches currentNode
+  }
+
+  /**
+   * Record a user drag override for the current active node.
+   * Only allows overriding cards from the current round.
+   */
+  function setUserOverride(cardKey, x, y) {
+    const id = viewingId.value ?? activeTip.value
+    if (id == null) return
+    const node = nodes.get(id)
+    if (!node) return
+
+    // Only allow overriding cards created in this node's operations
+    const isCurrentRound = node.operations.some(op =>
+      op.op === 'create' && op.card?.data?.key === cardKey
+    )
+    if (!isCurrentRound) return
+
+    node.userOverrides[cardKey] = { x, y }
+    canvasCache.delete(id) // invalidate to pick up override on next compute
+
+    // Apply immediately to canvas
+    const canvas = useCanvasStore()
+    canvas.applyUserOverride(cardKey, x, y)
+  }
+
+  /**
+   * Apply all user overrides for a node to the canvas.
+   */
+  function applyUserOverrides(nodeId) {
+    const node = nodes.get(nodeId)
+    if (!node?.userOverrides) return
+    const canvas = useCanvasStore()
+    for (const [key, pos] of Object.entries(node.userOverrides)) {
+      canvas.applyUserOverride(key, pos.x, pos.y)
+    }
   }
 
   // --- Bubble display info ---
@@ -377,6 +418,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         aiResponse: node.aiResponse || '',
         timestamp: node.timestamp,
         operations: JSON.parse(JSON.stringify(node.operations)),
+        userOverrides: node.userOverrides ? { ...node.userOverrides } : {},
       }
     })
     return {
@@ -402,6 +444,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         aiResponse: nd.aiResponse || '',
         timestamp: nd.timestamp || Date.now(),
         operations: nd.operations || [],
+        userOverrides: nd.userOverrides || {},
       })
     }
 
@@ -501,6 +544,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getBranchPoint,
     branchFrom,
     restoreToNode,
+    setUserOverride,
     getBubbleInfo,
     reset,
     setAiResponse,

@@ -232,6 +232,19 @@ export const useCanvasStore = defineStore('canvas', () => {
     applySnapshot(snapshot, { animate: false })
   }
 
+  /**
+   * Apply a user position override by card key.
+   * Finds the card by its data.key and updates x/y (percentage → pixel mapping).
+   */
+  function applyUserOverride(cardKey, x, y) {
+    cards.forEach(card => {
+      if ((card.data?.key || '') === cardKey) {
+        card.x = x
+        card.y = y
+      }
+    })
+  }
+
   return {
     cards,
     selectedIds,
@@ -242,6 +255,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     toggleSelect,
     clearSelection,
     updateCardPosition,
+    applyUserOverride,
     clear,
   }
 })

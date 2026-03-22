@@ -7,6 +7,7 @@
         :card="card"
         @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
+        @drag-end="(x, y) => onDragEnd(card, x, y)"
       />
       <SketchOverlay />
     </div>
@@ -18,10 +19,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
+import { useTimelineStore } from '../stores/timeline.js'
 import BlockCard from './BlockCard.vue'
 import SketchOverlay from './SketchOverlay.vue'
 
 const canvas = useCanvasStore()
+const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
@@ -33,6 +36,13 @@ function handleBgClick(e) {
   if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
   clearSelection()
   emit('click-canvas')
+}
+
+function onDragEnd(card, x, y) {
+  const key = card.data?.key
+  if (key) {
+    timeline.setUserOverride(key, x, y)
+  }
 }
 
 function onMouseMove(e) {
