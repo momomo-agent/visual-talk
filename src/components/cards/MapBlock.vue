@@ -26,17 +26,18 @@ async function loadMapLibre() {
   return maplibregl
 }
 
-// Dark tile style — CartoDB dark_matter via proxy (direct CDN blocked by GFW)
-const DARK_STYLE = {
+// Warm light tile style — CartoDB Voyager (warm tones, matches our card aesthetic)
+// Proxied through proxy.link2web.site to bypass GFW
+const TILE_STYLE = {
   version: 8,
-  name: 'Dark',
+  name: 'Voyager',
   sources: {
-    'carto-dark': {
+    'carto-voyager': {
       type: 'raster',
       tiles: [
-        'https://proxy.link2web.site/https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://proxy.link2web.site/https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://proxy.link2web.site/https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site/https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site/https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site/https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
       ],
       tileSize: 256,
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -44,9 +45,9 @@ const DARK_STYLE = {
   },
   layers: [
     {
-      id: 'carto-dark-layer',
+      id: 'carto-voyager-layer',
       type: 'raster',
-      source: 'carto-dark',
+      source: 'carto-voyager',
       minzoom: 0,
       maxzoom: 20,
     },
@@ -72,7 +73,7 @@ async function initMap() {
 
   map = new ml.Map({
     container: mapEl.value,
-    style: DARK_STYLE,
+    style: TILE_STYLE,
     center: [center[1], center[0]], // data: [lat, lng] → MapLibre: [lng, lat]
     zoom,
     attributionControl: false,
@@ -202,7 +203,7 @@ watch(() => props.data, () => {
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 8px;
-  color: #e0e0e0;
+  color: #4a3f35;
 }
 
 .map-container {
@@ -211,7 +212,7 @@ watch(() => props.data, () => {
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.06);
-  background: #1a1a1a;
+  background: #f5f0e8;
 }
 
 .map-block .footer {
@@ -220,26 +221,27 @@ watch(() => props.data, () => {
   margin-top: 6px;
 }
 
-/* MapLibre overrides for dark theme */
+/* MapLibre overrides for warm theme */
 :deep(.maplibregl-ctrl-group) {
-  background: rgba(30, 30, 30, 0.8) !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
+  background: rgba(245, 240, 232, 0.9) !important;
+  border: 1px solid rgba(138, 122, 96, 0.2) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
 }
 :deep(.maplibregl-ctrl-group button) {
-  filter: invert(1);
+  color: #6a5a4a;
 }
 
 :deep(.map-popup-dark .maplibregl-popup-content) {
-  background: rgba(20, 20, 20, 0.9);
-  color: #e0e0e0;
+  background: rgba(245, 240, 232, 0.95);
+  color: #4a3f35;
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.1);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 1px solid rgba(138, 122, 96, 0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 :deep(.map-popup-dark .maplibregl-popup-tip) {
-  border-top-color: rgba(20, 20, 20, 0.9);
+  border-top-color: rgba(245, 240, 232, 0.95);
 }
 
 .map-marker {
