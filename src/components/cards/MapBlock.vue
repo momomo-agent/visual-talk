@@ -88,13 +88,23 @@ async function initMap() {
   addMarkers(d.markers, ml)
 
   // Route needs style to be loaded (addSource/addLayer require it)
-  // Use style.load instead of load — load waits for tiles too, which may fail due to GFW
+  // Retry approach: try immediately, then retry with delays
   if (d.route?.length >= 2) {
-    const doRoute = () => addRoute(d.route, d.routeColor)
+    const tryRoute = (attempt = 0) => {
+      if (!map) return
+      try {
+        if (map.getSource('route')) return // already added
+        addRoute(d.route, d.routeColor)
+      } catch (e) {
+        if (attempt < 5) setTimeout(() => tryRoute(attempt + 1), 500 * (attempt + 1))
+      }
+    }
     if (map.isStyleLoaded()) {
-      doRoute()
+      tryRoute()
     } else {
-      map.on('style.load', doRoute)
+      map.on('style.load', () => tryRoute())
+      // Fallback: try after 2s even if style.load didn't fire
+      setTimeout(() => tryRoute(), 2000)
     }
   }
 
