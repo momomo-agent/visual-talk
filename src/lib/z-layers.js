@@ -14,8 +14,8 @@
  *   PINNED       -30   Old cards pulled back by move/update (behind new)
  *   INTRA_STEP    30   Spacing between sibling cards in same round
  *   FRONT          0   Base z for current-round cards (intraZ adds to this)
- *   HOVER        +5    Relative offset when hovered
- *   SELECTED    +10    Relative offset when selected
+ *   HOVER        200   Card being hovered (absolute, above all cards)
+ *   SELECTED     220   Card actively selected by user
  *
  * Rules:
  *   1. SELECTED > HOVER > any card's intraZ
@@ -23,10 +23,10 @@
  *   3. Animations start at ENTERING/FADING/EXITING, never in the "live" range
  */
 
-// Interaction offsets — relative to card's current z, not absolute positions
-// Keep small to avoid jarring perspective shifts
-export const Z_HOVER_OFFSET = 5       // hover: nudge forward from current z
-export const Z_SELECTED_OFFSET = 10   // selected: a bit more than hover
+// Interaction layers — absolute z values, must exceed any card's intraZ
+// Typical max intraZ ≈ 5 cards × 30 = 150, so 200+ is safe
+export const Z_HOVER = 200
+export const Z_SELECTED = 220
 
 // Data layers (computed by CanvasState)
 export const Z_INTRA_STEP = 30        // spacing between sibling cards in a round

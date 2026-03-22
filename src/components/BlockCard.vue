@@ -27,7 +27,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Z_HOVER_OFFSET } from '../lib/z-layers.js'
+import { Z_HOVER } from '../lib/z-layers.js'
 import CardBlock from './cards/CardBlock.vue'
 import MetricBlock from './cards/MetricBlock.vue'
 import StepsBlock from './cards/StepsBlock.vue'
@@ -118,8 +118,8 @@ function onMouseEnter() {
     zIndex: props.card.zIndex,
     blur: props.card.blur,
   }
-  // Gentle lift — just enough to float above siblings
-  props.card.z = props.card.z + Z_HOVER_OFFSET
+  // Lift to front — absolute z guarantees above all other cards
+  props.card.z = Z_HOVER
   props.card.scale = 1.02
   props.card.opacity = 1
   props.card.zIndex = 150
