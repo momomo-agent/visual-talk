@@ -327,8 +327,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Record a user drag override for the current active node.
-   * Only allows overriding cards from the current round.
+   * Record a user drag override for the current viewed node.
+   * Only persists if the card was created in this node's round.
+   * Old cards can be dragged freely but positions aren't saved
+   * (unless user navigates to the node that created them).
    */
   function setUserOverride(cardKey, x, y) {
     const id = viewingId.value ?? activeTip.value
@@ -336,18 +338,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     const node = nodes.get(id)
     if (!node) return
 
-    // Only allow overriding cards created in this node's operations
-    const isCurrentRound = node.operations.some(op =>
+    // Only persist for cards created in this node
+    const isThisNodesCard = node.operations.some(op =>
       op.op === 'create' && op.card?.data?.key === cardKey
     )
-    if (!isCurrentRound) return
+    if (!isThisNodesCard) return
 
     node.userOverrides[cardKey] = { x, y }
-    canvasCache.delete(id) // invalidate to pick up override on next compute
-
-    // Apply immediately to canvas
-    const canvas = useCanvasStore()
-    canvas.applyUserOverride(cardKey, x, y)
+    canvasCache.delete(id)
   }
 
   /**
