@@ -81,32 +81,31 @@ async function initMap() {
 
   map.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right')
 
-  map.on('load', () => {
-    addMarkers(d.markers, ml)
-    addRoute(d.route, d.routeColor)
+  // Add markers and fitBounds immediately, don't wait for tile load
+  // (tile load may fail due to GFW/network issues, blocking load event)
+  addMarkers(d.markers, ml)
+  addRoute(d.route, d.routeColor)
 
-    // Auto fit bounds to markers + route instead of relying on LLM center/zoom
-    const pts = []
-    if (d.markers?.length) {
-      for (const m of d.markers) pts.push([m.lng, m.lat])
-    }
-    if (d.route?.length) {
-      for (const p of d.route) pts.push([p[1], p[0]]) // [lat,lng] → [lng,lat]
-    }
-    if (pts.length >= 2) {
-      const lngs = pts.map(p => p[0])
-      const lats = pts.map(p => p[1])
-      map.fitBounds(
-        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-        { padding: 50, maxZoom: 14, duration: 0 }
-      )
-    }
-  })
+  // Auto fit bounds to markers + route
+  const pts = []
+  if (d.markers?.length) {
+    for (const m of d.markers) pts.push([m.lng, m.lat])
+  }
+  if (d.route?.length) {
+    for (const p of d.route) pts.push([p[1], p[0]]) // [lat,lng] → [lng,lat]
+  }
+  if (pts.length >= 2) {
+    const lngs = pts.map(p => p[0])
+    const lats = pts.map(p => p[1])
+    map.fitBounds(
+      [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+      { padding: 50, maxZoom: 14, duration: 0 }
+    )
+  }
 }
 
 function addMarkers(markers, ml) {
   if (!markers?.length || !map || !ml) return
-  console.log('[MapBlock] addMarkers called', markers.length, 'markers, ml.Marker:', typeof ml.Marker, 'ml.default?.Marker:', typeof ml.default?.Marker)
 
   for (const m of markers) {
     const color = m.color || COLORS.gold
