@@ -1,5 +1,5 @@
 <template>
-  <div v-if="sketchEnabled" style="position: absolute; inset: 0; pointer-events: none; z-index: 9999;">
+  <div v-if="sketchEnabled" style="position: absolute; inset: 0; pointer-events: none;">
   <!--
     Each sketch element gets its own mini-SVG with the same translateZ
     as its associated card(s). This eliminates perspective parallax
@@ -173,7 +173,41 @@ onUnmounted(() => {
 // ═══════════════════════════════════════════════
 
 function layerStyle(sk) {
-  return {}  // No 3D transform needed — SVG is outside preserve-3d context
+  // Inside preserve-3d: match associated card's translateZ so sketch
+  // participates in 3D z-ordering with cards.
+  // Sketch renders slightly behind its card (-1px) so hover/select
+  // brings the card above the sketch, but sketch still covers cards behind it.
+  const z = getSketchZ(sk)
+  return {
+    transform: `translateZ(${z}px)`,
+    transformStyle: 'preserve-3d',
+  }
+}
+
+function getSketchZ(sk) {
+  // For arrow/line: use the minimum z of from/to cards (draw behind both)
+  if (sk.from || sk.to || sk.target) {
+    let minZ = Infinity
+    for (const key of [sk.from, sk.to, sk.target]) {
+      if (!key) continue
+      const card = findCardByKey(key)
+      if (card) minZ = Math.min(minZ, card.z ?? 0)
+    }
+    return minZ === Infinity ? 0 : minZ - 1
+  }
+  // Standalone sketch: put at z=0 (current round level)
+  return -1
+}
+
+function findCardByKey(key) {
+  if (!key) return null
+  const target = key.toLowerCase()
+  let found = null
+  cards.value.forEach(card => {
+    const cardKey = (card.data?.key || '').toLowerCase()
+    if (cardKey === target) found = card
+  })
+  return found
 }
 
 function pctX(v) { return (v / 100) * width.value }
