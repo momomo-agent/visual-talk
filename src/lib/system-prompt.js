@@ -61,7 +61,10 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
 - media: {"key":"poster","x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
 - chart: {"key":"revenue","x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
   chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
-  ⚠️ chart is for NUMERIC data only. items must be [{label: string, value: number}]. For milestones, timelines, or events → use steps, not chart.
+  ⚠️ CRITICAL: items MUST be objects with label AND value: [{"label":"USA","value":28.78},{"label":"China","value":18.53}]
+  ❌ WRONG: items:["USA","China"] — strings are NOT valid items
+  ❌ WRONG: items:[{"label":"USA"}] — missing value
+  ✅ RIGHT: items:[{"label":"USA","value":28.78}] — always include numeric value
   Multi-series (line/column/bar): use "series" instead of "items":
   {"chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10},{"label":"Q2","value":15}]},{"name":"Samsung","items":[{"label":"Q1","value":8},{"label":"Q2","value":12}]}]}
 - list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
