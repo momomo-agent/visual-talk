@@ -60,12 +60,18 @@ export class CanvasState {
       case 'remove':
         this.cards.delete(op.cardId)
         break
+      case 'dock':
+        this._dock(op)
+        break
     }
   }
 
   _push() {
     this.depthLevel++
     this.cards.forEach((card, id) => {
+      // Docked cards never sink — they stay at full visibility regardless of push
+      if (card.docked) return
+
       if (this.pinnedIds.has(id) || this.currentRoundIds.has(id)) {
         card.depth = this.depthLevel
         // Pinned cards stay visible but behind new cards
@@ -132,6 +138,7 @@ export class CanvasState {
       zIndex: 100 + Math.floor(intraZ / 10),
       intraZ,
       pinned: false,
+      docked: false,
       contentKey: c.contentKey,
     })
     this.currentRoundIds.add(c.id)
@@ -170,5 +177,16 @@ export class CanvasState {
     card.zIndex = 100 + Math.floor(targetZ / 10)
     card.pinned = true
     this.currentRoundIds.add(op.cardId)
+  }
+
+  _dock(op) {
+    const card = this.cards.get(op.cardId)
+    if (!card) return
+    card.docked = op.docked !== false
+    if (card.docked) {
+      card.opacity = 1
+      card.scale = 1
+      card.blur = 0
+    }
   }
 }

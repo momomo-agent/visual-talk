@@ -121,3 +121,16 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
 }
+
+/* Docked card — stays visible across rounds */
+.v-block.docked {
+  border-color: rgba(180,150,110,0.25);
+}
+.v-block.docked .win-bar {
+  background: rgba(180,150,110,0.1);
+}
+.v-block .dock-indicator {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.5;
+}

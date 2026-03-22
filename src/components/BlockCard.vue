@@ -2,11 +2,12 @@
   <div
     ref="blockRef"
     class="v-block"
-    :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
+    :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing, docked: card.docked }"
     :style="cardStyle"
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
+    @dblclick.stop="onDblClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -14,6 +15,7 @@
     <div class="win-bar">
       <div class="win-dot"></div>
       <span>{{ typeLabel }}</span>
+      <div v-if="card.docked" class="dock-indicator" title="Docked — won't sink">⚓</div>
     </div>
 
     <component
@@ -46,7 +48,7 @@ const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['toggle-select', 'update-position', 'drag-end'])
+const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock'])
 const blockRef = ref(null)
 const glowBreathing = ref(false)
 
@@ -150,6 +152,11 @@ function onClick(e) {
   } else {
     glowBreathing.value = false
   }
+}
+
+function onDblClick(e) {
+  e.stopPropagation()
+  emit('toggle-dock')
 }
 
 function onMouseDown(e) {

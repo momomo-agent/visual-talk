@@ -414,6 +414,26 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (node) node.aiResponse = response
   }
 
+  /**
+   * Toggle dock state for a card. Records as an operation on the active node
+   * so it persists across navigation and serialization.
+   */
+  function toggleDockCard(cardId) {
+    const nodeId = viewingId.value ?? activeTip.value
+    if (nodeId == null) return
+
+    // Check current state
+    const snapshot = (nodeId === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(nodeId)
+    const card = snapshot.get(cardId)
+    if (!card) return
+
+    const newDocked = !card.docked
+    addOperation(nodeId, { op: 'dock', cardId, docked: newDocked })
+    return newDocked
+  }
+
   function setNodeCounter(n) { nodeCounter = n }
 
   // --- Serialization (for forest persistence) ---
@@ -560,6 +580,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getBubbleInfo,
     reset,
     setAiResponse,
+    toggleDockCard,
     setNodeCounter,
     removeNode,
     resetLiveState,

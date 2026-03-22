@@ -199,6 +199,23 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
+  /**
+   * Toggle docked state on a card.
+   * Docked cards don't sink on push — they stay visible across rounds.
+   */
+  function toggleDock(id) {
+    const card = cards.get(id)
+    if (!card) return
+    card.docked = !card.docked
+    // If docking, ensure card is fully visible
+    if (card.docked) {
+      card.opacity = 1
+      card.scale = 1
+      card.blur = 0
+    }
+    return card.docked
+  }
+
   function clear({ animate = true } = {}) {
     const gen = ++snapshotGen
 
@@ -242,6 +259,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     toggleSelect,
     clearSelection,
     updateCardPosition,
+    toggleDock,
     clear,
   }
 })

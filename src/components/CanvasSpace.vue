@@ -8,6 +8,7 @@
         @toggle-select="(e) => toggleSelect(id, e)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
         @drag-end="(x, y) => onDragEnd(card, x, y)"
+        @toggle-dock="() => onToggleDock(id)"
       />
       <SketchOverlay />
     </div>
@@ -43,6 +44,10 @@ function onDragEnd(card, x, y) {
   if (key) {
     timeline.setUserOverride(key, x, y)
   }
+}
+
+function onToggleDock(cardId) {
+  timeline.toggleDockCard(cardId)
 }
 
 function onMouseMove(e) {

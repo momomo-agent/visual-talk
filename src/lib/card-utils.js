@@ -83,12 +83,29 @@ export function buildCanvasContext(snapshot) {
   if (!entries.length) return null
 
   const maxDepth = Math.max(...entries.map(([, c]) => c.depth || 0), 0)
-  const latestCards = []    // depth === maxDepth (just created)
-  const visibleCards = []   // depth === maxDepth - 1 (user is currently looking at)
-  const pastCards = []      // depth < maxDepth - 1 (fading into background)
+  const dockedCards = []     // docked — always visible, don't push
+  const latestCards = []     // depth === maxDepth (just created)
+  const visibleCards = []    // depth === maxDepth - 1 (user is currently looking at)
+  const pastCards = []       // depth < maxDepth - 1 (fading into background)
 
   entries.forEach(([id, card]) => {
     const d = card.depth || 0
+
+    // Docked cards get their own section regardless of depth
+    if (card.docked) {
+      const key = card.data?.key
+      const title = getCardTitle(card)
+      const label = key ? `[${key}]` : title ? `"${title}"` : null
+      if (label) {
+        try {
+          dockedCards.push(`${label} <!--vt:${card.type} ${JSON.stringify(card.data)}-->`)
+        } catch {
+          if (label) dockedCards.push(label)
+        }
+      }
+      return
+    }
+
     if (d === maxDepth) {
       try {
         const keyTag = card.data?.key ? `[${card.data.key}] ` : ''
@@ -113,8 +130,9 @@ export function buildCanvasContext(snapshot) {
     }
   })
 
-  if (!latestCards.length && !visibleCards.length && !pastCards.length) return null
+  if (!dockedCards.length && !latestCards.length && !visibleCards.length && !pastCards.length) return null
   let ctx = '[Current canvas state]\n'
+  if (dockedCards.length) ctx += `Docked (user keeps these visible — always on screen):\n${dockedCards.join('\n')}\n`
   if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
   if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
   if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`
