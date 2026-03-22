@@ -103,11 +103,16 @@ const props = defineProps({
 
 const colors = ['#c8a96e','#8a7a60','#e8856a','#6aad8e','#7a9ec8','#b87acc','#d4a85c','#5cb8b2','#c76a6a','#8aae5c']
 
-const chartType = computed(() => props.data.chartType || 'bar')
-const series = computed(() => props.data.series || (props.data.items?.length ? [{ name: '', items: props.data.items }] : []))
+const chartType = computed(() => props.data.chartType || props.data.type || 'bar')
+const series = computed(() => {
+  if (props.data.series?.length) return props.data.series
+  // LLM might use items, data, values, or bars
+  const rawItems = props.data.items || props.data.data || props.data.values || props.data.bars || []
+  return rawItems.length ? [{ name: '', items: rawItems }] : []
+})
 const items = computed(() => series.value[0]?.items || [])
 const isMulti = computed(() => series.value.length > 1)
-const labels = computed(() => items.value.map(d => d.label ?? ''))
+const labels = computed(() => items.value.map(d => d.label || d.name || d.title || ''))
 
 const allValues = computed(() => series.value.flatMap(s => (s.items || []).map(d => parseFloat(d.value) || 0)))
 const absMax = computed(() => Math.max(...allValues.value.map(Math.abs), 1))
