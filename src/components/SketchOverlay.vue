@@ -391,6 +391,17 @@ onMounted(() => {
   // Also re-measure when card positions change (drag, animation)
   // Debounced — skip if we'll measure again next frame anyway
   watch(cardPositionVersion, scheduleMeasure)
+
+  // Navigation (restoreFrom) replaces card positions — clear cache and re-measure
+  // after CSS transitions settle
+  watch(() => [...cards.value.keys()].join(','), () => {
+    // Clear stale positions immediately
+    for (const key of Object.keys(measuredDims)) {
+      delete measuredDims[key]
+    }
+    // Re-measure after transition (cards animate to new positions)
+    setTimeout(measureDims, 350)
+  })
 })
 
 function cardRect(key) {

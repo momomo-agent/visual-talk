@@ -345,10 +345,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     const node = nodes.get(id)
     if (!node) return
 
-    // Only persist for cards created in this node
-    const isThisNodesCard = node.operations.some(op =>
-      op.op === 'create' && op.card?.data?.key === cardKey
-    )
+    // Persist for cards that this node created, updated, or moved
+    const isThisNodesCard = node.operations.some(op => {
+      if (op.op === 'create' && op.card?.data?.key === cardKey) return true
+      // update/move use cardId — resolve to key via canvas snapshot
+      if ((op.op === 'update' || op.op === 'move') && op.cardId != null) {
+        const snapshot = (id === activeTip.value && liveState)
+          ? liveState.cards
+          : computeCanvas(id)
+        const card = snapshot.get(op.cardId)
+        if (card && (card.data?.key || '') === cardKey) return true
+      }
+      return false
+    })
     if (!isThisNodesCard) return
 
     node.userOverrides[cardKey] = { x, y }
