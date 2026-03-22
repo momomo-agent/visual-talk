@@ -25,6 +25,10 @@
         <input type="text" v-model="config.tavilyKey" placeholder="tvly-..." />
       </div>
       <div class="field">
+        <label>TMDB API Key (电影)</label>
+        <input type="text" v-model="config.tmdbKey" placeholder="免费申请 themoviedb.org" />
+      </div>
+      <div class="field">
         <label>
           <input type="checkbox" v-model="config.showToolCalls" style="accent-color:#e8856a" />
           显示 Tool 调用
