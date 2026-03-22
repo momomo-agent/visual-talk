@@ -38,6 +38,7 @@ import MediaBlock from './cards/MediaBlock.vue'
 import ChartBlock from './cards/ChartBlock.vue'
 import ListBlock from './cards/ListBlock.vue'
 import TableBlock from './cards/TableBlock.vue'
+import MapBlock from './cards/MapBlock.vue'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -66,6 +67,7 @@ const componentMap = {
   chart: ChartBlock,
   list: ListBlock,
   table: TableBlock,
+  map: MapBlock,
 }
 
 const typeLabel = computed(() => typeLabels[props.card.type] || props.card.type)

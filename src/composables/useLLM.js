@@ -2,59 +2,43 @@ import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
 import { SYSTEM } from '../lib/system-prompt.js'
 
+// Skills
+import tmdbSkill from '../skills/tmdb.js'
+import tavilySkill from '../skills/tavily.js'
+
+const SKILLS = [tavilySkill, tmdbSkill]
+
 let claw = null
 let clawConfigKey = null
 
-// Tavily search implementation
-async function tavilySearch(args, apiKey) {
-  if (!apiKey) return { error: 'Tavily API key not configured' }
-  const payload = {
-    api_key: apiKey,
-    query: args.query,
-    search_depth: args.search_depth || 'basic',
-    include_images: args.include_images !== false,
-    max_results: 5,
+/**
+ * Expand skills into customTools array for agentic-claw.
+ * Each tool.execute receives the skill's config slice.
+ */
+function buildTools(skills, cfg) {
+  const tools = []
+  for (const skill of skills) {
+    const skillConfig = {
+      tavilyKey: cfg.tavilyKey,
+      tmdbKey: cfg.tmdbKey,
+    }
+    for (const tool of skill.tools) {
+      tools.push({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+        execute: (input) => tool.execute(input, skillConfig),
+      })
+    }
   }
-  let data
-  try {
-    const res = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!res.ok) throw new Error(`Tavily ${res.status}`)
-    data = await res.json()
-  } catch (err) {
-    console.warn('Tavily direct failed, trying proxy:', err.message)
-    const res = await fetch('https://proxy.link2web.site', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: 'https://api.tavily.com/search',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        mode: 'raw',
-      }),
-    })
-    const result = await res.json()
-    if (!result.success) throw new Error(result.error || `Proxy failed: ${result.status}`)
-    data = typeof result.body === 'string' ? JSON.parse(result.body) : result.body
-    if (result.status >= 400) throw new Error(`Tavily ${result.status}`)
-  }
-  return {
-    results: (data.results || []).map(r => ({
-      title: r.title, url: r.url, content: r.content?.slice(0, 300),
-    })),
-    images: (data.images || []).slice(0, 8),
-  }
+  return tools
 }
 
 export function useLLM() {
   const toolLogs = ref([])
 
   function ensureClaw(cfg) {
-    const key = JSON.stringify([cfg.provider, cfg.apiKey, cfg.baseUrl, cfg.model, cfg.proxyUrl])
+    const key = JSON.stringify([cfg.provider, cfg.apiKey, cfg.baseUrl, cfg.model, cfg.proxyUrl, cfg.tmdbKey])
     if (claw && clawConfigKey === key) return claw
 
     if (claw) claw.destroy()
@@ -79,20 +63,7 @@ export function useLLM() {
       maxTokens: 4096,
       stream: true,
       persist: 'localStorage',
-      tools: [{
-        name: 'web_search',
-        description: 'Search the web for information, images, news. Use for ANY question needing real-world facts, current events, image URLs, or verification.',
-        parameters: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-            search_depth: { type: 'string', enum: ['basic', 'advanced'] },
-            include_images: { type: 'boolean', description: 'Include image URLs' },
-          },
-          required: ['query'],
-        },
-        execute: async (input) => tavilySearch(input, cfg.tavilyKey),
-      }],
+      tools: buildTools(SKILLS, cfg),
     })
     clawConfigKey = key
     return claw
@@ -101,11 +72,7 @@ export function useLLM() {
   function addToolLog(text) {
     const id = Date.now() + Math.random()
     toolLogs.value.push({ id, text, fading: false })
-    // Keep max 5
-    while (toolLogs.value.length > 5) {
-      toolLogs.value.shift()
-    }
-    // Auto fade after 8s
+    while (toolLogs.value.length > 5) toolLogs.value.shift()
     setTimeout(() => {
       const item = toolLogs.value.find(l => l.id === id)
       if (item) {
@@ -122,9 +89,7 @@ export function useLLM() {
     const configStore = useConfigStore()
     const cfg = configStore.getConfig()
 
-    if (!cfg.apiKey) {
-      return null
-    }
+    if (!cfg.apiKey) return null
 
     const c = ensureClaw(cfg)
     let accumulated = ''
@@ -144,7 +109,7 @@ export function useLLM() {
         }
       }
       if (type === 'tool' && cfg.showToolCalls) {
-        addToolLog(`${data.name}: ${(data.input?.query || data.input?.url || '').slice(0, 60)}`)
+        addToolLog(`${data.name}: ${(data.input?.query || data.input?.movie_id || '').toString().slice(0, 60)}`)
       }
     })
 

@@ -9,6 +9,7 @@ export const useConfigStore = defineStore('config', () => {
   const baseUrl = ref('')
   const model = ref('')
   const tavilyKey = ref('')
+  const tmdbKey = ref('')
   const showToolCalls = ref(true)
   const ttsEnabled = ref(false)
   const webSpeech = ref(false)
@@ -29,6 +30,7 @@ export const useConfigStore = defineStore('config', () => {
       if (s.baseUrl) baseUrl.value = s.baseUrl
       if (s.model) model.value = s.model
       if (s.tavilyKey) tavilyKey.value = s.tavilyKey
+      if (s.tmdbKey) tmdbKey.value = s.tmdbKey
       if (s.showToolCalls != null) showToolCalls.value = !!s.showToolCalls
       if (s.ttsEnabled != null) ttsEnabled.value = !!s.ttsEnabled
       if (s.webSpeech != null) webSpeech.value = !!s.webSpeech
@@ -50,6 +52,7 @@ export const useConfigStore = defineStore('config', () => {
       baseUrl: baseUrl.value,
       model: model.value,
       tavilyKey: tavilyKey.value,
+      tmdbKey: tmdbKey.value,
       showToolCalls: showToolCalls.value,
       ttsEnabled: ttsEnabled.value,
       webSpeech: webSpeech.value,
@@ -76,6 +79,7 @@ export const useConfigStore = defineStore('config', () => {
       baseUrl: cleanBaseUrl(baseUrl.value),
       model: model.value.trim() || undefined,
       tavilyKey: tavilyKey.value.trim() || undefined,
+      tmdbKey: tmdbKey.value.trim() || undefined,
       showToolCalls: showToolCalls.value,
       ttsEnabled: ttsEnabled.value,
       webSpeech: webSpeech.value,
@@ -88,7 +92,7 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   // Auto-save on any change
-  watch([provider, apiKey, baseUrl, model, tavilyKey, showToolCalls,
+  watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont], save)
 
@@ -96,7 +100,7 @@ export const useConfigStore = defineStore('config', () => {
   load()
 
   return {
-    provider, apiKey, baseUrl, model, tavilyKey, showToolCalls,
+    provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont,
     load, save, getConfig,
