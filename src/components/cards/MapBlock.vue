@@ -84,6 +84,23 @@ async function initMap() {
   map.on('load', () => {
     addMarkers(d.markers, ml)
     addRoute(d.route, d.routeColor)
+
+    // Auto fit bounds to markers + route instead of relying on LLM center/zoom
+    const pts = []
+    if (d.markers?.length) {
+      for (const m of d.markers) pts.push([m.lng, m.lat])
+    }
+    if (d.route?.length) {
+      for (const p of d.route) pts.push([p[1], p[0]]) // [lat,lng] → [lng,lat]
+    }
+    if (pts.length >= 2) {
+      const lngs = pts.map(p => p[0])
+      const lats = pts.map(p => p[1])
+      map.fitBounds(
+        [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+        { padding: 50, maxZoom: 14, duration: 0 }
+      )
+    }
   })
 }
 
@@ -191,8 +208,9 @@ watch(() => props.data, () => {
 .map-container {
   flex: 1;
   min-height: 200px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .map-block .footer {

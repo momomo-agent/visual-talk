@@ -104,11 +104,35 @@ const props = defineProps({
 const colors = ['#c8a96e','#8a7a60','#e8856a','#6aad8e','#7a9ec8','#b87acc','#d4a85c','#5cb8b2','#c76a6a','#8aae5c']
 
 const chartType = computed(() => props.data.chartType || props.data.type || 'bar')
+
+// ─── Data normalization: fix common LLM output errors ───
+function normalizeItems(raw) {
+  if (!Array.isArray(raw) || !raw.length) return []
+  // Case 1: items are strings like ["🇺🇸 美国", "🇨🇳 中国"] — no value at all
+  if (typeof raw[0] === 'string') {
+    return raw.map(s => ({ label: String(s), value: 0 }))
+  }
+  // Case 2: items are objects but value might be missing, or label might be in wrong field
+  return raw.map(d => {
+    if (typeof d !== 'object' || d === null) return { label: String(d), value: 0 }
+    const label = d.label || d.name || d.title || d.country || d.category || ''
+    let value = d.value ?? d.amount ?? d.total ?? d.gdp ?? d.count ?? d.score ?? d.num ?? 0
+    value = parseFloat(value) || 0
+    return { ...d, label, value }
+  })
+}
+
 const series = computed(() => {
-  if (props.data.series?.length) return props.data.series
+  if (props.data.series?.length) {
+    return props.data.series.map(s => ({
+      ...s,
+      items: normalizeItems(s.items || [])
+    }))
+  }
   // LLM might use items, data, values, or bars
   const rawItems = props.data.items || props.data.data || props.data.values || props.data.bars || []
-  return rawItems.length ? [{ name: '', items: rawItems }] : []
+  const normalized = normalizeItems(rawItems)
+  return normalized.length ? [{ name: '', items: normalized }] : []
 })
 const items = computed(() => series.value[0]?.items || [])
 const isMulti = computed(() => series.value.length > 1)
