@@ -155,8 +155,10 @@ function addRoute(route, color) {
   const routeColor = color || COLORS.blue
 
   // Try OSRM for real road routing, fallback to straight line
+  // Proxy through proxy.link2web.site to bypass GFW
   const coords = route.map(p => `${p[1]},${p[0]}`).join(';') // [lat,lng] → lng,lat
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+  const rawUrl = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+  const osrmUrl = `https://proxy.link2web.site?url=${encodeURIComponent(rawUrl)}`
 
   fetch(osrmUrl)
     .then(r => r.json())
