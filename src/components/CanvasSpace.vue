@@ -53,17 +53,20 @@ const showDebug = ref(true)
 
 // Canvas 3D rotation driven by head position (replaces mouse)
 const canvasTransform = computed(() => ({
-  transform: `rotateX(${headY.value * -8}deg) rotateY(${headX.value * 8}deg)`,
+  transform: `rotateX(${headY.value * -15}deg) rotateY(${headX.value * 15}deg)`,
 }))
 
 // Per-card parallax: higher z = more shift
-const PARALLAX_FACTOR = 30
+const PARALLAX_FACTOR = 80
 
 function getCardParallaxStyle(card) {
-  const z = card.z || 0
-  const depth = z / 50
-  const shiftX = headX.value * depth * PARALLAX_FACTOR
-  const shiftY = headY.value * depth * PARALLAX_FACTOR * 0.6
+  const z = card.z || 20 // default z=20 so all cards have some parallax
+  const depth = z / 40
+  // Combine head position (large movement) + gaze offset (subtle)
+  const hx = headX.value
+  const hy = headY.value
+  const shiftX = hx * depth * PARALLAX_FACTOR
+  const shiftY = hy * depth * PARALLAX_FACTOR * 0.6
   return {
     '--parallax-x': `${shiftX}px`,
     '--parallax-y': `${shiftY}px`,

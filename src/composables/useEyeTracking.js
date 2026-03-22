@@ -118,8 +118,8 @@ export function useEyeTracking(options = {}) {
             tGazeY = Math.max(0, Math.min(1, 0.5 + deviationY * 2))
           } else {
             // No landmarks — estimate gaze from head position
-            tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.4))
-            tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.4))
+            tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.8))
+            tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.8))
           }
           return
         }
@@ -157,8 +157,8 @@ export function useEyeTracking(options = {}) {
       isTracking.value = true
       confidence.value = Math.min(1, count / 2000)
       // Gaze follows head when no landmarks
-      tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.4))
-      tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.4))
+      tGazeX = Math.max(0, Math.min(1, 0.5 + tHeadX * 0.8))
+      tGazeY = Math.max(0, Math.min(1, 0.5 + tHeadY * 0.8))
     } else {
       isTracking.value = false
       confidence.value = 0
