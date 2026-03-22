@@ -14,8 +14,8 @@
  *   PINNED       -30   Old cards pulled back by move/update (behind new)
  *   INTRA_STEP    30   Spacing between sibling cards in same round
  *   FRONT          0   Base z for current-round cards (intraZ adds to this)
- *   HOVER        250   Card being hovered
- *   SELECTED     500   Card actively selected by user
+ *   HOVER         20   Card being hovered
+ *   SELECTED      40   Card actively selected by user
  *
  * Rules:
  *   1. SELECTED > HOVER > any card's intraZ
@@ -24,8 +24,9 @@
  */
 
 // Interaction layers (UI state, not data)
-export const Z_SELECTED = 500
-export const Z_HOVER = 250
+// Keep small — large translateZ jumps in perspective cause visible scale/position shifts
+export const Z_SELECTED = 40
+export const Z_HOVER = 20
 
 // Data layers (computed by CanvasState)
 export const Z_INTRA_STEP = 30        // spacing between sibling cards in a round

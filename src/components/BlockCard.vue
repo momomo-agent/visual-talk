@@ -118,9 +118,9 @@ function onMouseEnter() {
     zIndex: props.card.zIndex,
     blur: props.card.blur,
   }
-  // Push forward — must exceed any card's translateZ in preserve-3d
-  props.card.z = Math.max(Z_HOVER, props.card.z + 80)
-  props.card.scale = 1.05
+  // Gentle lift — small Z bump to float above siblings without jarring scale shift
+  props.card.z = Math.max(Z_HOVER, props.card.z + 10)
+  props.card.scale = 1.02
   props.card.opacity = 1
   props.card.zIndex = 150
   props.card.blur = 0
