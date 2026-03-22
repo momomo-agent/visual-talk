@@ -10,8 +10,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
  */
 export function useEyeTracking(options = {}) {
   const {
-    smoothing = 0.2,       // faster response
-    updateRate = 15,
+    smoothing = 0.08,       // much smoother (lower = more damping)
+    updateRate = 10,
   } = options
 
   const headX = ref(0)
@@ -97,8 +97,11 @@ export function useEyeTracking(options = {}) {
           // Face usually stays in center 40% of frame, so amplify
           const rawX = (centerX / 320) * 2 - 1
           const rawY = (centerY / 240) * 2 - 1
-          tHeadX = Math.max(-1, Math.min(1, rawX * 2.5))
-          tHeadY = Math.max(-1, Math.min(1, -rawY * 2.5))
+          const newX = Math.max(-1, Math.min(1, rawX * 2.5))
+          const newY = Math.max(-1, Math.min(1, -rawY * 2.5))
+          // Dead zone: ignore tiny movements (noise)
+          if (Math.abs(newX - tHeadX) > 0.02) tHeadX = newX
+          if (Math.abs(newY - tHeadY) > 0.02) tHeadY = newY
           isTracking.value = true
           confidence.value = 1
 
