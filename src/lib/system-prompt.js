@@ -76,6 +76,11 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
   **For music/listening requests**: search YouTube for the song/artist and embed the video. This gives the user actual playback — not just a recommendation card.
 - map: {"key":"trip-map","x":10,"y":5,"z":40,"w":40,"title":"路线地图","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4"}
   Interactive map with markers and route lines. center/markers/route use [lat, lng]. Colors: use the sketch palette (#e8a849 gold, #ef8f6e pink, #7ec8a4 mint, #8bacd4 blue). Use map when showing locations, travel routes, geographic comparisons, or "where is X".
+- diagram: {"key":"arch","x":10,"y":5,"z":30,"w":45,"title":"System Architecture","code":"graph TD\\n  A[User] --> B[Frontend]\\n  B --> C[API]\\n  C --> D[Database]","footer":""}
+  Renders Mermaid diagrams. Supports: flowchart (graph TD/LR), sequence, class, ER, state, gantt, mindmap, pie, quadrant, timeline.
+  Use diagram when showing: architecture, data flow, process flow, state machines, class hierarchies, entity relationships, timelines, or any structural/relational visualization.
+  The code field uses Mermaid syntax — use \\n for newlines inside the JSON string.
+  Keep diagrams focused: 3-8 nodes is ideal. If it needs more, split into multiple diagrams.
 
 ## Canvas Commands
 
