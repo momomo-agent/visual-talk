@@ -205,7 +205,11 @@ export function useSend({ tts } = {}) {
           }
         )
 
-        if (!reply) continue
+        if (!reply) {
+          // Empty response — remove the node
+          timeline.removeNode(nodeId)
+          continue
+        }
 
         // Final pass — catch any remaining blocks/commands
         const { speech, blocks, commands, sketches } = parseResponse(reply)
@@ -233,6 +237,8 @@ export function useSend({ tts } = {}) {
       } catch (err) {
         showBubble(`Error: ${err.message}`, 5000)
         console.error(err)
+        // Remove the empty node from timeline — failed requests shouldn't persist
+        timeline.removeNode(nodeId)
       } finally {
         isThinking.value = false
         canvas.isStreaming = false

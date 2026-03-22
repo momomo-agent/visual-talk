@@ -63,6 +63,30 @@ export const useTimelineStore = defineStore('timeline', () => {
     return id
   }
 
+  // Remove a node (e.g. failed/empty responses)
+  function removeNode(id) {
+    const node = nodes.get(id)
+    if (!node) return
+    if (node.parentId != null) {
+      const parent = nodes.get(node.parentId)
+      if (parent) {
+        parent.childIds = parent.childIds.filter(c => c !== id)
+        if (parent.lastChildId === id) {
+          parent.lastChildId = parent.childIds[parent.childIds.length - 1] ?? null
+        }
+      }
+    }
+    nodes.delete(id)
+    canvasCache.delete(id)
+    // If this was the active tip, go back to parent
+    if (activeTip.value === id) {
+      activeTip.value = node.parentId ?? 0
+    }
+    if (viewingId.value === id) {
+      viewingId.value = null
+    }
+  }
+
   // Live streaming state — incremental CanvasState for the active node
   let liveState = null
 
@@ -477,6 +501,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     reset,
     setAiResponse,
     setNodeCounter,
+    removeNode,
     resetLiveState,
     findCardsByKey,
     findCardsByTitle,

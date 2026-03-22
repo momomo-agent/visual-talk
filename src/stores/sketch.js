@@ -58,7 +58,9 @@ export const useSketchStore = defineStore('sketch', () => {
   function startStreaming() {
     isStreaming.value = true
     liveSketches.clear()
-    sketches.clear()
+    // DON'T clear sketches here — keep previous sketches visible
+    // until new ones arrive. This avoids the "blank gap" between
+    // old sketches disappearing and new ones streaming in.
     liveIdCounter = 0
   }
 
