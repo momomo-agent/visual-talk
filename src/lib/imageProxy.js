@@ -1,3 +1,6 @@
+import { useConfigStore } from '../stores/config.js'
+import { tmdbFetch, posterUrl } from '../skills/tmdb.js'
+
 const PROXY = 'https://proxy.link2web.site/?url='
 
 /**
@@ -5,6 +8,7 @@ const PROXY = 'https://proxy.link2web.site/?url='
  * 1. Direct URL
  * 2. CORS proxy
  * 3. images.weserv.nl
+ * 4. TMDB search (if card has a title — movie/show poster)
  */
 export function getProxiedUrl(originalUrl, retryLevel = 0) {
   if (!originalUrl) return ''
@@ -25,25 +29,73 @@ export function handleImageError(event) {
   if (!img.dataset.originalSrc) img.dataset.originalSrc = originalSrc
 
   if (retries === 0) {
-    // First failure: try CORS proxy
     img.dataset.retries = '1'
     img.src = getProxiedUrl(originalSrc, 1)
   } else if (retries === 1) {
-    // Second failure: try weserv
     img.dataset.retries = '2'
     img.src = getProxiedUrl(originalSrc, 2)
   } else if (retries === 2) {
-    // Third failure: retry original after 2s delay (network flake)
+    // Third failure: try TMDB search based on nearby card title
     img.dataset.retries = '3'
-    img.removeAttribute('src')
-    setTimeout(() => {
-      img.src = originalSrc
-    }, 2000)
+    tryTmdbFallback(img)
   } else {
     // All retries exhausted — show placeholder
     img.style.objectFit = 'contain'
     img.style.background = 'rgba(0,0,0,0.06)'
     img.style.minHeight = '60px'
+    img.removeAttribute('src')
+    img.onerror = null
+  }
+}
+
+async function tryTmdbFallback(img) {
+  // Find card title from DOM context
+  const card = img.closest('.v-block')
+  const titleEl = card?.querySelector('h2')
+  const title = titleEl?.textContent?.trim()
+
+  if (!title) {
+    // No title to search — give up
+    img.dataset.retries = '4'
+    img.removeAttribute('src')
+    img.onerror = null
+    return
+  }
+
+  try {
+    const config = useConfigStore()
+    const apiKey = config.tmdbKey
+    if (!apiKey) {
+      img.dataset.retries = '4'
+      img.removeAttribute('src')
+      img.onerror = null
+      return
+    }
+
+    const proxyUrl = config.proxyEnabled && config.proxyUrl ? config.proxyUrl : null
+
+    // Search movie first, then TV
+    let poster = null
+    const movieData = await tmdbFetch('/search/movie', apiKey, { query: title }, proxyUrl)
+    if (movieData?.results?.[0]?.poster_path) {
+      poster = posterUrl(movieData.results[0].poster_path)
+    } else {
+      const tvData = await tmdbFetch('/search/tv', apiKey, { query: title }, proxyUrl)
+      if (tvData?.results?.[0]?.poster_path) {
+        poster = posterUrl(tvData.results[0].poster_path)
+      }
+    }
+
+    if (poster) {
+      img.src = poster
+    } else {
+      img.dataset.retries = '4'
+      img.removeAttribute('src')
+      img.onerror = null
+    }
+  } catch (e) {
+    console.warn('[imageProxy] TMDB fallback failed:', e)
+    img.dataset.retries = '4'
     img.removeAttribute('src')
     img.onerror = null
   }

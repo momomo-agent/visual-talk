@@ -16,7 +16,7 @@ const GENRES = {
   878:'科幻',10770:'电视电影',53:'惊悚',10752:'战争',37:'西部',
 }
 
-async function tmdbFetch(path, apiKey, params = {}, proxyUrl) {
+export async function tmdbFetch(path, apiKey, params = {}, proxyUrl) {
   const url = new URL(`${TMDB_BASE}${path}`)
   url.searchParams.set('api_key', apiKey)
   url.searchParams.set('language', 'zh-CN')
@@ -45,7 +45,7 @@ async function tmdbFetch(path, apiKey, params = {}, proxyUrl) {
   }
 }
 
-function posterUrl(path, size = 'w500') {
+export function posterUrl(path, size = 'w500') {
   return path ? `${TMDB_IMG}/${size}${path}` : null
 }
 
