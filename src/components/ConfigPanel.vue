@@ -32,6 +32,20 @@
       </div>
       <div class="field">
         <label>
+          <input type="checkbox" v-model="config.sketchEnabled" style="accent-color:#e8856a" />
+          Sketch 手绘标注
+        </label>
+      </div>
+      <div class="field" v-if="config.sketchEnabled">
+        <label>标注字体</label>
+        <select v-model="config.sketchFont" class="input">
+          <option value="Yozai">悠哉字體（简繁日英）</option>
+          <option value="LXGWWenKai">霞鹜文楷（简繁日英）</option>
+          <option value="ChenYuluoyan">辰宇落雁體（仅繁体）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>
           <input type="checkbox" v-model="config.ttsEnabled" style="accent-color:#e8856a" />
           TTS 语音
         </label>

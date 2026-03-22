@@ -9,7 +9,7 @@ export const useConfigStore = defineStore('config', () => {
   const baseUrl = ref('')
   const model = ref('')
   const tavilyKey = ref('')
-  const showToolCalls = ref(false)
+  const showToolCalls = ref(true)
   const ttsEnabled = ref(false)
   const webSpeech = ref(false)
   const ttsBaseUrl = ref('')
@@ -18,6 +18,8 @@ export const useConfigStore = defineStore('config', () => {
   const ttsVoice = ref('nova')
   const proxyEnabled = ref(false)
   const proxyUrl = ref('')
+  const sketchEnabled = ref(true)
+  const sketchFont = ref('Yozai')
 
   function load() {
     try {
@@ -36,6 +38,8 @@ export const useConfigStore = defineStore('config', () => {
       if (s.ttsVoice) ttsVoice.value = s.ttsVoice
       if (s.proxyEnabled != null) proxyEnabled.value = !!s.proxyEnabled
       if (s.proxyUrl) proxyUrl.value = s.proxyUrl
+      if (s.sketchEnabled != null) sketchEnabled.value = !!s.sketchEnabled
+      if (s.sketchFont) sketchFont.value = s.sketchFont
     } catch {}
   }
 
@@ -55,6 +59,8 @@ export const useConfigStore = defineStore('config', () => {
       ttsVoice: ttsVoice.value,
       proxyEnabled: proxyEnabled.value,
       proxyUrl: proxyUrl.value,
+      sketchEnabled: sketchEnabled.value,
+      sketchFont: sketchFont.value,
     }))
   }
 
@@ -84,7 +90,7 @@ export const useConfigStore = defineStore('config', () => {
   // Auto-save on any change
   watch([provider, apiKey, baseUrl, model, tavilyKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
-    proxyEnabled, proxyUrl], save)
+    proxyEnabled, proxyUrl, sketchEnabled, sketchFont], save)
 
   // Load on creation
   load()
@@ -92,7 +98,7 @@ export const useConfigStore = defineStore('config', () => {
   return {
     provider, apiKey, baseUrl, model, tavilyKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
-    proxyEnabled, proxyUrl,
+    proxyEnabled, proxyUrl, sketchEnabled, sketchFont,
     load, save, getConfig,
   }
 })

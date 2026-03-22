@@ -4,6 +4,8 @@
     class="v-block"
     :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
     :style="cardStyle"
+    :data-content-key="card.contentKey || card.data?.key || ''"
+    :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
@@ -91,10 +93,12 @@ const cardStyle = computed(() => {
     filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',
     pointerEvents: c.pointerEvents || 'auto',
     transitionDelay: c.entranceDelay > 0 ? `${c.entranceDelay}s` : '0s',
+    transition: dragging.value ? 'transform 0.15s, opacity 0.3s, filter 0.3s, box-shadow 0.3s' : undefined,
   }
 })
 
 // Interaction state
+const dragging = ref(false)
 let isDragging = false
 let startX = 0, startY = 0, origLeft = 0, origTop = 0
 let preHover = null
@@ -108,7 +112,8 @@ function onMouseEnter() {
     zIndex: props.card.zIndex,
     blur: props.card.blur,
   }
-  props.card.z = 80
+  // Push forward relative to current z — never backwards
+  props.card.z = Math.max(80, props.card.z + 40)
   props.card.scale = 1.05
   props.card.opacity = 1
   props.card.zIndex = 150
@@ -154,6 +159,7 @@ function onMouseDown(e) {
     const dy = e2.clientY - startY
     if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       isDragging = true
+      dragging.value = true
     }
     if (isDragging) {
       const el = blockRef.value
@@ -166,7 +172,7 @@ function onMouseDown(e) {
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    setTimeout(() => { isDragging = false }, 10)
+    setTimeout(() => { isDragging = false; dragging.value = false }, 10)
   }
 
   document.addEventListener('mousemove', onMove)

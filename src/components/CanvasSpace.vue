@@ -9,6 +9,7 @@
         @update-position="(x, y) => updateCardPosition(id, x, y)"
       />
     </div>
+    <SketchOverlay />
     <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
   </div>
 </template>
@@ -18,6 +19,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import BlockCard from './BlockCard.vue'
+import SketchOverlay from './SketchOverlay.vue'
 
 const canvas = useCanvasStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
