@@ -68,6 +68,13 @@ export class CanvasState {
     this.cards.forEach((card, id) => {
       if (this.pinnedIds.has(id) || this.currentRoundIds.has(id)) {
         card.depth = this.depthLevel
+        // Pinned cards stay visible but behind new cards (intraZ = -30)
+        card.intraZ = -INTRA_PUSH
+        card.z = -INTRA_PUSH
+        card.zIndex = 100 + Math.floor(-INTRA_PUSH / 10)
+        card.opacity = 1
+        card.scale = 1
+        card.blur = 0
         return
       }
       const d = this.depthLevel - card.depth

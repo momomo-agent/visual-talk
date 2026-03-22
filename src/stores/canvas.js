@@ -166,7 +166,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = 120
+      card.z = 400       // Must be highest translateZ in preserve-3d context
       card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999
