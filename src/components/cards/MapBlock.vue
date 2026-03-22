@@ -84,10 +84,19 @@ async function initMap() {
 
   map.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right')
 
-  // Add markers and fitBounds immediately, don't wait for tile load
-  // (tile load may fail due to GFW/network issues, blocking load event)
+  // Add markers immediately (DOM elements, don't need style)
   addMarkers(d.markers, ml)
-  addRoute(d.route, d.routeColor)
+
+  // Route needs style to be loaded (addSource/addLayer require it)
+  // Use style.load instead of load — load waits for tiles too, which may fail due to GFW
+  if (d.route?.length >= 2) {
+    const doRoute = () => addRoute(d.route, d.routeColor)
+    if (map.isStyleLoaded()) {
+      doRoute()
+    } else {
+      map.on('style.load', doRoute)
+    }
+  }
 
   // Auto fit bounds to markers + route
   const pts = []
