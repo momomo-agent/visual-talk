@@ -72,6 +72,12 @@ export const useConfigStore = defineStore('config', () => {
     return url.trim().replace(/\/+$/, '').replace(/\/v1$/, '')
   }
 
+  function ensureHttps(url) {
+    if (!url) return url
+    if (!/^https?:\/\//i.test(url)) return 'https://' + url
+    return url
+  }
+
   function getConfig() {
     return {
       provider: provider.value || 'openai',
@@ -87,7 +93,7 @@ export const useConfigStore = defineStore('config', () => {
       ttsApiKey: ttsApiKey.value.trim() || undefined,
       ttsModel: ttsModel.value.trim() || undefined,
       ttsVoice: ttsVoice.value || 'nova',
-      proxyUrl: proxyEnabled.value ? (proxyUrl.value.trim() || 'https://companion-ui.momomo.dev/api/proxy') : undefined,
+      proxyUrl: proxyEnabled.value ? ensureHttps(proxyUrl.value.trim() || 'proxy.link2web.site') : undefined,
     }
   }
 

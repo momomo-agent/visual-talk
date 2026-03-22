@@ -91,7 +91,7 @@
         </label>
         <input
           v-model="config.proxyUrl"
-          placeholder="companion-ui.momomo.dev/api/proxy"
+          placeholder="proxy.link2web.site"
           :disabled="!config.proxyEnabled"
         />
       </div>
