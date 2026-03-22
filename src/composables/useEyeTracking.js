@@ -94,7 +94,7 @@ export function useEyeTracking(options = {}) {
           const centerY = box.y + box.height / 2
 
           // Normalize to -1..1
-          tHeadX = -((centerX / 320) * 2 - 1)
+          tHeadX = ((centerX / 320) * 2 - 1)
           tHeadY = -((centerY / 240) * 2 - 1)
           isTracking.value = true
           confidence.value = 1
@@ -152,7 +152,7 @@ export function useEyeTracking(options = {}) {
     if (count > 50) {
       const cx = sumX / count
       const cy = sumY / count
-      tHeadX = -((cx / 320) * 2 - 1)
+      tHeadX = ((cx / 320) * 2 - 1)
       tHeadY = -((cy / 240) * 2 - 1)
       isTracking.value = true
       confidence.value = Math.min(1, count / 2000)
