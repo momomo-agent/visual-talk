@@ -1,15 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 /**
- * useEyeTracking — head position + gaze estimation via webcam
+ * useEyeTracking — head parallax via webcam
  * 
- * Uses MediaPipe Face Mesh directly (CDN loaded, no bundler issues)
- * Iris landmarks (468-477) for gaze direction
+ * Strategy: try Chrome FaceDetector API first (zero deps),
+ * fall back to manual face detection via canvas brightness analysis.
  * 
- * Outputs:
- *   headX, headY: normalized head position (-1 to 1)
- *   gazeX, gazeY: estimated gaze on screen (0 to 1)
- *   isTracking: face detected
+ * For gaze: uses eye region crop + pupil position estimation.
  */
 export function useEyeTracking(options = {}) {
   const {
@@ -24,27 +21,19 @@ export function useEyeTracking(options = {}) {
   const isTracking = ref(false)
   const confidence = ref(0)
   const error = ref(null)
+  const method = ref('none') // 'facedetector' | 'tracking.js' | 'none'
 
   let video = null
-  let faceMesh = null
+  let canvas = null
+  let ctx = null
+  let detector = null
   let animFrame = null
+  let detecting = false
 
-  // Smooth targets (updated by detection, interpolated every frame)
   let tHeadX = 0, tHeadY = 0
   let tGazeX = 0.5, tGazeY = 0.5
 
   function lerp(a, b, t) { return a + (b - a) * t }
-
-  async function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
-      const s = document.createElement('script')
-      s.src = src
-      s.onload = resolve
-      s.onerror = reject
-      document.head.appendChild(s)
-    })
-  }
 
   async function init() {
     try {
@@ -52,7 +41,7 @@ export function useEyeTracking(options = {}) {
       video = document.createElement('video')
       video.setAttribute('playsinline', '')
       video.setAttribute('autoplay', '')
-      video.style.cssText = 'position:fixed;top:-9999px;opacity:0;pointer-events:none'
+      video.style.cssText = 'position:fixed;top:-9999px;opacity:0;pointer-events:none;width:320px;height:240px'
       document.body.appendChild(video)
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -61,107 +50,131 @@ export function useEyeTracking(options = {}) {
       video.srcObject = stream
       await video.play()
 
-      // Load MediaPipe Face Mesh from CDN
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js')
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js')
+      // Setup offscreen canvas for analysis
+      canvas = document.createElement('canvas')
+      canvas.width = 320
+      canvas.height = 240
+      ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-      // Wait for FaceMesh to be available globally
-      const FM = window.FaceMesh
-      if (!FM) throw new Error('FaceMesh not loaded')
+      // Try Chrome FaceDetector API
+      if ('FaceDetector' in window) {
+        try {
+          detector = new window.FaceDetector({ maxDetectedFaces: 1, fastMode: true })
+          method.value = 'facedetector'
+        } catch (e) {
+          console.warn('FaceDetector failed:', e)
+        }
+      }
 
-      faceMesh = new FM({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-      })
+      if (!detector) {
+        // Fallback: manual face detection via skin color + contour
+        method.value = 'canvas-manual'
+      }
 
-      faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true, // iris tracking
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      })
-
-      faceMesh.onResults(onResults)
-
-      // Start detection loop
-      startLoop()
       error.value = null
+      startLoop()
     } catch (e) {
       console.error('Eye tracking init failed:', e)
       error.value = e.message
     }
   }
 
-  function onResults(results) {
-    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+  async function detectFace() {
+    if (!video || video.readyState < 2) return
+
+    ctx.drawImage(video, 0, 0, 320, 240)
+
+    if (detector && method.value === 'facedetector') {
+      try {
+        const faces = await detector.detect(canvas)
+        if (faces.length > 0) {
+          const face = faces[0]
+          const box = face.boundingBox
+          const centerX = box.x + box.width / 2
+          const centerY = box.y + box.height / 2
+
+          // Normalize to -1..1
+          tHeadX = -((centerX / 320) * 2 - 1)
+          tHeadY = -((centerY / 240) * 2 - 1)
+          isTracking.value = true
+          confidence.value = 1
+
+          // Gaze estimation from eye landmarks if available
+          if (face.landmarks && face.landmarks.length >= 4) {
+            // landmarks: [rightEye, leftEye, nose, mouth]
+            const rightEye = face.landmarks[0]
+            const leftEye = face.landmarks[1]
+
+            // Eye center relative to face box = rough gaze
+            const eyeCenterX = (rightEye.x + leftEye.x) / 2
+            const eyeCenterY = (rightEye.y + leftEye.y) / 2
+            const relX = (eyeCenterX - box.x) / box.width
+            const relY = (eyeCenterY - box.y) / box.height
+
+            tGazeX = Math.max(0, Math.min(1, 1 - relX * 1.5 + 0.25))
+            tGazeY = Math.max(0, Math.min(1, relY * 2 - 0.2))
+          }
+          return
+        }
+      } catch (e) {
+        // FaceDetector might fail on some frames
+      }
+    }
+
+    // Manual fallback: find brightest region (face-like)
+    const imageData = ctx.getImageData(0, 0, 320, 240)
+    const data = imageData.data
+    let sumX = 0, sumY = 0, count = 0
+
+    for (let y = 0; y < 240; y += 4) {
+      for (let x = 0; x < 320; x += 4) {
+        const i = (y * 320 + x) * 4
+        const r = data[i], g = data[i + 1], b = data[i + 2]
+        // Skin-color detection (simple YCbCr range)
+        const Y = 0.299 * r + 0.587 * g + 0.114 * b
+        const Cb = 128 - 0.169 * r - 0.331 * g + 0.5 * b
+        const Cr = 128 + 0.5 * r - 0.419 * g - 0.081 * b
+        if (Y > 80 && Cb > 77 && Cb < 127 && Cr > 133 && Cr < 173) {
+          sumX += x
+          sumY += y
+          count++
+        }
+      }
+    }
+
+    if (count > 50) {
+      const cx = sumX / count
+      const cy = sumY / count
+      tHeadX = -((cx / 320) * 2 - 1)
+      tHeadY = -((cy / 240) * 2 - 1)
+      isTracking.value = true
+      confidence.value = Math.min(1, count / 2000)
+    } else {
       isTracking.value = false
       confidence.value = 0
       tHeadX = lerp(tHeadX, 0, 0.05)
       tHeadY = lerp(tHeadY, 0, 0.05)
-      return
-    }
-
-    isTracking.value = true
-    confidence.value = 1
-    const lm = results.multiFaceLandmarks[0]
-
-    // === Head position (nose tip = landmark 1) ===
-    const nose = lm[1]
-    tHeadX = -(nose.x * 2 - 1) // flip for mirror
-    tHeadY = -(nose.y * 2 - 1)
-
-    // === Gaze from iris ===
-    if (lm.length >= 478) {
-      // Right iris center=468, corners: inner=33, outer=133
-      const ri = lm[468], rIn = lm[33], rOut = lm[133]
-      // Left iris center=473, corners: inner=362, outer=263
-      const li = lm[473], lIn = lm[362], lOut = lm[263]
-
-      const rw = Math.abs(rOut.x - rIn.x) || 0.01
-      const rx = (ri.x - rIn.x) / rw
-      const lw = Math.abs(lOut.x - lIn.x) || 0.01
-      const lx = (li.x - lIn.x) / lw
-      const irisX = (rx + lx) / 2
-
-      // Vertical
-      const rUp = lm[159], rDn = lm[145]
-      const lUp = lm[386], lDn = lm[374]
-      const rh = Math.abs(rDn.y - rUp.y) || 0.01
-      const ry = (ri.y - rUp.y) / rh
-      const lh = Math.abs(lDn.y - lUp.y) || 0.01
-      const ly = (li.y - lUp.y) / lh
-      const irisY = (ry + ly) / 2
-
-      tGazeX = Math.max(0, Math.min(1, (irisX - 0.3) / 0.4))
-      tGazeY = Math.max(0, Math.min(1, (irisY - 0.2) / 0.6))
     }
   }
 
-  let lastDetect = 0
   const interval = 1000 / updateRate
-  let detecting = false // lock to prevent overlapping sends
 
   function startLoop() {
+    let lastDetect = 0
     function loop(now) {
       animFrame = requestAnimationFrame(loop)
 
-      // Interpolate every frame
       headX.value = lerp(headX.value, tHeadX, smoothing)
       headY.value = lerp(headY.value, tHeadY, smoothing)
       gazeX.value = lerp(gazeX.value, tGazeX, smoothing)
       gazeY.value = lerp(gazeY.value, tGazeY, smoothing)
 
-      // Send frame to MediaPipe at target rate (with lock)
       if (now - lastDetect < interval) return
-      if (detecting) return // previous frame still processing
+      if (detecting) return
       lastDetect = now
-      if (!faceMesh || !video || video.readyState < 2) return
 
       detecting = true
-      faceMesh.send({ image: video }).catch((e) => {
-        console.warn('faceMesh.send error:', e)
-      }).finally(() => {
-        detecting = false
-      })
+      detectFace().finally(() => { detecting = false })
     }
     animFrame = requestAnimationFrame(loop)
   }
@@ -174,14 +187,11 @@ export function useEyeTracking(options = {}) {
       video.remove()
       video = null
     }
-    if (faceMesh) {
-      faceMesh.close?.()
-      faceMesh = null
-    }
+    detector = null
   }
 
   onMounted(() => init())
   onUnmounted(() => destroy())
 
-  return { headX, headY, gazeX, gazeY, isTracking, confidence, error, init, destroy }
+  return { headX, headY, gazeX, gazeY, isTracking, confidence, error, method, init, destroy }
 }

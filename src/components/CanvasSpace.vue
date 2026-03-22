@@ -4,7 +4,7 @@
     <div v-if="showDebug" class="eye-debug">
       <div class="eye-dot" :style="gazeDotStyle"></div>
       <div class="eye-info">
-        {{ isTracking ? `👁 tracking` : '👁 no face' }}
+        {{ isTracking ? `👁 ${method}` : '👁 no face' }}
         <br>head: {{ headX.toFixed(2) }}, {{ headY.toFixed(2) }}
         <br>gaze: {{ gazeX.toFixed(2) }}, {{ gazeY.toFixed(2) }}
       </div>
@@ -44,7 +44,7 @@ const { cards, greetingVisible } = storeToRefs(canvas)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
 // Eye tracking
-const { headX, headY, gazeX, gazeY, isTracking, confidence } = useEyeTracking({
+const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTracking({
   smoothing: 0.12,
   updateRate: 15,
 })
