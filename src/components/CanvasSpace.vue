@@ -1,5 +1,7 @@
 <template>
-  <div class="canvas" @click="handleBgClick">
+  <div class="canvas" @click="handleBgClick"
+    :style="{ perspectiveOrigin: `${50 + headX * 30}% ${50 + headY * 20}%` }"
+  >
     <!-- Eye tracking debug overlay -->
     <div v-if="showDebug" class="eye-debug">
       <div class="eye-dot" :style="gazeDotStyle"></div>
@@ -10,7 +12,7 @@
       </div>
     </div>
 
-    <div class="canvas-space" ref="spaceRef" :style="canvasTransform">
+    <div class="canvas-space" ref="spaceRef">
       <BlockCard
         v-for="[id, card] in cards"
         :key="id"
@@ -51,26 +53,20 @@ const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTra
 
 const showDebug = ref(true)
 
-// Canvas 3D rotation driven by head position (replaces mouse)
+// Canvas 3D: only shift perspective-origin based on head position
+// This creates natural parallax — elements at different translateZ depths
+// automatically shift by different amounts relative to the perspective point
 const canvasTransform = computed(() => ({
-  transform: `rotateX(${headY.value * -15}deg) rotateY(${headX.value * 15}deg)`,
+  perspectiveOrigin: `${50 + headX.value * 30}% ${50 + headY.value * 20}%`,
 }))
 
 // Per-card parallax: higher z = more shift
 const PARALLAX_FACTOR = 80
 
 function getCardParallaxStyle(card) {
-  const z = card.z || 20 // default z=20 so all cards have some parallax
-  const depth = z / 40
-  // Combine head position (large movement) + gaze offset (subtle)
-  const hx = headX.value
-  const hy = headY.value
-  const shiftX = hx * depth * PARALLAX_FACTOR
-  const shiftY = hy * depth * PARALLAX_FACTOR * 0.6
-  return {
-    '--parallax-x': `${shiftX}px`,
-    '--parallax-y': `${shiftY}px`,
-  }
+  // No manual translate needed — perspective-origin shift
+  // combined with each card's translateZ creates natural parallax
+  return {}
 }
 
 // Gaze glow
