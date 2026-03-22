@@ -1,7 +1,7 @@
 /* ── Canvas (3D space) ── */
 .canvas {
   position: absolute; inset: 0; overflow: hidden;
-  perspective: 1400px;
+  perspective: 800px;
   perspective-origin: 50% 50%;
   background: radial-gradient(ellipse at 40% 40%, #1e1812 0%, #111 60%, #0a0a08 100%);
 }

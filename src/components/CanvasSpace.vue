@@ -1,6 +1,6 @@
 <template>
   <div class="canvas" @click="handleBgClick"
-    :style="{ perspectiveOrigin: `${50 + headX * 30}% ${50 + headY * 20}%` }"
+    :style="{ perspectiveOrigin: `${50 + headX * 50}% ${50 + headY * 35}%` }"
   >
     <!-- Eye tracking debug overlay -->
     <div v-if="showDebug" class="eye-debug">

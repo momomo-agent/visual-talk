@@ -10,7 +10,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
  */
 export function useEyeTracking(options = {}) {
   const {
-    smoothing = 0.15,
+    smoothing = 0.2,       // faster response
     updateRate = 15,
   } = options
 
@@ -93,9 +93,12 @@ export function useEyeTracking(options = {}) {
           const centerX = box.x + box.width / 2
           const centerY = box.y + box.height / 2
 
-          // Normalize to -1..1
-          tHeadX = ((centerX / 320) * 2 - 1)
-          tHeadY = -((centerY / 240) * 2 - 1)
+          // Normalize to -1..1 with amplification
+          // Face usually stays in center 40% of frame, so amplify
+          const rawX = (centerX / 320) * 2 - 1
+          const rawY = (centerY / 240) * 2 - 1
+          tHeadX = Math.max(-1, Math.min(1, rawX * 2.5))
+          tHeadY = Math.max(-1, Math.min(1, -rawY * 2.5))
           isTracking.value = true
           confidence.value = 1
 
@@ -152,8 +155,10 @@ export function useEyeTracking(options = {}) {
     if (count > 50) {
       const cx = sumX / count
       const cy = sumY / count
-      tHeadX = ((cx / 320) * 2 - 1)
-      tHeadY = -((cy / 240) * 2 - 1)
+      const rawX = (cx / 320) * 2 - 1
+      const rawY = (cy / 240) * 2 - 1
+      tHeadX = Math.max(-1, Math.min(1, rawX * 2.5))
+      tHeadY = Math.max(-1, Math.min(1, -rawY * 2.5))
       isTracking.value = true
       confidence.value = Math.min(1, count / 2000)
       // Gaze follows head when no landmarks
