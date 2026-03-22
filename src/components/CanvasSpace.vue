@@ -6,6 +6,7 @@
       <div class="eye-info">
         {{ isTracking ? `👁 ${method}` : '👁 no face' }}
         <br>head: {{ headX.toFixed(2) }}, {{ headY.toFixed(2) }}
+        <br>eye: {{ proj.eyeX.toFixed(0) }}, {{ proj.eyeY.toFixed(0) }}
       </div>
     </div>
 
@@ -31,6 +32,7 @@ import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useTimelineStore } from '../stores/timeline.js'
 import { useEyeTracking } from '../composables/useEyeTracking.js'
+import { OffAxisProjection } from '../lib/off-axis-projection.js'
 import BlockCard from './BlockCard.vue'
 import SketchOverlay from './SketchOverlay.vue'
 
@@ -48,32 +50,33 @@ const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTra
   updateRate: 10,
 })
 
-/**
- * Off-axis parallax — physically correct model
- * 
- * Think of the screen as a window. The viewer is at distance D from the screen.
- * A card at depth z behind the screen should shift by:
- *   offset = headPosition * (z / D)
- * 
- * When viewer moves left, objects behind the screen appear to move right
- * (and objects in front move left). This is real parallax.
- * 
- * D (screenDistance) controls sensitivity — smaller = more dramatic effect.
- * headX/Y is mapped to approximate cm of head movement.
- */
-const SCREEN_DISTANCE = 5 // virtual "distance to screen" in same units as z
-const HEAD_SCALE = 150 // map headX [-1,1] to pixels of shift at z=SCREEN_DISTANCE
+// Projection engine
+const proj = new OffAxisProjection(
+  window.innerWidth,
+  window.innerHeight,
+  600 // 眼睛到屏幕的虚拟距离，越小效果越强
+)
 
 function getParallaxStyle(card) {
-  const z = card.z || 0
-  // Cards with z > 0 are "in front" of screen → shift same direction as head
-  // Cards with z < 0 would be "behind" → shift opposite (not used currently)
-  const ratio = z / SCREEN_DISTANCE
-  const px = headX.value * ratio * HEAD_SCALE
-  const py = headY.value * ratio * HEAD_SCALE * 0.7
+  // Update eye position from head tracking
+  proj.setEyePosition(headX.value, headY.value)
+
+  // Card position relative to screen center
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const cardCenterX = (card.x / 100) * vw + (card.w / 100) * vw / 2 - vw / 2
+  const cardCenterY = (card.y / 100) * vh - vh / 2
+
+  // Card depth — z values in Visual Talk are 0-60 typically
+  // Map to projection space: z=0 is screen plane
+  const depth = (card.z || 0) * 4 // amplify for visible effect
+
+  const { offsetX, offsetY, scale } = proj.project(cardCenterX, cardCenterY, depth)
+
   return {
-    '--parallax-x': `${px}px`,
-    '--parallax-y': `${py}px`,
+    '--parallax-x': `${offsetX}px`,
+    '--parallax-y': `${offsetY}px`,
+    '--parallax-scale': scale,
   }
 }
 
@@ -101,20 +104,27 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => { window.addEventListener('keydown', onKeyDown) })
-onUnmounted(() => { window.removeEventListener('keydown', onKeyDown) })
+function onResize() {
+  proj.resize(window.innerWidth, window.innerHeight)
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('resize', onResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('resize', onResize)
+})
 </script>
 
 <style scoped>
 .eye-debug {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  z-index: 10000;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 10000;
 }
 .eye-dot {
-  position: absolute;
-  width: 14px; height: 14px;
+  position: absolute; width: 14px; height: 14px;
   border-radius: 50%;
   background: rgba(0, 200, 255, 0.8);
   box-shadow: 0 0 16px rgba(0, 200, 255, 0.6);
@@ -122,12 +132,8 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeyDown) })
   transition: left 0.05s, top 0.05s;
 }
 .eye-info {
-  position: absolute;
-  top: 10px; right: 10px;
-  font-size: 11px;
-  color: rgba(255,255,255,0.5);
-  font-family: monospace;
-  text-align: right;
-  line-height: 1.6;
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; color: rgba(255,255,255,0.5);
+  font-family: monospace; text-align: right; line-height: 1.6;
 }
 </style>
