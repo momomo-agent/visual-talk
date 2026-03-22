@@ -52,7 +52,7 @@ function posterUrl(path, size = 'w500') {
 export const tools = [
   {
     name: 'search_movie',
-    description: 'Search for movies by title or keyword. Returns titles, posters, ratings, genres, and overviews. Use this when user asks about movies, film recommendations, or anything cinema-related.',
+    description: 'Search movies via TMDB database. Returns real poster image URLs (from image.tmdb.org CDN), accurate ratings, release dates, genres, and overviews. Poster URLs from this tool are reliable and will actually load — unlike guessed URLs which return 404.',
     parameters: {
       type: 'object',
       properties: {
@@ -126,7 +126,7 @@ export const tools = [
 
   {
     name: 'search_tv',
-    description: 'Search for TV shows/series. Returns titles, posters, ratings, and overviews.',
+    description: 'Search TV shows/series via TMDB database. Returns real poster URLs, ratings, and overviews. Use this for reliable show data and poster images.',
     parameters: {
       type: 'object',
       properties: {
