@@ -1,8 +1,10 @@
 <template>
   <div class="map-block">
     <div ref="mapEl" class="map-container"></div>
-    <h2 v-if="data.title">{{ data.title }}</h2>
-    <div v-if="data.footer" class="footer">{{ data.footer }}</div>
+    <div v-if="data.title || data.footer" class="win-body map-info">
+      <h2 v-if="data.title">{{ data.title }}</h2>
+      <div v-if="data.footer" class="footer">{{ data.footer }}</div>
+    </div>
   </div>
 </template>
 
@@ -199,26 +201,17 @@ watch(() => props.data, () => {
   flex-direction: column;
 }
 
-.map-block h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 12px 4px 0;
-  color: #4a3f35;
-}
-
 .map-container {
   flex: 1;
   min-height: 200px;
-  border-radius: 10px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.06);
   background: #f5f0e8;
 }
 
-.map-block .footer {
-  font-size: 11px;
-  color: #888;
-  margin-top: 6px;
+.map-info {
+  padding-top: 10px;
+  padding-bottom: 4px;
 }
 
 /* MapLibre overrides for warm theme */
