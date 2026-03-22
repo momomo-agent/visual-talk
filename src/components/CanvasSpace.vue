@@ -1,5 +1,5 @@
 <template>
-  <div class="canvas" ref="canvasRef" @click="handleBgClick">
+  <div class="canvas" @click="handleBgClick">
     <!-- Eye tracking debug overlay -->
     <div v-if="showDebug" class="eye-debug">
       <div class="eye-dot" :style="gazeDotStyle"></div>
@@ -9,34 +9,28 @@
       </div>
     </div>
 
-    <!-- Cards are rendered here but positioned by CSS3DRenderer -->
-    <div v-show="false" ref="cardContainer">
-      <div
+    <div class="canvas-space" ref="spaceRef">
+      <BlockCard
         v-for="[id, card] in cards"
         :key="id"
-        :ref="el => setCardRef(id, el)"
-        class="space-card-wrapper"
-      >
-        <BlockCard
-          :card="card"
-          @toggle-select="(e) => toggleSelect(id, e)"
-          @update-position="(x, y) => updateCardPosition(id, x, y)"
-          @drag-end="(x, y) => onDragEnd(id, x, y)"
-        />
-      </div>
+        :card="card"
+        :style="getParallaxStyle(card)"
+        @toggle-select="(e) => toggleSelect(id, e)"
+        @update-position="(x, y) => updateCardPosition(id, x, y)"
+        @drag-end="(x, y) => onDragEnd(id, x, y)"
+      />
+      <SketchOverlay />
     </div>
-
     <div class="greeting" :class="{ hidden: !greetingVisible }">visual talk</div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useTimelineStore } from '../stores/timeline.js'
 import { useEyeTracking } from '../composables/useEyeTracking.js'
-import { EyeSpace } from '../lib/eye-space.js'
 import BlockCard from './BlockCard.vue'
 import SketchOverlay from './SketchOverlay.vue'
 
@@ -45,68 +39,34 @@ const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
-const canvasRef = ref(null)
 const showDebug = ref(true)
+const spaceRef = ref(null)
 
 // Eye tracking
 const { headX, headY, gazeX, gazeY, isTracking, confidence, method } = useEyeTracking({
-  smoothing: 0.2,
-  updateRate: 15,
+  smoothing: 0.08,
+  updateRate: 10,
 })
 
-// 3D space
-let eyeSpace = null
-const cardRefs = new Map()
-
-function setCardRef(id, el) {
-  if (el) cardRefs.set(id, el)
-  else cardRefs.delete(id)
-}
-
-// Convert card canvas coords to 3D position
-function cardTo3D(card) {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const x = (card.x / 100) * vw - vw / 2 + (card.w / 100) * vw / 2
-  const y = (card.y / 100) * vh - vh / 2 + 100
-  const z = (card.z || 0) * 3 // amplify z for more depth separation
-  return { x, y, z }
-}
-
-// Sync cards to 3D scene
-function syncCards() {
-  if (!eyeSpace) return
-
-  const activeIds = new Set()
-  for (const [id, card] of cards.value) {
-    activeIds.add(id)
-    const el = cardRefs.get(id)
-    if (!el) continue
-
-    const { x, y, z } = cardTo3D(card)
-
-    if (eyeSpace.objects.has(id)) {
-      eyeSpace.updateObject(id, x, y, z)
-    } else {
-      eyeSpace.addObject(id, el, x, y, z)
-    }
-  }
-
-  // Remove cards that no longer exist
-  for (const id of eyeSpace.objects.keys()) {
-    if (!activeIds.has(id)) eyeSpace.removeObject(id)
+/**
+ * Pure parallax via CSS variable --parallax-x/y
+ * 
+ * Each card shifts based on its z-depth × head position.
+ * Higher z = closer to viewer = shifts MORE (opposite to bg).
+ * This is how real parallax works — foreground moves more than background.
+ */
+function getParallaxStyle(card) {
+  const z = card.z || 0
+  // Normalize z: typical range 0-60, map to 0-1 multiplier
+  const depth = z / 40
+  // Shift amount: up to 40px at max depth for full head turn
+  const px = headX.value * depth * 40
+  const py = headY.value * depth * 25
+  return {
+    '--parallax-x': `${px}px`,
+    '--parallax-y': `${py}px`,
   }
 }
-
-// Watch head position → update 3D camera
-watch([headX, headY], ([hx, hy]) => {
-  if (eyeSpace) eyeSpace.setHeadPosition(hx, hy)
-})
-
-// Watch cards changes → sync to 3D
-watch(cards, () => {
-  nextTick(syncCards)
-}, { deep: true })
 
 function onDragEnd(cardId, x, y) {
   const nodeId = timeline.activeTip
@@ -132,16 +92,8 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => {
-  eyeSpace = new EyeSpace(canvasRef.value)
-  window.addEventListener('keydown', onKeyDown)
-  nextTick(syncCards)
-})
-
-onUnmounted(() => {
-  if (eyeSpace) eyeSpace.destroy()
-  window.removeEventListener('keydown', onKeyDown)
-})
+onMounted(() => { window.addEventListener('keydown', onKeyDown) })
+onUnmounted(() => { window.removeEventListener('keydown', onKeyDown) })
 </script>
 
 <style scoped>
@@ -168,9 +120,5 @@ onUnmounted(() => {
   font-family: monospace;
   text-align: right;
   line-height: 1.6;
-}
-.space-card-wrapper {
-  /* Cards need explicit dimensions for CSS3DObject */
-  width: 300px;
 }
 </style>
