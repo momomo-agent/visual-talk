@@ -1,7 +1,7 @@
 <template>
   <div class="map-block">
-    <h2 v-if="data.title">{{ data.title }}</h2>
     <div ref="mapEl" class="map-container"></div>
+    <h2 v-if="data.title">{{ data.title }}</h2>
     <div v-if="data.footer" class="footer">{{ data.footer }}</div>
   </div>
 </template>
@@ -35,9 +35,9 @@ const TILE_STYLE = {
     'carto-voyager': {
       type: 'raster',
       tiles: [
-        'https://proxy.link2web.site/https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-        'https://proxy.link2web.site/https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-        'https://proxy.link2web.site/https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site?url=https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site?url=https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+        'https://proxy.link2web.site?url=https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
       ],
       tileSize: 256,
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -202,7 +202,7 @@ watch(() => props.data, () => {
 .map-block h2 {
   font-size: 14px;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 8px 0 0;
   color: #4a3f35;
 }
 
