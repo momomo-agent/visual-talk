@@ -24,7 +24,8 @@ export function parseResponse(text) {
       const type = m[1]
       // Normalize items to string arrays for card/list types
       // Steps items are {time, title, detail} objects — don't flatten them
-      if (Array.isArray(data.items) && type !== 'steps') {
+      // Chart items are {label, value} objects — don't flatten them either
+      if (Array.isArray(data.items) && type !== 'steps' && type !== 'chart') {
         data.items = data.items.map(it =>
           typeof it === 'string' ? it : (it.text || it.title || it.label || '')
         )
