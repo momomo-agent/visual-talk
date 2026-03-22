@@ -65,8 +65,8 @@
       />
     </template>
 
-    <!-- Text label -->
-    <template v-else-if="sk.type === 'label' && labelPos(sk)">
+    <!-- Text label — only render short annotations (≤20 chars) when no target -->
+    <template v-else-if="sk.type === 'label' && labelPos(sk) && (sk.target || (sk.text || '').length <= 20)">
       <text
         :x="labelPos(sk)[0]"
         :y="labelPos(sk)[1]"
