@@ -207,11 +207,12 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     }
 
-    // Inject docked cards from activeTip if viewing a historical node
+    // Docked cards always show latest content from activeTip
     if (nodeId !== activeTip.value && activeTip.value != null && dockedIds.size > 0) {
       const tipCards = computeCanvas(activeTip.value)
       tipCards.forEach((tipCard, tipId) => {
-        if (dockedIds.has(tipId) && !state.cards.has(tipId)) {
+        if (dockedIds.has(tipId)) {
+          // Always use activeTip version — whether card exists here or not
           state.cards.set(tipId, { ...tipCard })
         }
       })

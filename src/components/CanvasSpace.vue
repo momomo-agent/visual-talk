@@ -63,9 +63,9 @@ function recalcDockSlots() {
   dockSlots.value = slots
 }
 
-// Dock zone: 12px padding + 276px card + ~12px gap = 300px
+// Dock zone: 12px padding + 276px card = 288px
 // Convert to percentage at runtime based on actual viewport
-const DOCK_ZONE_PX = 300
+const DOCK_ZONE_PX = 288
 
 // All cards in one list — docked ones get position overrides via cardStyle
 const allCards = computed(() => {
