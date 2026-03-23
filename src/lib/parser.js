@@ -62,8 +62,8 @@ export function parseResponse(text) {
           }
         })
       }
-      // Skip empty cards — no title, no items, no image, no content
-      if (normalizedType === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0)) {
+      // Skip empty cards — no title, no items, no image, no content, no blocks
+      if (normalizedType === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0) && (!data.blocks || data.blocks.length === 0)) {
         continue
       }
       blocks.push({ type: normalizedType, data })
