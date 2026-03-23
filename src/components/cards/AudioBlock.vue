@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { handleImageError as _handleImageError } from '../../lib/imageProxy.js'
 
 const props = defineProps({
@@ -58,7 +58,7 @@ const hasImage = ref(!!props.data.image)
 const imageLoaded = ref(false)
 const isPlaying = ref(false)
 const currentTime = ref(0)
-let interval = null
+let audioEl = null
 
 const coverIcon = computed(() => {
   const kind = props.data.kind || 'music'
@@ -66,12 +66,16 @@ const coverIcon = computed(() => {
 })
 
 const totalDuration = computed(() => {
+  // Use actual audio duration if available
+  if (audioEl && audioEl.duration && isFinite(audioEl.duration)) return audioEl.duration
   if (typeof props.data.duration === 'number') return props.data.duration
   if (typeof props.data.duration === 'string') {
     const parts = props.data.duration.split(':').map(Number)
     if (parts.length === 2) return parts[0] * 60 + parts[1]
     if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
   }
+  // Convert ms to seconds (iTunes returns trackTimeMillis)
+  if (typeof props.data.durationMs === 'number') return props.data.durationMs / 1000
   return 0
 })
 
@@ -88,28 +92,54 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// Real audio playback
+const audioUrl = computed(() => props.data.url || props.data.previewUrl || props.data.src || null)
+
+onMounted(() => {
+  if (audioUrl.value) {
+    audioEl = new Audio(audioUrl.value)
+    audioEl.addEventListener('timeupdate', () => {
+      currentTime.value = audioEl.currentTime
+    })
+    audioEl.addEventListener('ended', () => {
+      isPlaying.value = false
+      currentTime.value = 0
+    })
+    audioEl.addEventListener('error', () => {
+      console.warn('Audio failed to load:', audioUrl.value)
+    })
+  }
+})
+
 function togglePlay() {
-  isPlaying.value = !isPlaying.value
-  if (isPlaying.value) {
-    // Simulate playback progress for visual demo
-    interval = setInterval(() => {
-      if (totalDuration.value > 0 && currentTime.value < totalDuration.value) {
-        currentTime.value += 1
-      } else {
+  if (audioEl) {
+    if (isPlaying.value) {
+      audioEl.pause()
+      isPlaying.value = false
+    } else {
+      audioEl.play().then(() => {
+        isPlaying.value = true
+      }).catch(err => {
+        console.warn('Audio play failed:', err)
         isPlaying.value = false
-        clearInterval(interval)
-      }
-    }, 1000)
+      })
+    }
   } else {
-    clearInterval(interval)
+    // No audio URL — simulate
+    isPlaying.value = !isPlaying.value
   }
 }
 
 function seekTo(e) {
-  if (totalDuration.value <= 0) return
+  const dur = audioEl?.duration || totalDuration.value
+  if (dur <= 0) return
   const rect = e.currentTarget.getBoundingClientRect()
   const pct = (e.clientX - rect.left) / rect.width
-  currentTime.value = Math.floor(pct * totalDuration.value)
+  const newTime = Math.floor(pct * dur)
+  if (audioEl) {
+    audioEl.currentTime = newTime
+  }
+  currentTime.value = newTime
 }
 
 function onImageError(e) {
@@ -118,6 +148,10 @@ function onImageError(e) {
 }
 
 onUnmounted(() => {
-  clearInterval(interval)
+  if (audioEl) {
+    audioEl.pause()
+    audioEl.src = ''
+    audioEl = null
+  }
 })
 </script>

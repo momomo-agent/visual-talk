@@ -76,12 +76,22 @@
         :class="`br-spacer-${block.size || 'medium'}`"
       />
 
-      <!-- chart / table / diagram / map / audio / embed — delegate to existing components -->
+      <!-- chart / table / diagram / map / audio / video / embed — delegate to existing components -->
       <ChartBlock v-else-if="block.type === 'chart'" :data="block" />
       <TableBlock v-else-if="block.type === 'table'" :data="block" />
       <DiagramBlock v-else-if="block.type === 'diagram'" :data="block" />
       <MapBlock v-else-if="block.type === 'map'" :data="block" />
       <AudioBlock v-else-if="block.type === 'audio'" :data="block" />
+      <div v-else-if="block.type === 'video'" class="br-video">
+        <video
+          :src="block.url"
+          :poster="block.poster"
+          controls
+          preload="metadata"
+          playsinline
+        />
+        <figcaption v-if="block.caption">{{ block.caption }}</figcaption>
+      </div>
       <MediaBlock v-else-if="block.type === 'embed'" :data="{ url: block.url, caption: block.caption }" type="embed" />
     </template>
   </div>

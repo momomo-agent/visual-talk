@@ -40,6 +40,25 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
   width: 100%;
   display: block;
 }
+
+/* Video */
+.br-video {
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.br-video video {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  background: #000;
+}
+.br-video figcaption {
+  font-size: 11px;
+  color: #888;
+  padding: 6px 0 0;
+  text-align: center;
+}
 .br-image figcaption {
   font-size: 11px;
   color: #888;
