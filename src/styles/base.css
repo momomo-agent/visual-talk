@@ -167,6 +167,58 @@ body {
   font-size: 13px; width: 100%; outline: none;
 }
 .config-box input:focus { border-color: rgba(196,168,130,0.2); }
+
+/* Section grouping */
+.config-section {
+  border: 1px solid rgba(196,168,130,0.06);
+  border-radius: 8px;
+  padding: 12px 14px 6px;
+  margin-bottom: 14px;
+}
+.config-section legend {
+  font-size: 11px;
+  color: rgba(196,168,130,0.5);
+  padding: 0 6px;
+  letter-spacing: 0.5px;
+}
+.config-section .field { margin-bottom: 10px; }
+.config-section .section-note {
+  font-size: 10px;
+  color: rgba(196,168,130,0.25);
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+.config-section .hint {
+  font-size: 9px;
+  color: rgba(196,168,130,0.2);
+  margin-left: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.config-section .field.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.config-section .toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.config-section .toggle input[type="checkbox"] {
+  width: auto !important;
+  accent-color: #e8856a;
+}
+.config-section .toggle span {
+  font-size: 11px;
+  color: rgba(196,168,130,0.4);
+}
+
 .config-danger {
   width: 100%; margin-top: 16px; padding: 9px;
   background: rgba(180,60,50,0.15); border: 1px solid rgba(200,70,60,0.25);

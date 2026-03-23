@@ -2,115 +2,143 @@
   <div class="config-overlay" :class="{ open: open }" @click.self="$emit('update:open', false)">
     <div class="config-container">
       <div class="config-box">
-      <div class="field">
-        <label>Provider</label>
-        <select v-model="config.provider">
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>API Key</label>
-        <input type="text" v-model="config.apiKey" placeholder="sk-..." />
-      </div>
-      <div class="field">
-        <label>Base URL</label>
-        <input v-model="config.baseUrl" placeholder="https://api.openai.com" />
-      </div>
-      <div class="field">
-        <label>Model</label>
-        <input v-model="config.model" placeholder="gpt-4o" />
-      </div>
-      <div class="field">
-        <label>Tavily API Key (搜索)</label>
-        <input type="text" v-model="config.tavilyKey" placeholder="tvly-..." />
-      </div>
-      <div class="field">
-        <label>TMDB API Key (电影)</label>
-        <input type="text" v-model="config.tmdbKey" placeholder="免费申请 themoviedb.org" />
-      </div>
 
-      <div class="field section-label">🎨 图片生成</div>
-      <div class="field">
-        <label>Image Base URL</label>
-        <input type="text" v-model="config.imageBaseUrl" placeholder="https://api.openai.com" />
-      </div>
-      <div class="field">
-        <label>Image API Key</label>
-        <input type="text" v-model="config.imageApiKey" placeholder="sk-..." />
-      </div>
-      <div class="field">
-        <label>Image Model</label>
-        <input type="text" v-model="config.imageModel" placeholder="dall-e-3" />
-      </div>
-
-      <div class="field">
-        <label>
-          <input type="checkbox" v-model="config.showToolCalls" style="accent-color:#e8856a" />
-          显示 Tool 调用
-        </label>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" v-model="config.sketchEnabled" style="accent-color:#e8856a" />
-          Sketch 手绘标注
-        </label>
-      </div>
-      <div class="field" v-if="config.sketchEnabled">
-        <label>标注字体</label>
-        <select v-model="config.sketchFont" class="input">
-          <option value="Yozai">悠哉字體（简繁日英）</option>
-          <option value="LXGWWenKai">霞鹜文楷（简繁日英）</option>
-          <option value="ChenYuluoyan">辰宇落雁體（仅繁体）</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" v-model="config.ttsEnabled" style="accent-color:#e8856a" />
-          TTS 语音
-        </label>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" v-model="config.webSpeech" style="accent-color:#e8856a" />
-          Web Speech (免配置语音识别)
-        </label>
-      </div>
-      <div class="field">
-        <label>TTS Base URL</label>
-        <input v-model="config.ttsBaseUrl" placeholder="https://yunwu.ai" />
-      </div>
-      <div class="field">
-        <label>TTS API Key</label>
-        <input type="text" v-model="config.ttsApiKey" placeholder="sk-..." />
-      </div>
-      <div class="field">
-        <label>TTS Model</label>
-        <input v-model="config.ttsModel" placeholder="tts-1-hd" />
-      </div>
-      <div class="field">
-        <label>Voice</label>
-        <div class="voice-picker">
-          <button
-            v-for="v in voices"
-            :key="v"
-            class="voice-chip"
-            :class="{ active: config.ttsVoice === v, previewing: previewingVoice === v }"
-            @click="selectVoice(v)"
-          >{{ v }}</button>
+      <!-- ═══ LLM ═══ -->
+      <fieldset class="config-section">
+        <legend>🧠 语言模型</legend>
+        <div class="field">
+          <label>Provider</label>
+          <select v-model="config.provider">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+          </select>
         </div>
-      </div>
-      <div class="field">
-        <label>
-          <input type="checkbox" v-model="config.proxyEnabled" style="accent-color:#e8856a" />
-          Proxy
-        </label>
-        <input
-          v-model="config.proxyUrl"
-          placeholder="proxy.link2web.site"
-          :disabled="!config.proxyEnabled"
-        />
-      </div>
+        <div class="field">
+          <label>Base URL</label>
+          <input v-model="config.baseUrl" placeholder="https://api.openai.com" />
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="text" v-model="config.apiKey" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input v-model="config.model" placeholder="gpt-4o" />
+        </div>
+      </fieldset>
+
+      <!-- ═══ Tools ═══ -->
+      <fieldset class="config-section">
+        <legend>🔧 工具 API</legend>
+        <div class="field">
+          <label>Tavily Key <span class="hint">搜索</span></label>
+          <input type="text" v-model="config.tavilyKey" placeholder="tvly-..." />
+        </div>
+        <div class="field">
+          <label>TMDB Key <span class="hint">电影</span></label>
+          <input type="text" v-model="config.tmdbKey" placeholder="免费 themoviedb.org" />
+        </div>
+        <p class="section-note">天气 / 计算 / 定位 / 股票 / 维基 / 音乐 — 免费无需配置</p>
+      </fieldset>
+
+      <!-- ═══ Image Gen ═══ -->
+      <fieldset class="config-section">
+        <legend>🎨 图片生成</legend>
+        <div class="field">
+          <label>Base URL</label>
+          <input type="text" v-model="config.imageBaseUrl" placeholder="https://api.openai.com" />
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="text" v-model="config.imageApiKey" placeholder="sk-..." />
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input type="text" v-model="config.imageModel" placeholder="dall-e-3" />
+        </div>
+      </fieldset>
+
+      <!-- ═══ Voice ═══ -->
+      <fieldset class="config-section">
+        <legend>🎙️ 语音</legend>
+        <div class="field row">
+          <label class="toggle">
+            <input type="checkbox" v-model="config.ttsEnabled" />
+            <span>TTS 语音</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" v-model="config.webSpeech" />
+            <span>Web Speech 语音识别</span>
+          </label>
+        </div>
+        <template v-if="config.ttsEnabled">
+          <div class="field">
+            <label>TTS Base URL</label>
+            <input v-model="config.ttsBaseUrl" placeholder="https://yunwu.ai" />
+          </div>
+          <div class="field">
+            <label>TTS API Key</label>
+            <input type="text" v-model="config.ttsApiKey" placeholder="sk-..." />
+          </div>
+          <div class="field">
+            <label>TTS Model</label>
+            <input v-model="config.ttsModel" placeholder="tts-1-hd" />
+          </div>
+          <div class="field">
+            <label>Voice</label>
+            <div class="voice-picker">
+              <button
+                v-for="v in voices"
+                :key="v"
+                class="voice-chip"
+                :class="{ active: config.ttsVoice === v, previewing: previewingVoice === v }"
+                @click="selectVoice(v)"
+              >{{ v }}</button>
+            </div>
+          </div>
+        </template>
+      </fieldset>
+
+      <!-- ═══ Display ═══ -->
+      <fieldset class="config-section">
+        <legend>⚙️ 显示</legend>
+        <div class="field row">
+          <label class="toggle">
+            <input type="checkbox" v-model="config.showToolCalls" />
+            <span>显示 Tool 调用</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" v-model="config.sketchEnabled" />
+            <span>Sketch 手绘标注</span>
+          </label>
+        </div>
+        <div class="field" v-if="config.sketchEnabled">
+          <label>标注字体</label>
+          <select v-model="config.sketchFont" class="input">
+            <option value="Yozai">悠哉字體（简繁日英）</option>
+            <option value="LXGWWenKai">霞鹜文楷（简繁日英）</option>
+            <option value="ChenYuluoyan">辰宇落雁體（仅繁体）</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <!-- ═══ Network ═══ -->
+      <fieldset class="config-section">
+        <legend>🌐 网络</legend>
+        <div class="field row">
+          <label class="toggle">
+            <input type="checkbox" v-model="config.proxyEnabled" />
+            <span>Proxy</span>
+          </label>
+          <input
+            v-model="config.proxyUrl"
+            placeholder="proxy.link2web.site"
+            :disabled="!config.proxyEnabled"
+            style="flex:1"
+          />
+        </div>
+      </fieldset>
+
       <button class="config-danger" @click="clearMemory">清除记忆</button>
       <button class="config-close" @click="$emit('update:open', false)">Done</button>
     </div>
@@ -158,7 +186,6 @@ function clearMemory() {
 
 function selectVoice(v) {
   config.ttsVoice = v
-  // Preview: speak a short sample
   previewingVoice.value = v
   setTimeout(() => { previewingVoice.value = '' }, 600)
   tts.playTTS('Hello, this is ' + v)
