@@ -464,7 +464,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const card = snapshot.get(cardId)
     if (!card) return
 
-    dockedSnapshots.set(cardId, structuredClone(card))
+    dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
     canvasCache.clear()
 
     // Re-render — instant removal (no fade), docked card is visually "picked up"
@@ -497,7 +497,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       card: {
         id: cardId,
         type: snap.type,
-        data: structuredClone(snap.data),
+        data: JSON.parse(JSON.stringify(snap.data)),
         x: snap.x,
         y: snap.y,
         w: snap.w,
@@ -605,30 +605,30 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Find cards by title substring in the computed canvas state.
-   * Searches in timeline data (not canvas view layer).
-   * Returns array of card IDs that match.
+   * All searchable cards: canvas snapshot + docked snapshots.
+   * Returns an iterable of [id, card] pairs.
    */
+  function getSearchableCards(nodeId) {
+    const snapshot = (nodeId === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(nodeId)
+    return function* () {
+      yield* snapshot
+      yield* dockedSnapshots
+    }()
+  }
+
   /**
    * Find a card by its semantic key (exact match).
    * Keys are LLM-assigned, unique, and stable.
    */
   function findCardsByKey(nodeId, key) {
-    const snapshot = (nodeId === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(nodeId)
-
     const target = (key || '').toLowerCase()
     const matched = []
-    snapshot.forEach((card, id) => {
+    for (const [id, card] of getSearchableCards(nodeId)) {
       const cardKey = (card.data?.key || '').toLowerCase()
       if (cardKey && cardKey === target) matched.push(id)
-    })
-    // Also search docked snapshots — they're not in computeCanvas
-    dockedSnapshots.forEach((snap, id) => {
-      const cardKey = (snap.data?.key || '').toLowerCase()
-      if (cardKey && cardKey === target) matched.push(id)
-    })
+    }
     return matched
   }
 
@@ -638,27 +638,15 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Falls back to computeCanvas for navigation/historical queries.
    */
   function findCardsByTitle(nodeId, titleQuery) {
-    // Use liveState if querying the active streaming node
-    const snapshot = (nodeId === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(nodeId)
-
     const target = (titleQuery || '').toLowerCase()
     const exact = []
     const partial = []
-    snapshot.forEach((card, id) => {
+    for (const [id, card] of getSearchableCards(nodeId)) {
       const cardTitle = getCardTitle(card)
       const match = matchTitle(cardTitle, target)
       if (match === 'exact') exact.push(id)
       else if (match === 'partial') partial.push(id)
-    })
-    // Also search docked snapshots
-    dockedSnapshots.forEach((snap, id) => {
-      const cardTitle = getCardTitle(snap)
-      const match = matchTitle(cardTitle, target)
-      if (match === 'exact') exact.push(id)
-      else if (match === 'partial') partial.push(id)
-    })
+    }
     return exact.length ? exact : partial
   }
 
