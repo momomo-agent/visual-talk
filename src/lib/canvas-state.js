@@ -156,6 +156,11 @@ export class CanvasState {
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
+    // Docked cards: only update data, don't change visual properties
+    if (this.dockedIds.has(op.cardId)) {
+      this.currentRoundIds.add(op.cardId)
+      return
+    }
     card.depth = this.depthLevel
     card.intraZ = Z_PINNED
     card.z = Z_PINNED
