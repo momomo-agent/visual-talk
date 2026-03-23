@@ -93,15 +93,14 @@ const cardStyle = computed(() => {
   // Docked cards: fixed position on the left side, stacked vertically
   if (c._isDocked) {
     const slot = c._dockSlot || 0
-    const topPx = 16 + slot * 220  // px from top, spaced 220px apart
-    // Allow hover/select to modify scale and zIndex
+    const topPx = 16 + slot * 220
     const isHovered = c.scale > 1.01
     const isSelected = c.selected
     return {
       left: '12px',
       top: `${topPx}px`,
-      width: '240px',
-      maxWidth: '240px',
+      width: c.w ? `${c.w}%` : undefined,
+      maxWidth: hasImage ? '380px' : undefined,
       transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,
       opacity: 1,
       zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
