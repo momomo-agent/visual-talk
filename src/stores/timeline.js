@@ -122,6 +122,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (snap) {
         if (operation.op === 'update' && operation.changes) {
           Object.assign(snap.data, operation.changes)
+          // Trigger Vue reactivity — re-set the entry so watchers fire
+          dockedSnapshots.set(operation.cardId, snap)
         }
         // Move ops ignored for docked cards (position is user-controlled)
         // Don't store in node.operations — this update belongs to the docked layer
@@ -628,6 +630,11 @@ export const useTimelineStore = defineStore('timeline', () => {
       const cardKey = (card.data?.key || '').toLowerCase()
       if (cardKey && cardKey === target) matched.push(id)
     })
+    // Also search docked snapshots — they're not in computeCanvas
+    dockedSnapshots.forEach((snap, id) => {
+      const cardKey = (snap.data?.key || '').toLowerCase()
+      if (cardKey && cardKey === target) matched.push(id)
+    })
     return matched
   }
 
@@ -647,6 +654,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     const partial = []
     snapshot.forEach((card, id) => {
       const cardTitle = getCardTitle(card)
+      const match = matchTitle(cardTitle, target)
+      if (match === 'exact') exact.push(id)
+      else if (match === 'partial') partial.push(id)
+    })
+    // Also search docked snapshots
+    dockedSnapshots.forEach((snap, id) => {
+      const cardTitle = getCardTitle(snap)
       const match = matchTitle(cardTitle, target)
       if (match === 'exact') exact.push(id)
       else if (match === 'partial') partial.push(id)
