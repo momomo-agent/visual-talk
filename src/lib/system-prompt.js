@@ -66,6 +66,8 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round. If you want to change an existing card's content, use update. If you're creating something new (even about the same topic), give it a fresh key.
 
 - card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
+- profile: {"key":"kubrick","x":55,"y":10,"z":40,"w":22,"title":"Stanley Kubrick","sub":"1928-1999 · 导演","image":"url","tags":["完美主义者"],"items":[],"footer":"13部电影，每一部都是里程碑"}
+  Image left, text right. For people, characters, authors, artists — anything with a face. Compact by nature.
 - metric: {"key":"imdb","x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
 - steps: {"key":"timeline","x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
 - columns: {"key":"compare","x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}

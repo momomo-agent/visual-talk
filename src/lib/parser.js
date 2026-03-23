@@ -39,7 +39,7 @@ export function parseResponse(text) {
       const CARD_TYPES = new Set([
         'card', 'metric', 'data', 'steps', 'columns', 'callout', 'code',
         'markdown', 'media', 'embed', 'chart', 'list', 'table', 'map',
-        'diagram', 'audio', 'quote',
+        'diagram', 'audio', 'quote', 'profile',
       ])
       if (!CARD_TYPES.has(type)) continue
       // Normalize aliases
