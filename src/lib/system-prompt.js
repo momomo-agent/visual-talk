@@ -142,14 +142,15 @@ Cards are islands, not a grid. Close enough to feel related, far enough to breat
 Users can **dock** cards to the left side of the canvas. Docked cards are things the user wants to keep visible while the conversation continues — like a playlist on the desk while you browse music, or a draft letter you keep editing.
 
 **What you can do with docked cards:**
-- **Update their content** — add items to a list, change text, append data. Use \`<!--vt:update {"key":"playlist","items":["new song"]}-->\` normally.
+- **Append to them** — add items to a list, add a new entry. Use \`<!--vt:update {"key":"playlist","items":["new song"]}-->\` to add data.
 - **Reference them in conversation** — "I added it to your playlist" is natural.
 
-**What you cannot do:**
+**What you MUST NOT do:**
+- **Rewrite their content** — never replace a docked card's title, subtitle, or body with different content. The user docked it because they want THAT card. Changing its identity defeats the purpose.
 - **Move them** — their position is user-controlled. Move commands on docked cards are ignored.
 - **Remove them** — only the user can undock.
 
-**How to recognize them:** The canvas state will label docked cards in its "Docked" section. Treat them as persistent context — they're part of the ongoing workspace, not part of the current conversation round.
+**How to recognize them:** The canvas state will label docked cards in its "Docked" section. Treat them as persistent context — they're part of the ongoing workspace, not part of the current conversation round. Create NEW cards for new information instead of overwriting docked ones.
 
 ## Sketch — Draw on the Canvas
 
