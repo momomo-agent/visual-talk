@@ -96,7 +96,11 @@ export class CanvasState {
         card.blur = d >= 1 ? d * 4 : 0
         card.zIndex = Math.max(1, 50 - d * 20)
       }
-      if (card.opacity <= 0) this.cards.delete(id)
+      // Don't delete sunk cards — they can be revived by update/move
+      if (card.opacity <= 0) {
+        card.pointerEvents = 'none'
+        card.sunk = true
+      }
     })
   }
 
@@ -155,6 +159,9 @@ export class CanvasState {
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
+    // Revive sunk cards
+    card.sunk = false
+    card.pointerEvents = 'auto'
     // Always apply visual properties — docked override happens in computed
     card.depth = this.depthLevel
     card.intraZ = Z_PINNED
@@ -170,6 +177,9 @@ export class CanvasState {
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
+    // Revive sunk cards
+    card.sunk = false
+    card.pointerEvents = 'auto'
     // Always apply move — docked position override happens in computed
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y

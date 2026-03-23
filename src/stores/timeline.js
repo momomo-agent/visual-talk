@@ -37,6 +37,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   // Global docked card IDs — independent of timeline navigation
   const dockedIds = reactive(new Set())
 
+  // Dock history: cardId → { dockedAt: nodeId, undockedAt: nodeId | null }
+  // Used to keep cards visible between dock and undock during navigation
+  const dockHistory = reactive(new Map())
+
   // --- Tree operations ---
 
   function createNode(parentId, userMessage) {
@@ -217,6 +221,30 @@ export const useTimelineStore = defineStore('timeline', () => {
         }
       })
     }
+
+    // Cards that were docked during this node should stay visible (not sunk)
+    // Check dockHistory: if nodeId is between dockedAt and undockedAt, revive the card
+    const pathIds = new Set(path.map(n => n.id))
+    dockHistory.forEach((history, cardId) => {
+      if (dockedIds.has(cardId)) return  // still docked, already handled above
+      const card = state.cards.get(cardId)
+      if (!card) return
+      // Check if this node falls within the dock period
+      const dockPath = getPathFromRoot(history.undockedAt ?? activeTip.value)
+      const dockNodeIds = dockPath.map(n => n.id)
+      const dockIdx = dockNodeIds.indexOf(history.dockedAt)
+      const undockIdx = history.undockedAt != null ? dockNodeIds.indexOf(history.undockedAt) : dockNodeIds.length - 1
+      const currentIdx = dockNodeIds.indexOf(nodeId)
+      if (currentIdx >= dockIdx && currentIdx <= undockIdx && card.sunk) {
+        // Card was docked during this period — keep visible but subtle
+        card.sunk = false
+        card.opacity = 0.6
+        card.scale = 0.85
+        card.blur = 0
+        card.pointerEvents = 'auto'
+        card.zIndex = 30
+      }
+    })
 
     canvasCache.set(nodeId, state.cards)
     return state.cards
@@ -429,10 +457,18 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Docked cards are rendered in a separate sidebar, not in the canvas.
    */
   function toggleDock(cardId) {
+    const currentNode = viewingId.value ?? activeTip.value
     if (dockedIds.has(cardId)) {
+      // Undocking — record when it was undocked
       dockedIds.delete(cardId)
+      const history = dockHistory.get(cardId)
+      if (history) {
+        history.undockedAt = currentNode
+      }
     } else {
+      // Docking — record when it was docked
       dockedIds.add(cardId)
+      dockHistory.set(cardId, { dockedAt: currentNode, undockedAt: null })
     }
     // Docked state affects computeCanvas output — clear all cached snapshots
     canvasCache.clear()
@@ -475,6 +511,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       activeTip: activeTip.value,
       nodes: nodesData,
       dockedIds: [...dockedIds],
+      dockHistory: Object.fromEntries(dockHistory),
     }
   }
 
@@ -507,6 +544,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     dockedIds.clear()
     if (data.dockedIds) {
       for (const id of data.dockedIds) dockedIds.add(id)
+    }
+    // Restore dock history
+    dockHistory.clear()
+    if (data.dockHistory) {
+      for (const [cardId, hist] of Object.entries(data.dockHistory)) {
+        dockHistory.set(cardId, hist)
+      }
     }
     if (activeTip.value != null) {
       restoreToNode(activeTip.value)
