@@ -44,8 +44,8 @@ const dockSlots = ref(new Map())  // id -> topPx
 
 function recalcDockSlots() {
   const slots = new Map()
-  let y = 12  // top padding
-  const gap = 10
+  let y = 16  // top padding
+  const gap = 20
   const dockedArray = []
 
   cards.value.forEach((card, id) => {
