@@ -434,6 +434,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     } else {
       dockedIds.add(cardId)
     }
+    // Docked state affects computeCanvas output — clear all cached snapshots
+    canvasCache.clear()
+    // Re-apply current view so canvas reflects the change
+    const viewId = viewingId.value ?? activeTip.value
+    if (viewId != null) {
+      const snapshot = computeCanvas(viewId)
+      const canvas = useCanvasStore()
+      canvas.applySnapshot(snapshot, { animate: true })
+    }
   }
 
   function setAiResponse(nodeId, response) {
