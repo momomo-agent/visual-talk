@@ -141,45 +141,35 @@ export class CanvasState {
     this.currentRoundIds.add(c.id)
   }
 
-  _update(op) {
-    const card = this.cards.get(op.cardId)
-    if (!card) return
-    // Always apply data changes (docked or not)
-    if (op.changes) {
-      Object.assign(card.data, op.changes)
-    }
-    // Revive sunk cards
+  _revive(card, cardId, z = Z_PINNED) {
     card.sunk = false
     card.pointerEvents = 'auto'
-    // Always apply visual properties — docked override happens in computed
     card.depth = this.depthLevel
-    card.intraZ = Z_PINNED
-    card.z = Z_PINNED
+    card.intraZ = z
+    card.z = z
     card.opacity = 1
     card.blur = 0
     card.scale = 1
-    card.zIndex = 100 + Math.floor(Z_PINNED / 10)
+    card.zIndex = 100 + Math.floor(z / 10)
     card.pinned = true
-    this.currentRoundIds.add(op.cardId)
+    this.currentRoundIds.add(cardId)
+  }
+
+  _update(op) {
+    const card = this.cards.get(op.cardId)
+    if (!card) return
+    if (op.changes) {
+      Object.assign(card.data, op.changes)
+    }
+    this._revive(card, op.cardId)
   }
 
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
-    // Revive sunk cards — move is intentional, card should be visible
-    card.sunk = false
-    card.pointerEvents = 'auto'
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
     const targetZ = op.to.z != null ? Math.min(op.to.z, Z_PINNED) : Z_PINNED
-    card.z = targetZ
-    card.intraZ = targetZ
-    card.depth = this.depthLevel
-    card.opacity = 1
-    card.blur = 0
-    card.scale = 1
-    card.zIndex = 100 + Math.floor(targetZ / 10)
-    card.pinned = true
-    this.currentRoundIds.add(op.cardId)
+    this._revive(card, op.cardId, targetZ)
   }
 }
