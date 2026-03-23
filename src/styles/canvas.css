@@ -43,4 +43,8 @@
   position: relative !important;
   left: auto !important;
   top: auto !important;
+  overflow: visible;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }

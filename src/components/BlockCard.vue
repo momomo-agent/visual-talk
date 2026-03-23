@@ -98,8 +98,8 @@ const cardStyle = computed(() => {
     const isSelected = c.selected
     return {
       position: 'relative',
-      width: c.w ? `${c.w}vw` : undefined,
-      maxWidth: hasImage ? '380px' : '360px',
+      width: '100%',
+      maxWidth: '100%',
       transform: `scale(${isHovered || isSelected ? c.scale : 1})`,
       opacity: 1,
       zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
