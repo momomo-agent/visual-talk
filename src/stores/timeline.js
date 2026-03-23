@@ -464,6 +464,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const card = snapshot.get(cardId)
     if (!card) return
 
+    // Deep copy card data into docked layer
     dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
     canvasCache.clear()
 
