@@ -47,56 +47,31 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     if (snapshot.size > 0) greetingVisible.value = false
 
-    // Build snapshot lookup by contentKey
-    const targetByKey = new Map()
-    snapshot.forEach(card => {
-      if (card.contentKey) targetByKey.set(card.contentKey, card)
-    })
+    // ── Pass 1: Upsert — iterate snapshot, update or create by card id ──
+    snapshot.forEach((target, targetId) => {
+      const existing = cards.get(targetId)
 
-    // Build existing lookup by contentKey
-    const existingByKey = new Map()
-    cards.forEach((card, id) => {
-      if (card.contentKey) existingByKey.set(card.contentKey, id)
-    })
-
-    // ── Pass 1: Upsert — iterate snapshot, update or create ──
-    targetByKey.forEach((target, key) => {
-      const existingId = existingByKey.get(key)
-
-      if (existingId != null) {
-        // Update existing card
-        const card = cards.get(existingId)
-        if (card) {
-          // Debug: detect cross-card data overwrite
-          if (card.data?.key && target.data?.key && card.data.key !== target.data.key) {
-            console.warn('[canvas] contentKey match overwrites different card!', {
-              contentKey: key,
-              existingCardKey: card.data.key,
-              targetCardKey: target.data.key,
-              existingId,
-              targetId: target.id,
-            })
-          }
-          card.x = target.x
-          card.y = target.y
-          card.z = target.z ?? 0
-          card.w = target.w ?? card.w
-          card.opacity = target.opacity ?? 1
-          card.scale = target.scale ?? 1
-          card.blur = target.blur ?? 0
-          card.zIndex = target.zIndex ?? 100
-          card.depth = target.depth
-          card.intraZ = target.intraZ ?? 0
-          card.type = target.type
-          card.data = { ...target.data }
-          card.pinned = target.pinned ?? false
-          card.pointerEvents = 'auto'
-          // Don't touch card.selected — that's UI state
-        }
+      if (existing) {
+        // Update existing card — same id, just sync state
+        existing.x = target.x
+        existing.y = target.y
+        existing.z = target.z ?? 0
+        existing.w = target.w ?? existing.w
+        existing.opacity = target.opacity ?? 1
+        existing.scale = target.scale ?? 1
+        existing.blur = target.blur ?? 0
+        existing.zIndex = target.zIndex ?? 100
+        existing.depth = target.depth
+        existing.intraZ = target.intraZ ?? 0
+        existing.type = target.type
+        existing.data = { ...target.data }
+        existing.pinned = target.pinned ?? false
+        existing.pointerEvents = target.pointerEvents || 'auto'
+        existing.contentKey = target.contentKey
+        // Don't touch card.selected — that's UI state
       } else {
         // Create new card
         if (animate) {
-          // Fly in: start behind, animate to target
           const card = reactive({
             ...target,
             opacity: 0,
@@ -107,8 +82,7 @@ export const useCanvasStore = defineStore('canvas', () => {
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
-          cards.set(target.id, card)
-          // Animate to target state — double rAF ensures initial state is painted first
+          cards.set(targetId, card)
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               if (snapshotGen !== gen) return
@@ -119,23 +93,22 @@ export const useCanvasStore = defineStore('canvas', () => {
             })
           })
         } else {
-          // Instant: no animation
           const card = reactive({
             ...target,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
-          cards.set(target.id, card)
+          cards.set(targetId, card)
         }
       }
     })
 
-    // ── Pass 2: Cleanup — remove cards not in snapshot ──
+    // ── Pass 2: Cleanup — fade out cards not in snapshot ──
+    const snapshotIds = new Set(snapshot.keys())
     cards.forEach((card, id) => {
-      if (card.pointerEvents === 'none') return // already fading out
-      if (!card.contentKey) return // no key to match
-      if (targetByKey.has(card.contentKey)) return // still in snapshot
+      if (card.pointerEvents === 'none') return // already fading
+      if (snapshotIds.has(id)) return // still alive
 
       if (animate) {
         card.opacity = 0
