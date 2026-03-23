@@ -44,7 +44,7 @@ const dockSlots = ref(new Map())  // id -> topPx
 
 function recalcDockSlots() {
   const slots = new Map()
-  let y = 16  // top padding
+  let y = 24  // top padding
   const gap = 20
 
   dockedSnapshots.value.forEach((snap, id) => {
@@ -94,7 +94,7 @@ const allCards = computed(() => {
     const docked = { ...snap }
     docked._isDocked = true
     docked._dockSlot = dockIndex++
-    docked._dockTop = dockSlots.value.get(id) ?? (16 + docked._dockSlot * 220)
+    docked._dockTop = dockSlots.value.get(id) ?? (24 + docked._dockSlot * 220)
     entries.push([id, docked])
   })
 

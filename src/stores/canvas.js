@@ -23,10 +23,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     const z = -d * 160
     const s = Math.max(0.5, 1 - d * 0.12)
     const o = Math.max(0, 1 - d * 0.45)
-    card.z = z
+    // For current-round cards (d===0), restore their intraZ ordering
+    card.z = d === 0 ? (card.intraZ || 0) : z
     card.scale = s
     card.opacity = o
-    card.zIndex = Math.max(1, 50 - d * 20)
+    card.zIndex = d === 0 ? (100 + Math.floor((card.intraZ || 0) / 10)) : Math.max(1, 50 - d * 20)
     card.blur = d >= 1 ? d * 4 : 0
     card.pointerEvents = 'auto'
   }
