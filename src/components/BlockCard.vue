@@ -111,7 +111,7 @@ const cardStyle = computed(() => {
   }
 
   return {
-    left: `${c.x}%`,
+    left: `${c._mappedX ?? c.x}%`,
     top: `${c.y}%`,
     width: c.w ? `${c.w}%` : undefined,
     maxWidth: hasImage ? '380px' : undefined,

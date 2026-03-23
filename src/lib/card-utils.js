@@ -125,7 +125,7 @@ export function buildCanvasContext(snapshot, dockedIds = new Set()) {
 
   if (!latestCards.length && !visibleCards.length && !pastCards.length && !dockedCards.length) return null
   let ctx = '[Current canvas state]\n'
-  if (dockedCards.length) ctx += `Docked (user pinned to left side — DO NOT move, update, or reference these):\n${dockedCards.join('\n')}\n⚠️ Left ~25% of the canvas is occupied by docked cards. Place new cards at x ≥ 25.\n`
+  if (dockedCards.length) ctx += `Docked (user pinned to left side — DO NOT move, update, or reference these):\n${dockedCards.join('\n')}\n`
   if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
   if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
   if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`

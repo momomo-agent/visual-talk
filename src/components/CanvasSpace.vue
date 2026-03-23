@@ -63,10 +63,15 @@ function recalcDockSlots() {
   dockSlots.value = slots
 }
 
+// Dock zone width as percentage of viewport (300px / ~1440px ≈ 21%)
+const DOCK_WIDTH_PCT = 21
+const DOCK_MARGIN_PCT = 2  // small gap after dock zone
+
 // All cards in one list — docked ones get position overrides via cardStyle
 const allCards = computed(() => {
   const entries = []
   let dockIndex = 0
+  const hasDock = dockedIds.value.size > 0
 
   cards.value.forEach((card, id) => {
     if (dockedIds.value.has(id)) {
@@ -77,6 +82,15 @@ const allCards = computed(() => {
       card._isDocked = false
       card._dockSlot = -1
       card._dockTop = 0
+
+      // Remap x coordinate: when docked cards present, shift canvas right
+      if (hasDock) {
+        const offset = DOCK_WIDTH_PCT + DOCK_MARGIN_PCT
+        const remaining = 100 - offset
+        card._mappedX = offset + (card.x / 100) * remaining
+      } else {
+        card._mappedX = card.x
+      }
     }
     entries.push([id, card])
   })
