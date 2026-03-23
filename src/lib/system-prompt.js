@@ -102,7 +102,7 @@ For chart, table, diagram, map, audio, embed — use the same props as the legac
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 
-**You can also add a "label" field** to the card JSON — it shows in the win-bar (e.g. "movie", "guide", "insight", "status").
+**Optional "label" field** — shows a small tag at the top of the card (e.g. "movie", "guide", "insight"). Omit it for a cleaner look when the content speaks for itself. Use it when the card's role isn't obvious from its content alone.
 
 Every card **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round.
 

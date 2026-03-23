@@ -12,7 +12,7 @@
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
   >
-    <div class="win-bar">
+    <div v-if="typeLabel" class="win-bar">
       <div class="win-dot"></div>
       <span>{{ typeLabel }}</span>
     </div>
@@ -88,7 +88,7 @@ const componentMap = {
 }
 
 const typeLabel = computed(() => {
-  if (props.card.data?.blocks) return props.card.data?.label || 'card'
+  if (props.card.data?.blocks) return props.card.data?.label || null
   return typeLabels[props.card.type] || props.card.type
 })
 const blockComponent = computed(() => componentMap[props.card.type] || null)
