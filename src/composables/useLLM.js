@@ -54,13 +54,22 @@ export function useLLM() {
       throw new Error('AgenticClaw not loaded. Check CDN script tags.')
     }
 
+    const now = new Date()
+    const timeStr = now.toLocaleString('zh-CN', { 
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+    const basePrompt = useConfigStore().customSystemPrompt || SYSTEM
+    const systemPrompt = `${basePrompt}\n\nCurrent time: ${timeStr}`
+
     claw = AgenticClaw.createClaw({
       apiKey: cfg.apiKey,
       provider: cfg.provider || 'openai',
       baseUrl: cfg.baseUrl || undefined,
       model: cfg.model || undefined,
       proxyUrl: cfg.proxyUrl || undefined,
-      systemPrompt: useConfigStore().customSystemPrompt || SYSTEM,
+      systemPrompt,
       maxTokens: 4096,
       stream: true,
       persist: 'localStorage',
