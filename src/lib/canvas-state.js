@@ -151,16 +151,11 @@ export class CanvasState {
   _update(op) {
     const card = this.cards.get(op.cardId)
     if (!card) return
-    // Docked cards CAN be updated (add to playlist, edit content)
-    // Only move is blocked
+    // Always apply data changes (docked or not)
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
-    // Docked cards: only update data, don't change visual properties
-    if (this.dockedIds.has(op.cardId)) {
-      this.currentRoundIds.add(op.cardId)
-      return
-    }
+    // Always apply visual properties — docked override happens in computed
     card.depth = this.depthLevel
     card.intraZ = Z_PINNED
     card.z = Z_PINNED
@@ -175,7 +170,7 @@ export class CanvasState {
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
-    if (this.dockedIds.has(op.cardId)) return  // AI can't move docked cards
+    // Always apply move — docked position override happens in computed
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
     // LLM can specify z, but clamp to PINNED range (never above new cards)

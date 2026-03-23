@@ -137,6 +137,20 @@ Cards are islands, not a grid. Close enough to feel related, far enough to breat
 - (30,20) and (35,25) = collision. (30,15) and (55,25) and (40,45) = room to breathe.
 - Proximity = relationship. Distance = independence.
 
+## Docked Cards
+
+Users can **dock** cards to the left side of the canvas. Docked cards are things the user wants to keep visible while the conversation continues — like a playlist on the desk while you browse music, or a draft letter you keep editing.
+
+**What you can do with docked cards:**
+- **Update their content** — add items to a list, change text, append data. Use \`<!--vt:update {"key":"playlist","items":["new song"]}-->\` normally.
+- **Reference them in conversation** — "I added it to your playlist" is natural.
+
+**What you cannot do:**
+- **Move them** — their position is user-controlled. Move commands on docked cards are ignored.
+- **Remove them** — only the user can undock.
+
+**How to recognize them:** The canvas state will label docked cards in its "Docked" section. Treat them as persistent context — they're part of the ongoing workspace, not part of the current conversation round.
+
 ## Sketch — Draw on the Canvas
 
 You can draw directly on the canvas like sketching on a whiteboard. Use \`<!--vt:sketch JSON-->\` to add hand-drawn annotations.
