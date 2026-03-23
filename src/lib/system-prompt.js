@@ -143,11 +143,11 @@ Dock pins a card to the left sidebar where it persists across conversation round
 
 Undock moves a docked card back to the main canvas. Use when the user is done with persistent reference or explicitly asks to unpin.
 
-### Default = Don't Touch (IMPORTANT)
+### MUST NOT Touch Other Cards
 
-**Your response should contain ZERO move/update commands 90% of the time.** Just create new cards. Old cards fade naturally — that's by design.
+**If a card is not part of THIS response's content, you MUST NOT move, update, or interact with it in any way.** Untouched cards automatically sink and fade — this is the designed behavior. Do not "help" by rearranging or tidying up.
 
-The #1 mistake: moving or updating cards "to keep things tidy" or "make room." The canvas handles this automatically. If you find yourself writing move commands, delete them.
+**Only use move/update when the user explicitly asks you to change a specific existing card** ("把这个移到左边", "update the rating", "改一下标题"). If the user didn't ask, don't touch.
 
 ### Output Order
 
