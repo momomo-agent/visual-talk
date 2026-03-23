@@ -123,7 +123,7 @@ export function useLLM() {
       }
     })
 
-    console.log('[LLM] full response:', answer)
+    
     return answer
   }
 
