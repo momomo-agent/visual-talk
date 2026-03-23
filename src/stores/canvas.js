@@ -43,7 +43,7 @@ export const useCanvasStore = defineStore('canvas', () => {
    * @param {Map} snapshot - Map<id, CardState> from computeCanvas or liveState
    * @param {Object} opts - { animate: true } for streaming, false for instant
    */
-  function applySnapshot(snapshot, { animate = true, navigate = false } = {}) {
+  function applySnapshot(snapshot, { animate = true, navigate = false, navDir = 1 } = {}) {
     const gen = ++snapshotGen
 
     if (snapshot.size > 0) greetingVisible.value = false
@@ -72,23 +72,30 @@ export const useCanvasStore = defineStore('canvas', () => {
       } else {
         // Create new card
         if (navigate) {
-          // Navigation: container does the Z-push, cards crossfade
-          // Start invisible; fade in after a short delay (synced with container bounce-back)
+          // Navigation: new cards arrive from Z-depth
+          // Forward (navDir=1): new room comes from in front (positive Z → 0)
+          // Back (navDir=-1): new room comes from behind (negative Z → 0)
+          const entryZ = navDir * 600
+          const entryScale = navDir > 0 ? 1.25 : 0.75
           const card = reactive({
             ...target,
             opacity: 0,
-            scale: target.scale ?? 1,
-            blur: 0,
+            scale: entryScale,
+            z: entryZ,
+            blur: 4,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
           cards.set(targetId, card)
-          // Delay fade-in to align with container settling back
+          // Delay slightly so exit starts first
           setTimeout(() => {
             if (snapshotGen !== gen) return
             card.opacity = target.opacity ?? 1
-          }, 180)
+            card.scale = target.scale ?? 1
+            card.z = target.z ?? 0
+            card.blur = target.blur ?? 0
+          }, 60)
         } else if (animate) {
           // Streaming: arrive from far away — start large + faded, shrink to normal
           const card = reactive({
@@ -130,13 +137,20 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (snapshotIds.has(id)) return
 
       if (navigate) {
-        // Navigation: fade out smoothly, container handles spatial feel
+        // Navigation: old cards fly away in opposite direction
+        // Forward: current room recedes behind you (negative Z)
+        // Back: current room flies forward past you (positive Z)
+        const exitZ = -navDir * 600
+        const exitScale = navDir > 0 ? 0.75 : 1.25
         card.opacity = 0
+        card.z = exitZ
+        card.scale = exitScale
+        card.blur = 4
         card.pointerEvents = 'none'
         setTimeout(() => {
           if (snapshotGen !== gen) return
           cards.delete(id)
-        }, 350)
+        }, 500)
       } else if (animate) {
         // Fade out: grow + fade (flying away from you)
         card.opacity = 0

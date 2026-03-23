@@ -9,16 +9,13 @@
 .canvas-space {
   position: absolute; inset: 0;
   transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(.23,1,.32,1),
-              scale 0.35s cubic-bezier(.25,.46,.45,.94),
-              opacity 0.35s ease;
+  transition: transform 0.8s cubic-bezier(.23,1,.32,1);
   pointer-events: none;
 }
 
-/* Navigation Z-push: whole canvas expands (away) then settles back */
+/* Navigation state — no container animation needed, cards handle Z movement */
 .canvas-space.nav-zoom {
-  scale: 1.08;
-  opacity: 0.6;
+  /* marker class for card transition speed override */
 }
 
 .greeting {

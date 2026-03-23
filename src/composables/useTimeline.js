@@ -41,19 +41,23 @@ export function useTimeline() {
     // Trigger container-level Z animation
     canvas.isNavigating = true
     clearTimeout(navTimer)
-    navTimer = setTimeout(() => { canvas.isNavigating = false }, 350)
+    navTimer = setTimeout(() => { canvas.isNavigating = false }, 500)
+
+    // direction: 'back' = going to older nodes, 'forward' = going to newer nodes
+    // Camera moves forward (into screen) = forward, backward (out of screen) = back
+    const navDir = direction === 'back' ? -1 : 1
 
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {
       if (timeline.isLive) {
         const snapshot = timeline.computeCanvas(timeline.activeTip)
-        canvas.applySnapshot(snapshot, { animate: true, navigate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true, navDir })
         isScrollingTimeline.value = false
         clearTimeout(bubbleHideTimer)
       } else {
         showTimelineBubble()
         const snapshot = timeline.computeCanvas(viewId)
-        canvas.applySnapshot(snapshot, { animate: true, navigate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true, navDir })
       }
     }
     return true
