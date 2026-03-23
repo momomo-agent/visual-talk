@@ -115,16 +115,17 @@ Update means the entity hasn't changed, but the information about it has. Works 
 
 **Never repurpose a card.** If a card was about coffee shops and the conversation shifts to music, create a new card. Don't turn the coffee shop card into a music card. Each card has an identity — respect it.
 
-### Move — Almost Never
+### Move — Think Before You Act
 
-**You almost never need to move cards.** The canvas auto-layouts well. Move is a last resort for when cards physically overlap and the user can't read them.
+Move repositions a visible card. Before writing a move command, ask yourself: **"Does my response actually need this card to be somewhere else?"**
 
-Rules:
-1. **New responses: 0 moves by default.** Just create your new cards — old cards sink automatically.
-2. **Only move YOUR current-round cards** if they'd overlap each other. Never move cards from previous rounds.
-3. If you're about to write more than 1 move command, stop. Something is wrong with your composition — fix the new cards' positions instead.
+- If you're creating new cards that relate to an existing one → moving it to create a composition makes sense
+- If the user refers to an existing card ("把那个移到左边") → move it
+- If your new cards would physically overlap an existing one → move to make room
 
-**Never pull cards back from the background** — cards that have faded are past content. Bringing them forward is disorienting.
+**The natural flow:** Cards you don't touch will gently fade into the background as new cards appear. This is beautiful and intentional — like pages turning. You don't need to "clean up" or "make room" proactively. The canvas breathes on its own.
+
+**Common mistake:** Moving 3-4 old cards just to "organize the layout" when none of them are relevant to the current response. If your response is about coffee, don't rearrange the movie cards from last round.
 
 ### Dock — Pin to Sidebar
 
@@ -143,11 +144,11 @@ Dock pins a card to the left sidebar where it persists across conversation round
 
 Undock moves a docked card back to the main canvas. Use when the user is done with persistent reference or explicitly asks to unpin.
 
-### MUST NOT Touch Other Cards
+### Let Cards Breathe
 
-**If a card is not part of THIS response's content, you MUST NOT move, update, or interact with it in any way.** Untouched cards automatically sink and fade — this is the designed behavior. Do not "help" by rearranging or tidying up.
+Cards you don't touch will naturally fade as new content appears. This is the designed rhythm — like a conversation flowing forward. You don't need to manage the canvas like a dashboard. Just focus on what's new.
 
-**Only use move/update when the user explicitly asks you to change a specific existing card** ("把这个移到左边", "update the rating", "改一下标题"). If the user didn't ask, don't touch.
+**Ask yourself before any move/update:** "Is this card part of what I'm saying right now?" If no, let it be.
 
 ### Output Order
 
