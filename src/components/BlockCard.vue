@@ -90,23 +90,20 @@ const cardStyle = computed(() => {
   const c = props.card
   const hasImage = c.type === 'media' || (c.type === 'card' && c.data.image)
 
-  // Docked cards: fixed position on the left side, stacked vertically
+  // Docked cards: flow layout in docked-zone (position handled by CSS flex)
   if (c._isDocked) {
-    const slot = c._dockSlot || 0
-    const topPx = 16 + slot * 220
     const isHovered = c.scale > 1.01
     const isSelected = c.selected
     return {
-      left: '12px',
-      top: `${topPx}px`,
-      width: c.w ? `${c.w}%` : undefined,
-      maxWidth: hasImage ? '380px' : undefined,
-      transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,
+      position: 'relative',
+      width: c.w ? `${c.w}vw` : undefined,
+      maxWidth: hasImage ? '380px' : '360px',
+      transform: `scale(${isHovered || isSelected ? c.scale : 1})`,
       opacity: 1,
       zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
       filter: 'none',
       pointerEvents: 'auto',
-      transition: 'left 0.4s ease, top 0.4s ease, transform 0.3s, opacity 0.3s',
+      transition: 'transform 0.3s, opacity 0.3s',
     }
   }
 
