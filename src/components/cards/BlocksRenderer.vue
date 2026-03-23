@@ -6,7 +6,8 @@
         v-if="block.type === 'heading'"
         :is="headingTag(block.level)"
         class="br-heading"
-      >{{ block.text }}</component>
+        v-html="renderMarkdown(block.text)"
+      />
 
       <!-- text -->
       <p v-else-if="block.type === 'text'" class="br-text" v-html="renderMarkdown(block.text)" />
@@ -44,13 +45,13 @@
       >
         <li v-for="(item, j) in normalizeListItems(block.items)" :key="j">
           <input v-if="block.style === 'todo'" type="checkbox" :checked="item.done" disabled />
-          <span>{{ item.text }}</span>
+          <span v-html="renderMarkdown(item.text)" />
         </li>
       </component>
 
       <!-- quote -->
       <blockquote v-else-if="block.type === 'quote'" class="br-quote">
-        <p>{{ block.text }}</p>
+        <p v-html="renderMarkdown(block.text)" />
         <footer v-if="block.author">
           — {{ block.author }}<span v-if="block.source">, {{ block.source }}</span>
         </footer>
