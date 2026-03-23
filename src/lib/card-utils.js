@@ -78,25 +78,30 @@ export function getCardText(card) {
  * @param {Map} snapshot - Map of cardId → card objects (from computeCanvas or canvas.cards)
  * @returns {string|null}
  */
-export function buildCanvasContext(snapshot, dockedIds = new Set()) {
+export function buildCanvasContext(snapshot, dockedSnapshots = new Map()) {
   const entries = Array.from(snapshot.entries())
-  if (!entries.length) return null
 
   const maxDepth = Math.max(...entries.map(([, c]) => c.depth || 0), 0)
   const latestCards = []    // depth === maxDepth (just created)
   const visibleCards = []   // depth === maxDepth - 1 (user is currently looking at)
   const pastCards = []      // depth < maxDepth - 1 (fading into background)
-  const dockedCards = []    // user-docked cards (DO NOT touch)
+  const dockedCards = []    // user-docked cards — independent layer
+
+  // Docked cards from independent layer
+  dockedSnapshots.forEach((snap, id) => {
+    const key = snap.data?.key
+    const title = getCardTitle(snap)
+    const label = key ? `[${key}]` : title ? `"${title}"` : null
+    if (label) {
+      try {
+        dockedCards.push(`${label} <!--vt:${snap.type} ${JSON.stringify(snap.data)}-->`)
+      } catch {
+        dockedCards.push(label)
+      }
+    }
+  })
 
   entries.forEach(([id, card]) => {
-    // Docked cards go to their own section
-    if (dockedIds.has(id)) {
-      const key = card.data?.key
-      const title = getCardTitle(card)
-      const label = key ? `[${key}]` : title ? `"${title}"` : null
-      if (label) dockedCards.push(`${label} at (${Math.round(card.x)},${Math.round(card.y)})`)
-      return
-    }
 
     const d = card.depth || 0
     if (d === maxDepth) {

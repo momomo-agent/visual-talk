@@ -29,7 +29,7 @@ import SketchOverlay from './SketchOverlay.vue'
 const canvas = useCanvasStore()
 const timeline = useTimelineStore()
 const { cards, greetingVisible } = storeToRefs(canvas)
-const { dockedIds } = storeToRefs(timeline)
+const { dockedIds, dockedSnapshots } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
 // Track card DOM refs for measuring heights
@@ -46,20 +46,14 @@ function recalcDockSlots() {
   const slots = new Map()
   let y = 16  // top padding
   const gap = 20
-  const dockedArray = []
 
-  cards.value.forEach((card, id) => {
-    if (dockedIds.value.has(id)) dockedArray.push(id)
-  })
-
-  for (const id of dockedArray) {
+  dockedSnapshots.value.forEach((snap, id) => {
     slots.set(id, y)
-    // Try to measure actual height from DOM
     const ref = cardRefs.get(id)
     const el = ref?.$el || ref
     const h = el?.offsetHeight || 200
     y += h + gap
-  }
+  })
   dockSlots.value = slots
 }
 
@@ -67,41 +61,50 @@ function recalcDockSlots() {
 // Convert to percentage at runtime based on actual viewport
 const DOCK_ZONE_PX = 288
 
-// All cards in one list — docked ones get position overrides via cardStyle
+// All cards in one list — canvas cards + docked snapshots merged
 const allCards = computed(() => {
   const entries = []
   let dockIndex = 0
-  const hasDock = dockedIds.value.size > 0
+  const dIds = dockedIds.value
+  const hasDock = dIds.size > 0
 
+  // Canvas cards (tree replay results) — skip docked ones (they're in independent layer)
   cards.value.forEach((card, id) => {
-    if (dockedIds.value.has(id)) {
-      card._isDocked = true
-      card._dockSlot = dockIndex++
-      card._dockTop = dockSlots.value.get(id) ?? (12 + card._dockSlot * 200)
-    } else {
-      card._isDocked = false
-      card._dockSlot = -1
-      card._dockTop = 0
+    if (dIds.has(id)) return  // hidden — it's been picked up
 
-      // Remap x coordinate: when docked cards present, shift canvas right
-      if (hasDock) {
-        const vw = window.innerWidth || 1440
-        const offsetPct = (DOCK_ZONE_PX / vw) * 100
-        const remaining = 100 - offsetPct
-        card._mappedX = offsetPct + (card.x / 100) * remaining
-      } else {
-        card._mappedX = card.x
-      }
+    card._isDocked = false
+    card._dockSlot = -1
+    card._dockTop = 0
+
+    // Remap x coordinate: when docked cards present, shift canvas right
+    if (hasDock) {
+      const vw = window.innerWidth || 1440
+      const offsetPct = (DOCK_ZONE_PX / vw) * 100
+      const remaining = 100 - offsetPct
+      card._mappedX = offsetPct + (card.x / 100) * remaining
+    } else {
+      card._mappedX = card.x
     }
+
     entries.push([id, card])
   })
+
+  // Docked snapshots — independent layer
+  dockedSnapshots.value.forEach((snap, id) => {
+    const docked = { ...snap }
+    docked._isDocked = true
+    docked._dockSlot = dockIndex++
+    docked._dockTop = dockSlots.value.get(id) ?? (16 + docked._dockSlot * 220)
+    entries.push([id, docked])
+  })
+
   return entries
 })
 
 const hasDocked = computed(() => dockedIds.value.size > 0)
 
 // Recalc dock positions when dock list changes
-watch(dockedIds, () => {
+watch(dockedSnapshots, () => {
   nextTick(() => recalcDockSlots())
 }, { deep: true })
 

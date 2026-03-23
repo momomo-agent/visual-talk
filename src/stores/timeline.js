@@ -34,12 +34,12 @@ export const useTimelineStore = defineStore('timeline', () => {
   // Cache: computed canvas state per node id
   const canvasCache = new Map()
 
-  // Global docked card IDs — independent of timeline navigation
-  const dockedIds = reactive(new Set())
+  // Docked snapshots — independent layer, not part of the tree
+  // key: cardId, value: { id, type, data, x, y, w, ... } (full card state)
+  const dockedSnapshots = reactive(new Map())
 
-  // Dock history: cardId → { dockedAt: nodeId, undockedAt: nodeId | null }
-  // Used to keep cards visible between dock and undock during navigation
-  const dockHistory = reactive(new Map())
+  // Convenience: set of docked card IDs (derived from dockedSnapshots)
+  const dockedIds = computed(() => new Set(dockedSnapshots.keys()))
 
   // --- Tree operations ---
 
@@ -111,6 +111,24 @@ export const useTimelineStore = defineStore('timeline', () => {
       operation.card.w = data.w || operation.card.w || 25
     }
 
+    // Intercept updates/moves for docked cards — apply to snapshot, not tree
+    if ((operation.op === 'update' || operation.op === 'move') && operation.cardId) {
+      const snap = dockedSnapshots.get(operation.cardId)
+      if (snap) {
+        if (operation.op === 'update' && operation.changes) {
+          Object.assign(snap.data, operation.changes)
+        }
+        // Move ops ignored for docked cards (position is user-controlled)
+        // Don't store in node.operations — this update belongs to the docked layer
+        // Still trigger canvas re-render
+        if (nodeId === activeTip.value && viewingId.value == null) {
+          const canvas = useCanvasStore()
+          canvas.applySnapshot(liveState?.cards ?? computeCanvas(nodeId), { animate: true })
+        }
+        return  // Don't add to tree
+      }
+    }
+
     node.operations.push(operation)
     invalidateFrom(nodeId)
 
@@ -119,7 +137,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       // Maintain incremental state for streaming performance
       if (!liveState) {
         // First op in this round — bootstrap from parent state
-        liveState = new CanvasState(dockedIds)
+        liveState = new CanvasState()
         const path = getPathFromRoot(nodeId)
         // Replay all nodes EXCEPT the current one (it's being built incrementally)
         for (let i = 0; i < path.length - 1; i++) {
@@ -190,7 +208,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (canvasCache.has(nodeId)) return canvasCache.get(nodeId)
 
     const path = getPathFromRoot(nodeId)
-    const state = new CanvasState(dockedIds)
+    const state = new CanvasState()
 
     for (const node of path) {
       state.beginNode()
@@ -211,39 +229,13 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     }
 
-    // Docked cards always show latest content from activeTip
-    if (nodeId !== activeTip.value && activeTip.value != null && dockedIds.size > 0) {
-      const tipCards = computeCanvas(activeTip.value)
-      tipCards.forEach((tipCard, tipId) => {
-        if (dockedIds.has(tipId)) {
-          // Always use activeTip version — whether card exists here or not
-          state.cards.set(tipId, { ...tipCard })
+    // Hide docked cards from canvas — they live in the independent layer
+    dockedSnapshots.forEach((snap, cardId) => {
+      state.cards.forEach((card, id) => {
+        if (id === cardId || (card.data?.key && snap.data?.key && card.data.key === snap.data.key)) {
+          state.cards.delete(id)
         }
       })
-    }
-
-    // Cards that were docked during this node should stay visible (not sunk)
-    // Check dockHistory: if nodeId is between dockedAt and undockedAt, revive the card
-    const pathIds = new Set(path.map(n => n.id))
-    dockHistory.forEach((history, cardId) => {
-      if (dockedIds.has(cardId)) return  // still docked, already handled above
-      const card = state.cards.get(cardId)
-      if (!card) return
-      // Check if this node falls within the dock period
-      const dockPath = getPathFromRoot(history.undockedAt ?? activeTip.value)
-      const dockNodeIds = dockPath.map(n => n.id)
-      const dockIdx = dockNodeIds.indexOf(history.dockedAt)
-      const undockIdx = history.undockedAt != null ? dockNodeIds.indexOf(history.undockedAt) : dockNodeIds.length - 1
-      const currentIdx = dockNodeIds.indexOf(nodeId)
-      if (currentIdx >= dockIdx && currentIdx <= undockIdx && card.sunk) {
-        // Card was docked during this period — keep visible but subtle
-        card.sunk = false
-        card.opacity = 0.6
-        card.scale = 0.85
-        card.blur = 0
-        card.pointerEvents = 'auto'
-        card.zIndex = 30
-      }
     })
 
     canvasCache.set(nodeId, state.cards)
@@ -449,35 +441,90 @@ export const useTimelineStore = defineStore('timeline', () => {
     viewingId.value = null
     nodeCounter = 0
     canvasCache.clear()
-    dockedIds.clear()
+    dockedSnapshots.clear()
   }
 
   /**
-   * Toggle dock state for a card.
-   * Docked cards are rendered in a separate sidebar, not in the canvas.
+   * Dock a card — pick it up from the canvas into the independent layer.
    */
-  function toggleDock(cardId) {
-    const currentNode = viewingId.value ?? activeTip.value
-    if (dockedIds.has(cardId)) {
-      // Undocking — record when it was undocked
-      dockedIds.delete(cardId)
-      const history = dockHistory.get(cardId)
-      if (history) {
-        history.undockedAt = currentNode
-      }
-    } else {
-      // Docking — record when it was docked
-      dockedIds.add(cardId)
-      dockHistory.set(cardId, { dockedAt: currentNode, undockedAt: null })
-    }
-    // Docked state affects computeCanvas output — clear all cached snapshots
+  function dockCard(cardId) {
+    if (dockedSnapshots.has(cardId)) return  // already docked
+
+    // Get card data from current canvas state
+    const viewId = viewingId.value ?? activeTip.value
+    if (viewId == null) return
+    const snapshot = liveState?.cards ?? computeCanvas(viewId)
+    const card = snapshot.get(cardId)
+    if (!card) return
+
+    // Deep copy card data into docked layer
+    dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
     canvasCache.clear()
-    // Re-apply current view so canvas reflects the change
+
+    // Re-render
+    const canvas = useCanvasStore()
+    const newSnapshot = computeCanvas(viewId)
+    canvas.applySnapshot(newSnapshot, { animate: true })
+  }
+
+  /**
+   * Undock a card — put it back on the canvas at the current node.
+   */
+  function undockCard(cardId) {
+    const snap = dockedSnapshots.get(cardId)
+    if (!snap) return
+
+    // Inject as create op into activeTip node
+    const tipId = activeTip.value
+    if (tipId == null) return
+    const node = nodes.get(tipId)
+    if (!node) return
+
+    // Create op with snapshot data
+    node.operations.push({
+      op: 'create',
+      card: {
+        id: cardId,
+        type: snap.type,
+        data: JSON.parse(JSON.stringify(snap.data)),
+        x: snap.x,
+        y: snap.y,
+        w: snap.w,
+      }
+    })
+
+    dockedSnapshots.delete(cardId)
+    canvasCache.clear()
+    invalidateFrom(tipId)
+
+    // Re-render
+    const viewId = viewingId.value ?? tipId
+    const canvas = useCanvasStore()
+    canvas.applySnapshot(computeCanvas(viewId), { animate: true })
+  }
+
+  /**
+   * Close a docked card — discard it without putting it back.
+   */
+  function closeDocked(cardId) {
+    dockedSnapshots.delete(cardId)
+    canvasCache.clear()
+
     const viewId = viewingId.value ?? activeTip.value
     if (viewId != null) {
-      const snapshot = computeCanvas(viewId)
       const canvas = useCanvasStore()
-      canvas.applySnapshot(snapshot, { animate: true })
+      canvas.applySnapshot(computeCanvas(viewId), { animate: true })
+    }
+  }
+
+  /**
+   * Toggle dock state (backward compat for double-click).
+   */
+  function toggleDock(cardId) {
+    if (dockedSnapshots.has(cardId)) {
+      undockCard(cardId)
+    } else {
+      dockCard(cardId)
     }
   }
 
@@ -510,8 +557,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       nodeCounter,
       activeTip: activeTip.value,
       nodes: nodesData,
-      dockedIds: [...dockedIds],
-      dockHistory: Object.fromEntries(dockHistory),
+      dockedSnapshots: Object.fromEntries(dockedSnapshots),
     }
   }
 
@@ -540,17 +586,17 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (data.nodeCounter != null) {
       nodeCounter = data.nodeCounter
     }
-    // Restore docked cards
-    dockedIds.clear()
-    if (data.dockedIds) {
-      for (const id of data.dockedIds) dockedIds.add(id)
-    }
-    // Restore dock history
-    dockHistory.clear()
-    if (data.dockHistory) {
-      for (const [cardId, hist] of Object.entries(data.dockHistory)) {
-        dockHistory.set(cardId, hist)
+    // Restore docked snapshots
+    dockedSnapshots.clear()
+    if (data.dockedSnapshots) {
+      for (const [id, snap] of Object.entries(data.dockedSnapshots)) {
+        dockedSnapshots.set(id, snap)
       }
+    }
+    // Backward compat: old format had dockedIds (Set) without snapshots
+    if (data.dockedIds && !data.dockedSnapshots) {
+      // Can't restore snapshots from just IDs — they'll be lost
+      // User will need to re-dock
     }
     if (activeTip.value != null) {
       restoreToNode(activeTip.value)
@@ -612,7 +658,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const snapshot = (id === activeTip.value && liveState)
       ? liveState.cards
       : computeCanvas(id)
-    return buildCanvasContext(snapshot, dockedIds)
+    return buildCanvasContext(snapshot, dockedSnapshots)
   }
 
   /**
@@ -657,6 +703,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     toJSON,
     fromJSON,
     dockedIds,
+    dockedSnapshots,
     toggleDock,
+    dockCard,
+    undockCard,
+    closeDocked,
   }
 })

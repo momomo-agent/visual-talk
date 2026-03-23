@@ -9,12 +9,11 @@
 import { Z_INTRA_STEP, Z_PINNED, Z_PER_DEPTH } from './z-layers.js'
 
 export class CanvasState {
-  constructor(dockedIds = new Set()) {
+  constructor() {
     this.cards = new Map()
     this.depthLevel = 0
     this.currentRoundIds = new Set()
     this.pinnedIds = new Set()
-    this.dockedIds = dockedIds
   }
 
   /**
@@ -67,16 +66,6 @@ export class CanvasState {
   _push() {
     this.depthLevel++
     this.cards.forEach((card, id) => {
-      // Docked cards never sink — they stay at full opacity/scale
-      if (this.dockedIds.has(id)) {
-        card.depth = this.depthLevel
-        card.opacity = 1
-        card.scale = 1
-        card.blur = 0
-        card.z = 0
-        card.zIndex = 900
-        return
-      }
       if (this.pinnedIds.has(id) || this.currentRoundIds.has(id)) {
         card.depth = this.depthLevel
         // Pinned cards stay visible but behind new cards
