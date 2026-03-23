@@ -261,6 +261,9 @@
 
 .audio-tags {
   padding: 4px 14px 0;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
 }
 .audio-source {
   padding: 2px 14px 10px;
