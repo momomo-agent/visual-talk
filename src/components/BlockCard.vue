@@ -17,9 +17,16 @@
       <span>{{ typeLabel }}</span>
     </div>
 
+    <!-- Blocks mode: free composition of elements -->
+    <BlocksRenderer
+      v-if="card.data?.blocks"
+      :blocks="card.data.blocks"
+    />
+
+    <!-- Legacy mode: fixed type → component mapping -->
     <component
       :is="blockComponent"
-      v-if="blockComponent"
+      v-else-if="blockComponent"
       :data="card.data"
       v-bind="extraProps"
     />
@@ -29,6 +36,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Z_HOVER } from '../lib/z-layers.js'
+import BlocksRenderer from './cards/BlocksRenderer.vue'
 import CardBlock from './cards/CardBlock.vue'
 import MetricBlock from './cards/MetricBlock.vue'
 import StepsBlock from './cards/StepsBlock.vue'
@@ -79,7 +87,10 @@ const componentMap = {
   profile: ProfileBlock,
 }
 
-const typeLabel = computed(() => typeLabels[props.card.type] || props.card.type)
+const typeLabel = computed(() => {
+  if (props.card.data?.blocks) return props.card.data?.label || 'card'
+  return typeLabels[props.card.type] || props.card.type
+})
 const blockComponent = computed(() => componentMap[props.card.type] || null)
 
 // MediaBlock needs the type prop to distinguish media vs embed

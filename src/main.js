@@ -4,6 +4,7 @@ import App from './App.vue'
 import './styles/base.css'
 import './styles/canvas.css'
 import './styles/blocks.css'
+import './styles/blocks-renderer.css'
 
 const app = createApp(App)
 const pinia = createPinia()
