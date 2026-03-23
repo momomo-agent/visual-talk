@@ -38,8 +38,6 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 }
 .br-image img {
   width: 100%;
-  max-height: 280px;
-  object-fit: cover;
   display: block;
 }
 .br-image figcaption {
