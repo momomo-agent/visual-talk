@@ -9,8 +9,10 @@ import webFetchSkill from '../skills/web-fetch.js'
 import weatherSkill from '../skills/weather.js'
 import calculateSkill from '../skills/calculate.js'
 import locationSkill from '../skills/location.js'
+import imageGenSkill from '../skills/image-gen.js'
+import stockSkill from '../skills/stock.js'
 
-const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill]
+const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill, imageGenSkill, stockSkill]
 
 let claw = null
 let clawConfigKey = null
