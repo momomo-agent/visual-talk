@@ -73,7 +73,10 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
   columns: array of header strings. rows: array of objects keyed by column name.
 - embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
   Supports YouTube, Bilibili, Google Maps, and generic link previews.
-  **For music/listening requests**: search YouTube for the song/artist and embed the video. This gives the user actual playback — not just a recommendation card.
+- audio: {"key":"now-playing","x":5,"y":10,"z":60,"w":22,"title":"Almost Blue","artist":"Chet Baker","album":"Chet Baker Sings","image":"album-cover-url","duration":"5:18","tags":["Jazz"],"kind":"music","source":"1988"}
+  For music, podcasts, sound, and anything you listen to. kind: "music" (default), "podcast", or "sound".
+  Cover art (image) is essential — search for album/podcast artwork. Duration as "M:SS" or seconds.
+  Music is a mood-setting object — it lives alongside conversation like a record on the desk.
 - map: {"key":"trip-map","x":10,"y":5,"z":40,"w":40,"title":"路线地图","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4"}
   Interactive map with markers and route lines. center/markers/route use [lat, lng]. Colors: use the sketch palette (#e8a849 gold, #ef8f6e pink, #7ec8a4 mint, #8bacd4 blue). Use map when showing locations, travel routes, geographic comparisons, or "where is X".
 - diagram: {"key":"arch","x":10,"y":5,"z":30,"w":45,"title":"System Architecture","code":"graph TD\\n  A[User] --> B[Frontend]\\n  B --> C[API]\\n  C --> D[Database]","footer":""}
