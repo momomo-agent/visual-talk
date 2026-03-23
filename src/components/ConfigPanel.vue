@@ -29,6 +29,21 @@
         <label>TMDB API Key (电影)</label>
         <input type="text" v-model="config.tmdbKey" placeholder="免费申请 themoviedb.org" />
       </div>
+
+      <div class="field section-label">🎨 图片生成</div>
+      <div class="field">
+        <label>Image Base URL</label>
+        <input type="text" v-model="config.imageBaseUrl" placeholder="https://api.openai.com" />
+      </div>
+      <div class="field">
+        <label>Image API Key</label>
+        <input type="text" v-model="config.imageApiKey" placeholder="sk-..." />
+      </div>
+      <div class="field">
+        <label>Image Model</label>
+        <input type="text" v-model="config.imageModel" placeholder="dall-e-3" />
+      </div>
+
       <div class="field">
         <label>
           <input type="checkbox" v-model="config.showToolCalls" style="accent-color:#e8856a" />

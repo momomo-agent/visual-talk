@@ -22,6 +22,9 @@ export const useConfigStore = defineStore('config', () => {
   const sketchEnabled = ref(true)
   const sketchFont = ref('Yozai')
   const customSystemPrompt = ref('')
+  const imageBaseUrl = ref('')
+  const imageApiKey = ref('')
+  const imageModel = ref('')
 
   function load() {
     try {
@@ -44,6 +47,9 @@ export const useConfigStore = defineStore('config', () => {
       if (s.sketchEnabled != null) sketchEnabled.value = !!s.sketchEnabled
       if (s.sketchFont) sketchFont.value = s.sketchFont
       if (s.customSystemPrompt != null) customSystemPrompt.value = s.customSystemPrompt
+      if (s.imageBaseUrl) imageBaseUrl.value = s.imageBaseUrl
+      if (s.imageApiKey) imageApiKey.value = s.imageApiKey
+      if (s.imageModel) imageModel.value = s.imageModel
     } catch {}
   }
 
@@ -67,6 +73,9 @@ export const useConfigStore = defineStore('config', () => {
       sketchEnabled: sketchEnabled.value,
       sketchFont: sketchFont.value,
       customSystemPrompt: customSystemPrompt.value,
+      imageBaseUrl: imageBaseUrl.value,
+      imageApiKey: imageApiKey.value,
+      imageModel: imageModel.value,
     }))
   }
 
@@ -97,13 +106,17 @@ export const useConfigStore = defineStore('config', () => {
       ttsModel: ttsModel.value.trim() || undefined,
       ttsVoice: ttsVoice.value || 'nova',
       proxyUrl: proxyEnabled.value ? ensureHttps(proxyUrl.value.trim() || 'proxy.link2web.site') : undefined,
+      imageBaseUrl: cleanBaseUrl(imageBaseUrl.value) || undefined,
+      imageApiKey: imageApiKey.value.trim() || undefined,
+      imageModel: imageModel.value.trim() || undefined,
     }
   }
 
   // Auto-save on any change
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
-    proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt], save)
+    proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
+    imageBaseUrl, imageApiKey, imageModel], save)
 
   // Load on creation
   load()
@@ -112,6 +125,7 @@ export const useConfigStore = defineStore('config', () => {
     provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
+    imageBaseUrl, imageApiKey, imageModel,
     load, save, getConfig,
   }
 })

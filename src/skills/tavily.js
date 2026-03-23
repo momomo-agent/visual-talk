@@ -64,6 +64,7 @@ export const tools = [
       required: ['query'],
     },
     execute: async (input, config) => tavilySearch(input, config?.tavilyKey),
+    requiresConfig: (cfg) => !!cfg?.tavilyKey,
   },
 ]
 

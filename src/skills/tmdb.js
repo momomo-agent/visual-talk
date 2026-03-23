@@ -61,6 +61,7 @@ export const tools = [
       },
       required: ['query'],
     },
+    requiresConfig: (cfg) => !!cfg?.tmdbKey,
     execute: async (input, config) => {
       if (!config?.tmdbKey) return { error: 'TMDB API key not configured. Add it in Settings.' }
       const data = await tmdbFetch('/search/movie', config.tmdbKey, {
@@ -95,6 +96,7 @@ export const tools = [
       },
       required: ['movie_id'],
     },
+    requiresConfig: (cfg) => !!cfg?.tmdbKey,
     execute: async (input, config) => {
       if (!config?.tmdbKey) return { error: 'TMDB API key not configured' }
       const m = await tmdbFetch(`/movie/${input.movie_id}`, config.tmdbKey, {
@@ -134,6 +136,7 @@ export const tools = [
       },
       required: ['query'],
     },
+    requiresConfig: (cfg) => !!cfg?.tmdbKey,
     execute: async (input, config) => {
       if (!config?.tmdbKey) return { error: 'TMDB API key not configured' }
       const data = await tmdbFetch('/search/tv', config.tmdbKey, { query: input.query }, config.proxyUrl)

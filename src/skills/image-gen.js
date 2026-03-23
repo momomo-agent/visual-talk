@@ -2,17 +2,17 @@
  * Image Generation Skill — OpenAI-compatible images/generations API
  * 
  * Provides: generate_image
- * Uses the same baseUrl/apiKey as the LLM provider
+ * Uses separate imageBaseUrl/imageApiKey/imageModel config
  */
 
 async function generateImage(args, config) {
-  const apiKey = config?.apiKey
-  const baseUrl = (config?.baseUrl || '').replace(/\/+$/, '')
+  const apiKey = config?.imageApiKey
+  const baseUrl = (config?.imageBaseUrl || '').replace(/\/+$/, '')
   
-  if (!apiKey || !baseUrl) return { error: 'API key/base URL not configured' }
+  if (!apiKey || !baseUrl) return { error: 'Image API key/base URL not configured' }
 
   const payload = {
-    model: args.model || 'dall-e-3',
+    model: config?.imageModel || args.model || 'dall-e-3',
     prompt: args.prompt,
     n: 1,
     size: args.size || '1024x1024',
@@ -59,6 +59,7 @@ export const tools = [
       required: ['prompt'],
     },
     execute: async (input, config) => generateImage(input, config),
+    requiresConfig: (cfg) => !!(cfg?.imageApiKey && cfg?.imageBaseUrl),
   },
 ]
 

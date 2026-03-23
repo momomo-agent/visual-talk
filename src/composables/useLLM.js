@@ -11,8 +11,10 @@ import calculateSkill from '../skills/calculate.js'
 import locationSkill from '../skills/location.js'
 import imageGenSkill from '../skills/image-gen.js'
 import stockSkill from '../skills/stock.js'
+import wikipediaSkill from '../skills/wikipedia.js'
+import musicSkill from '../skills/music.js'
 
-const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill, imageGenSkill, stockSkill]
+const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill, imageGenSkill, stockSkill, wikipediaSkill, musicSkill]
 
 let claw = null
 let clawConfigKey = null
@@ -20,16 +22,22 @@ let clawConfigKey = null
 /**
  * Expand skills into customTools array for agentic-claw.
  * Each tool.execute receives the skill's config slice.
+ * Tools with requiresConfig are only registered when their config is present.
  */
 function buildTools(skills, cfg) {
   const tools = []
+  const skillConfig = {
+    tavilyKey: cfg.tavilyKey,
+    tmdbKey: cfg.tmdbKey,
+    imageBaseUrl: cfg.imageBaseUrl,
+    imageApiKey: cfg.imageApiKey,
+    imageModel: cfg.imageModel,
+    proxyUrl: 'https://proxy.link2web.site',  // Always available for GFW fallback
+  }
   for (const skill of skills) {
-    const skillConfig = {
-      tavilyKey: cfg.tavilyKey,
-      tmdbKey: cfg.tmdbKey,
-      proxyUrl: 'https://proxy.link2web.site',  // Always available for GFW fallback
-    }
     for (const tool of skill.tools) {
+      // Skip tools whose required config is missing
+      if (tool.requiresConfig && !tool.requiresConfig(skillConfig)) continue
       tools.push({
         name: tool.name,
         description: tool.description,

@@ -314,6 +314,10 @@ You have tools that fetch real, structured data. These exist because your traini
 
 **get_stock** — Get stock prices and 5-day history. Supports US (AAPL), HK (0700.HK), and China A-shares (600519.SS / 000858.SZ). Use for finance questions, portfolio checks, market discussions.
 
+**get_wikipedia** — Wikipedia article summary with thumbnail. More precise than web_search for encyclopedic queries. Supports en/zh/ja/ko/fr/de/es. Use for facts about people, places, events, concepts.
+
+**search_music** — Search songs via iTunes. Returns track, artist, album, high-res cover art URL, 30-second preview audio URL, and genre. Use for music recommendations, song info, or any music topic.
+
 **Principle: Tools give you data you can't reliably produce from memory. Use them when the data matters.**
 
 ## Images — Show Things as They Are
