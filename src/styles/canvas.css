@@ -15,9 +15,9 @@
   pointer-events: none;
 }
 
-/* Navigation Z-push: whole canvas shrinks then bounces back */
+/* Navigation Z-push: whole canvas expands (away) then settles back */
 .canvas-space.nav-zoom {
-  scale: 0.92;
+  scale: 1.08;
   opacity: 0.6;
 }
 

@@ -72,22 +72,30 @@ export const useCanvasStore = defineStore('canvas', () => {
       } else {
         // Create new card
         if (navigate) {
-          // Navigation: container handles the spatial animation
-          // Cards just appear instantly at final state
+          // Navigation: container does the Z-push, cards crossfade
+          // Start invisible; fade in after a short delay (synced with container bounce-back)
           const card = reactive({
             ...target,
+            opacity: 0,
+            scale: target.scale ?? 1,
+            blur: 0,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
           cards.set(targetId, card)
+          // Delay fade-in to align with container settling back
+          setTimeout(() => {
+            if (snapshotGen !== gen) return
+            card.opacity = target.opacity ?? 1
+          }, 180)
         } else if (animate) {
-          // Streaming: fly in from deep space
+          // Streaming: arrive from far away — start large + faded, shrink to normal
           const card = reactive({
             ...target,
             opacity: 0,
             z: Z_ENTER,
-            scale: 0.4,
+            scale: 1.35,
             blur: 6,
             selected: false,
             pointerEvents: 'auto',
@@ -122,12 +130,18 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (snapshotIds.has(id)) return
 
       if (navigate) {
-        // Navigation: container handles animation, just remove instantly
-        cards.delete(id)
+        // Navigation: fade out smoothly, container handles spatial feel
+        card.opacity = 0
+        card.pointerEvents = 'none'
+        setTimeout(() => {
+          if (snapshotGen !== gen) return
+          cards.delete(id)
+        }, 350)
       } else if (animate) {
+        // Fade out: grow + fade (flying away from you)
         card.opacity = 0
         card.z = Z_FADE_OUT
-        card.scale = 0.3
+        card.scale = 1.3
         card.blur = 10
         card.pointerEvents = 'none'
         setTimeout(() => {
