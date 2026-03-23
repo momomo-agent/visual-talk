@@ -93,18 +93,18 @@ const cardStyle = computed(() => {
   // Docked cards: fixed position on the left side, stacked vertically
   if (c._isDocked) {
     const slot = c._dockSlot || 0
-    const topOffset = 10 + slot * 35  // % from top, spaced 35% apart
+    const topPx = 16 + slot * 220  // px from top, spaced 220px apart
     return {
-      left: '2%',
-      top: `${topOffset}%`,
-      width: '22%',
-      maxWidth: hasImage ? '280px' : '260px',
-      transform: 'translateZ(200px) scale(1)',
+      left: '12px',
+      top: `${topPx}px`,
+      width: '240px',
+      maxWidth: '240px',
+      transform: 'translateZ(0px) scale(1)',
       opacity: 1,
       zIndex: 900,
       filter: 'none',
       pointerEvents: 'auto',
-      transition: 'left 0.4s, top 0.4s, transform 0.3s, opacity 0.3s',
+      transition: 'left 0.4s ease, top 0.4s ease, transform 0.3s, opacity 0.3s',
     }
   }
 

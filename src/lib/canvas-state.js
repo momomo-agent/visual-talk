@@ -73,7 +73,7 @@ export class CanvasState {
         card.opacity = 1
         card.scale = 1
         card.blur = 0
-        card.z = 200
+        card.z = 0
         card.zIndex = 900
         return
       }
