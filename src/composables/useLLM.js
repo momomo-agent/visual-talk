@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
 import { SYSTEM } from '../lib/system-prompt.js'
-import { useConfigStore } from '../stores/config.js'
 
 // Skills
 import tmdbSkill from '../skills/tmdb.js'
