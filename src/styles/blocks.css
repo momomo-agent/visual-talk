@@ -121,3 +121,15 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
 }
+
+/* Docked card indicator */
+.v-block.is-docked {
+  border-color: rgba(180,150,110,0.25) !important;
+  box-shadow: 0 0 20px rgba(180,150,110,0.08), 0 4px 16px rgba(0,0,0,0.3) !important;
+}
+.v-block.is-docked .win-bar::after {
+  content: '⚓';
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.4;
+}

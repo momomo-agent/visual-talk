@@ -2,9 +2,10 @@
   <div class="canvas" @click="handleBgClick">
     <div class="canvas-space" ref="spaceRef">
       <BlockCard
-        v-for="[id, card] in visibleCards"
+        v-for="[id, card] in allCards"
         :key="id"
         :card="card"
+        :class="{ 'is-docked': dockedIds.has(id) }"
         @toggle-select="(e) => toggleSelect(id, e)"
         @toggle-dock="() => onToggleDock(id)"
         @update-position="(x, y) => updateCardPosition(id, x, y)"
@@ -17,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCanvasStore } from '../stores/canvas.js'
 import { useTimelineStore } from '../stores/timeline.js'
@@ -30,13 +31,22 @@ const { cards, greetingVisible } = storeToRefs(canvas)
 const { dockedIds } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 
-// Filter out docked cards from canvas rendering
-const visibleCards = computed(() => {
+// All cards — docked ones get position overrides via CSS/style
+const allCards = computed(() => {
   const entries = []
+  let dockIndex = 0
+
   cards.value.forEach((card, id) => {
-    if (!dockedIds.value.has(id)) {
-      entries.push([id, card])
+    if (dockedIds.value.has(id)) {
+      // Force docked position: stack vertically on left side
+      // We set _dockSlot so the card style can position it
+      card._dockSlot = dockIndex++
+      card._isDocked = true
+    } else {
+      card._isDocked = false
+      card._dockSlot = -1
     }
+    entries.push([id, card])
   })
   return entries
 })
@@ -56,6 +66,7 @@ function onToggleDock(cardId) {
 }
 
 function onDragEnd(card, x, y) {
+  if (card._isDocked) return  // don't save overrides for docked cards
   const key = card.data?.key
   if (key) {
     timeline.setUserOverride(key, x, y)

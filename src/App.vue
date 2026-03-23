@@ -1,5 +1,4 @@
 <template>
-  <DockedSidebar />
   <CanvasSpace @click-canvas="blurInput" />
   <SpeechBubble
     :text="isScrollingTimeline ? timelineBubbleText : bubbleText"
@@ -31,7 +30,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import CanvasSpace from './components/CanvasSpace.vue'
-import DockedSidebar from './components/DockedSidebar.vue'
 import SpeechBubble from './components/SpeechBubble.vue'
 import ThinkingDots from './components/ThinkingDots.vue'
 import InputBar from './components/InputBar.vue'

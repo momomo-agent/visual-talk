@@ -9,11 +9,12 @@
 import { Z_INTRA_STEP, Z_PINNED, Z_PER_DEPTH } from './z-layers.js'
 
 export class CanvasState {
-  constructor() {
+  constructor(dockedIds = new Set()) {
     this.cards = new Map()
     this.depthLevel = 0
     this.currentRoundIds = new Set()
     this.pinnedIds = new Set()
+    this.dockedIds = dockedIds
   }
 
   /**
@@ -66,6 +67,16 @@ export class CanvasState {
   _push() {
     this.depthLevel++
     this.cards.forEach((card, id) => {
+      // Docked cards never sink — they stay at full opacity/scale
+      if (this.dockedIds.has(id)) {
+        card.depth = this.depthLevel
+        card.opacity = 1
+        card.scale = 1
+        card.blur = 0
+        card.z = 200
+        card.zIndex = 900
+        return
+      }
       if (this.pinnedIds.has(id) || this.currentRoundIds.has(id)) {
         card.depth = this.depthLevel
         // Pinned cards stay visible but behind new cards
@@ -140,6 +151,7 @@ export class CanvasState {
   _update(op) {
     const card = this.cards.get(op.cardId)
     if (!card) return
+    if (this.dockedIds.has(op.cardId)) return  // AI can't update docked cards
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
@@ -157,6 +169,7 @@ export class CanvasState {
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
+    if (this.dockedIds.has(op.cardId)) return  // AI can't move docked cards
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
     // LLM can specify z, but clamp to PINNED range (never above new cards)

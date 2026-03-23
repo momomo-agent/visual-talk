@@ -89,6 +89,25 @@ const extraProps = computed(() => {
 const cardStyle = computed(() => {
   const c = props.card
   const hasImage = c.type === 'media' || (c.type === 'card' && c.data.image)
+
+  // Docked cards: fixed position on the left side, stacked vertically
+  if (c._isDocked) {
+    const slot = c._dockSlot || 0
+    const topOffset = 10 + slot * 35  // % from top, spaced 35% apart
+    return {
+      left: '2%',
+      top: `${topOffset}%`,
+      width: '22%',
+      maxWidth: hasImage ? '280px' : '260px',
+      transform: 'translateZ(200px) scale(1)',
+      opacity: 1,
+      zIndex: 900,
+      filter: 'none',
+      pointerEvents: 'auto',
+      transition: 'left 0.4s, top 0.4s, transform 0.3s, opacity 0.3s',
+    }
+  }
+
   return {
     left: `${c.x}%`,
     top: `${c.y}%`,
