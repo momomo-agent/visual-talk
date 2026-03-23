@@ -115,20 +115,16 @@ Update means the entity hasn't changed, but the information about it has. Works 
 
 **Never repurpose a card.** If a card was about coffee shops and the conversation shifts to music, create a new card. Don't turn the coffee shop card into a music card. Each card has an identity — respect it.
 
-### Move — Only When Necessary
+### Move — Almost Never
 
-Move repositions a card that's already visible and clear to the user. **Use move sparingly** — most responses don't need to rearrange existing cards. Only move when new cards would overlap or when composition genuinely needs adjustment.
+**You almost never need to move cards.** The canvas auto-layouts well. Move is a last resort for when cards physically overlap and the user can't read them.
 
-**Never pull cards back from the background** — cards that have faded/blurred into the back are past content. Bringing them forward is disorienting ("where did this come from?").
+Rules:
+1. **New responses: 0 moves by default.** Just create your new cards — old cards sink automatically.
+2. **Only move YOUR current-round cards** if they'd overlap each other. Never move cards from previous rounds.
+3. If you're about to write more than 1 move command, stop. Something is wrong with your composition — fix the new cards' positions instead.
 
-✅ Move:
-- A current-round card needs repositioning to make room for new cards
-- Rearranging the current composition for clarity
-
-❌ Don't move:
-- Old cards that have receded (blurred, low opacity, deep z) — they're gone from the user's perspective
-- Cards from previous rounds — create new ones if the topic comes up again
-- Cards that don't need to move — if nothing would overlap, don't move anything
+**Never pull cards back from the background** — cards that have faded are past content. Bringing them forward is disorienting.
 
 ### Dock — Pin to Sidebar
 
@@ -147,11 +143,11 @@ Dock pins a card to the left sidebar where it persists across conversation round
 
 Undock moves a docked card back to the main canvas. Use when the user is done with persistent reference or explicitly asks to unpin.
 
-### Default = Don't Touch
+### Default = Don't Touch (IMPORTANT)
 
-**If your response doesn't need a card, don't touch it.** No move, no update. Cards you don't mention will naturally fade as new cards appear. This is the desired behavior — the canvas is a flowing stream, not a dashboard you maintain.
+**Your response should contain ZERO move/update commands 90% of the time.** Just create new cards. Old cards fade naturally — that's by design.
 
-The #1 mistake: moving or updating cards "just to keep them tidy." Don't. Only act on a card if the user's current request specifically involves that card's content.
+The #1 mistake: moving or updating cards "to keep things tidy" or "make room." The canvas handles this automatically. If you find yourself writing move commands, delete them.
 
 ### Output Order
 
