@@ -1,15 +1,17 @@
 <template>
   <div class="audio-block" :class="{ playing: isPlaying }">
-    <!-- Cover art -->
-    <div class="audio-cover" :class="{ 'no-image': !hasImage }" @click="togglePlay">
+    <!-- Cover art — only show when image loads successfully, fallback icon otherwise -->
+    <div class="audio-cover" :class="{ 'no-image': !imageLoaded }" @click="togglePlay">
       <img
-        v-if="hasImage"
+        v-if="data.image"
+        v-show="imageLoaded"
         :src="data.image"
         :data-original-src="data.image"
         referrerpolicy="no-referrer"
+        @load="imageLoaded = true"
         @error="onImageError"
       />
-      <div v-else class="audio-cover-fallback">
+      <div v-if="!imageLoaded" class="audio-cover-fallback">
         <span>{{ coverIcon }}</span>
       </div>
       <div class="play-overlay">
@@ -53,6 +55,7 @@ const props = defineProps({
 })
 
 const hasImage = ref(!!props.data.image)
+const imageLoaded = ref(false)
 const isPlaying = ref(false)
 const currentTime = ref(0)
 let interval = null
