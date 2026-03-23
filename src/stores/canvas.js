@@ -156,9 +156,15 @@ export const useCanvasStore = defineStore('canvas', () => {
     if (card.selected) {
       card.selected = false
       selectedIds.value.delete(id)
-      // Restore depth appearance
-      if (card.depth != null) {
-        // Read current max depth from cards
+      // Docked cards keep their visual state
+      if (card._isDocked) {
+        card.z = 0
+        card.scale = 1
+        card.opacity = 1
+        card.blur = 0
+        card.zIndex = 900
+      } else if (card.depth != null) {
+        // Restore depth appearance
         let maxDepth = 0
         cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
         const d = maxDepth - (card.depth || 0)
@@ -182,6 +188,15 @@ export const useCanvasStore = defineStore('canvas', () => {
       const card = cards.get(id)
       if (card) {
         card.selected = false
+        // Docked cards keep their visual state — don't apply depth
+        if (card._isDocked) {
+          card.z = 0
+          card.scale = 1
+          card.opacity = 1
+          card.blur = 0
+          card.zIndex = 900
+          return
+        }
         const d = maxDepth - (card.depth || 0)
         applyDepth(card, d)
       }
