@@ -185,19 +185,10 @@ function layerStyle(sk) {
 }
 
 function getSketchZ(sk) {
-  // For arrow/line: render ABOVE the highest associated card
-  // but below Z_HOVER so hover still brings a card on top
-  if (sk.from || sk.to || sk.target) {
-    let maxZ = -Infinity
-    for (const key of [sk.from, sk.to, sk.target]) {
-      if (!key) continue
-      const card = findCardByKey(key)
-      if (card) maxZ = Math.max(maxZ, card.z ?? 0)
-    }
-    return maxZ === -Infinity ? 1 : maxZ + 1
-  }
-  // Standalone sketch: just above z=0
-  return 1
+  // Sketches render ABOVE all normal cards but below hover/selected
+  // Normal cards: intraZ up to ~150. Hover: 200. Selected: 250.
+  // Sketch at 180 = always visible, but hover/select still brings card on top
+  return 180
 }
 
 function findCardByKey(key) {
