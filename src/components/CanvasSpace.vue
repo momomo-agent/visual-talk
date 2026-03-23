@@ -1,6 +1,6 @@
 <template>
   <div class="canvas" @click="handleBgClick">
-    <div class="canvas-space" ref="spaceRef">
+    <div class="canvas-space" ref="spaceRef" :class="{ 'nav-zoom': isNavigating }">
       <BlockCard
         v-for="[id, card] in allCards"
         :key="id"
@@ -28,7 +28,7 @@ import SketchOverlay from './SketchOverlay.vue'
 
 const canvas = useCanvasStore()
 const timeline = useTimelineStore()
-const { cards, greetingVisible } = storeToRefs(canvas)
+const { cards, greetingVisible, isNavigating } = storeToRefs(canvas)
 const { dockedIds, dockedSnapshots } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 

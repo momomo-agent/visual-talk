@@ -29,12 +29,19 @@ export function useTimeline() {
     }, 3000)
   }
 
+  let navTimer = null
+
   function navigateAndRestore(direction) {
     const moved = timeline.navigate(direction)
     if (!moved) return false
 
     // Clear selection when navigating timeline
     canvas.clearSelection()
+
+    // Trigger container-level Z animation
+    canvas.isNavigating = true
+    clearTimeout(navTimer)
+    navTimer = setTimeout(() => { canvas.isNavigating = false }, 350)
 
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {

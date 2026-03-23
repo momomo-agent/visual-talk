@@ -15,6 +15,7 @@ export const useCanvasStore = defineStore('canvas', () => {
   const selectedIds = ref(new Set())
   const greetingVisible = ref(true)
   const isStreaming = ref(false)
+  const isNavigating = ref(false)
 
   // Generation counter for cancelling stale transitions
   let snapshotGen = 0
@@ -71,26 +72,15 @@ export const useCanvasStore = defineStore('canvas', () => {
       } else {
         // Create new card
         if (navigate) {
-          // Navigation: cards already exist in space, just appear at final size
-          // Start slightly smaller + faded, scale up smoothly
+          // Navigation: container handles the spatial animation
+          // Cards just appear instantly at final state
           const card = reactive({
             ...target,
-            opacity: 0,
-            scale: 0.85,
-            blur: 2,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
           cards.set(targetId, card)
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (snapshotGen !== gen) return
-              card.opacity = target.opacity ?? 1
-              card.scale = target.scale ?? 1
-              card.blur = target.blur ?? 0
-            })
-          })
         } else if (animate) {
           // Streaming: fly in from deep space
           const card = reactive({
@@ -132,15 +122,8 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (snapshotIds.has(id)) return
 
       if (navigate) {
-        // Navigation: cards shrink and fade as you walk away
-        card.opacity = 0
-        card.scale = 0.85
-        card.blur = 2
-        card.pointerEvents = 'none'
-        setTimeout(() => {
-          if (snapshotGen !== gen) return
-          cards.delete(id)
-        }, 400)
+        // Navigation: container handles animation, just remove instantly
+        cards.delete(id)
       } else if (animate) {
         card.opacity = 0
         card.z = Z_FADE_OUT
@@ -250,6 +233,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedIds,
     greetingVisible,
     isStreaming,
+    isNavigating,
     applySnapshot,
     restoreFrom,
     toggleSelect,
