@@ -19,6 +19,11 @@ function normalizeForMatch(text) {
  */
 export function getCardTitle(card) {
   const d = card.data || card
+  // Blocks format: first heading block is the title
+  if (d.blocks?.length) {
+    const h = d.blocks.find(b => b.type === 'heading')
+    return (h?.text || '').toLowerCase()
+  }
   return (d.title || d.caption || d.text || d.content || d.label || d.code?.slice(0, 30) || '').toLowerCase()
 }
 
@@ -46,6 +51,27 @@ export function matchTitle(cardTitle, query) {
 export function getCardText(card) {
   const d = card.data || {}
   const parts = []
+
+  // Blocks format — extract text from each block element
+  if (d.blocks?.length) {
+    d.blocks.forEach(b => {
+      if (b.type === 'heading' || b.type === 'text') parts.push(b.text)
+      if (b.type === 'quote') parts.push(b.text)
+      if (b.type === 'metric') parts.push(`${b.value}${b.unit || ''} ${b.label || ''}`)
+      if (b.type === 'tags' && b.items?.length) parts.push(b.items.join(', '))
+      if (b.type === 'list' && b.items?.length) {
+        b.items.forEach(it => {
+          const t = typeof it === 'string' ? it : (it.text || '')
+          if (t) parts.push(t)
+        })
+      }
+      if (b.type === 'code') parts.push(b.code)
+      if (b.type === 'image' && b.caption) parts.push(b.caption)
+    })
+    return parts.join('\n').slice(0, 200)
+  }
+
+  // Legacy format
   if (d.title) parts.push(d.title)
   if (d.sub) parts.push(d.sub)
   if (d.label) parts.push(d.label)
