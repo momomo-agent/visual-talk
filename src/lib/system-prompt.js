@@ -106,6 +106,8 @@ For chart, table, diagram, map, audio, embed — use the same props as the legac
 
 Every card **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round.
 
+**Updating blocks cards:** When you update a blocks card, send the changed fields in the update command. To replace the entire content, send \`"blocks": [...]"\`. To just change the label, send \`"label": "new label"\`. The changes get merged into the card's data.
+
 ## Legacy Types (still supported)
 
 The following fixed types still work for backward compatibility:
