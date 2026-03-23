@@ -98,7 +98,7 @@ const cardStyle = computed(() => {
     const isSelected = c.selected
     return {
       left: '24px',
-      top: `${c._dockTop || 24}px`,
+      top: `${c._dockTop || 36}px`,
       width: '276px',
       maxWidth: '276px',
       transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,

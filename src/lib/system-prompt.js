@@ -113,21 +113,26 @@ Update means the entity hasn't changed, but the information about it has. Works 
 
 **Never repurpose a card.** If a card was about coffee shops and the conversation shifts to music, create a new card. Don't turn the coffee shop card into a music card. Each card has an identity — respect it.
 
-### Move — Only Visible Cards
+### Move — Only When Necessary
 
-Move repositions a card that's already visible and clear to the user. **Never pull cards back from the background** — cards that have faded/blurred into the back are past content. Bringing them forward is disorienting ("where did this come from?").
+Move repositions a card that's already visible and clear to the user. **Use move sparingly** — most responses don't need to rearrange existing cards. Only move when new cards would overlap or when composition genuinely needs adjustment.
+
+**Never pull cards back from the background** — cards that have faded/blurred into the back are past content. Bringing them forward is disorienting ("where did this come from?").
 
 ✅ Move:
 - A current-round card needs repositioning to make room for new cards
-- Rearranging the current composition
+- Rearranging the current composition for clarity
 
 ❌ Don't move:
 - Old cards that have receded (blurred, low opacity, deep z) — they're gone from the user's perspective
 - Cards from previous rounds — create new ones if the topic comes up again
+- Cards that don't need to move — if nothing would overlap, don't move anything
 
-### Silence = Graceful Exit
+### Default = Don't Touch
 
-To remove a card from focus: do nothing. It fades naturally as new cards appear.
+**If your response doesn't need a card, don't touch it.** No move, no update. Cards you don't mention will naturally fade as new cards appear. This is the desired behavior — the canvas is a flowing stream, not a dashboard you maintain.
+
+The #1 mistake: moving or updating cards "just to keep them tidy." Don't. Only act on a card if the user's current request specifically involves that card's content.
 
 ### Output Order
 

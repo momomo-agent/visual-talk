@@ -166,15 +166,20 @@ export class CanvasState {
   _move(op) {
     const card = this.cards.get(op.cardId)
     if (!card || !op.to) return
-    // Move only changes position — does NOT revive sunk cards or change depth
+    // Revive sunk cards — move is intentional, card should be visible
+    card.sunk = false
+    card.pointerEvents = 'auto'
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
-    // z only if explicitly provided
-    if (op.to.z != null) {
-      const targetZ = Math.min(op.to.z, Z_PINNED)
-      card.z = targetZ
-      card.intraZ = targetZ
-      card.zIndex = 100 + Math.floor(targetZ / 10)
-    }
+    const targetZ = op.to.z != null ? Math.min(op.to.z, Z_PINNED) : Z_PINNED
+    card.z = targetZ
+    card.intraZ = targetZ
+    card.depth = this.depthLevel
+    card.opacity = 1
+    card.blur = 0
+    card.scale = 1
+    card.zIndex = 100 + Math.floor(targetZ / 10)
+    card.pinned = true
+    this.currentRoundIds.add(op.cardId)
   }
 }

@@ -507,7 +507,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     // Re-render
     const viewId = viewingId.value ?? tipId
     const canvas = useCanvasStore()
-    canvas.applySnapshot(computeCanvas(viewId), { animate: false })
+    canvas.applySnapshot(computeCanvas(viewId), { animate: true })
   }
 
   /**
