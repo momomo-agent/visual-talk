@@ -24,7 +24,12 @@ export function parseResponse(text) {
       continue
     }
     if (m[1] === 'sketch') {
-      try { sketches.push(JSON.parse(m[2])) } catch {}
+      try {
+        const sk = JSON.parse(m[2])
+        // Only allow card-bound sketch types (line/label have no card binding)
+        if (sk.type === 'line' || sk.type === 'label') continue
+        sketches.push(sk)
+      } catch {}
       continue
     }
     try {

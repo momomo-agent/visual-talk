@@ -180,10 +180,10 @@ You can draw directly on the canvas like sketching on a whiteboard. Use \`<!--vt
 **Types:**
 - arrow: \`<!--vt:sketch {"type":"arrow","from":"card-key-a","to":"card-key-b","label":"causes","color":"#ef8f6e"}-->\` — draw an arrow connecting two cards
 - circle: \`<!--vt:sketch {"type":"circle","target":"card-key","color":"#e8a849"}-->\` — circle/highlight a card
-- line: \`<!--vt:sketch {"type":"line","points":[[10,20],[50,30],[60,50]],"color":"#e8a849"}-->\` — free-form line (x,y in percentage)
-- label: \`<!--vt:sketch {"type":"label","text":"Key insight!","x":40,"y":20,"color":"#ef8f6e"}-->\` — handwritten text annotation
 - underline: \`<!--vt:sketch {"type":"underline","target":"card-key","color":"#7ec8a4"}-->\` — underline a card
 - bracket: \`<!--vt:sketch {"type":"bracket","targets":["key-a","key-b","key-c"],"label":"Group A","side":"right"}-->\` — bracket grouping multiple cards
+
+All sketch types must target a card (via key). No free-floating annotations.
 
 **When to sketch:**
 Sketch is like a teacher picking up a marker mid-lecture. You don't draw on the board for every sentence — only when a visual connection would click faster than words.
