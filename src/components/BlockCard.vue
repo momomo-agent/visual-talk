@@ -114,7 +114,7 @@ const cardStyle = computed(() => {
     left: `${c._mappedX ?? c.x}%`,
     top: `${c.y}%`,
     width: c.w ? `${c.w}%` : undefined,
-    maxWidth: hasImage ? '380px' : undefined,
+    maxWidth: hasImage ? '340px' : undefined,
     transform: `translateZ(${c.z}px) scale(${c.scale})`,
     opacity: c.opacity,
     zIndex: c.zIndex,
