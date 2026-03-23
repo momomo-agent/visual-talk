@@ -15,6 +15,14 @@ export function parseResponse(text) {
       try { commands.push({ cmd: 'update', ...JSON.parse(m[2]) }) } catch {}
       continue
     }
+    if (m[1] === 'dock') {
+      try { commands.push({ cmd: 'dock', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
+    if (m[1] === 'undock') {
+      try { commands.push({ cmd: 'undock', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
     if (m[1] === 'sketch') {
       try { sketches.push(JSON.parse(m[2])) } catch {}
       continue

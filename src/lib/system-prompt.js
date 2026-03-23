@@ -91,6 +91,8 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
 
 - \`<!--vt:move {"key":"dune","x":50,"y":20,"z":40} -->\` — reposition a visible card
 - \`<!--vt:update {"key":"dune","sub":"Updated subtitle"} -->\` — modify a card's content
+- \`<!--vt:dock {"key":"playlist"} -->\` — pin a card to the sidebar (stays across rounds)
+- \`<!--vt:undock {"key":"playlist"} -->\` — unpin from sidebar back to canvas
 
 **Targeting cards:** Use the card's "key" — the semantic slug you assigned when creating it.
 
@@ -127,6 +129,23 @@ Move repositions a card that's already visible and clear to the user. **Use move
 - Old cards that have receded (blurred, low opacity, deep z) — they're gone from the user's perspective
 - Cards from previous rounds — create new ones if the topic comes up again
 - Cards that don't need to move — if nothing would overlap, don't move anything
+
+### Dock — Pin to Sidebar
+
+Dock pins a card to the left sidebar where it persists across conversation rounds. The card stays visible and accessible regardless of new content flowing through the canvas.
+
+✅ Dock:
+- Running lists the user is building over multiple rounds (watchlist, playlist, todo)
+- Reference material the user keeps referring back to
+- A card the user explicitly wants to keep ("记住这个", "pin this")
+
+❌ Don't dock:
+- Regular content cards — let them flow naturally
+- Cards the user hasn't indicated they want to keep
+
+### Undock — Return to Canvas
+
+Undock moves a docked card back to the main canvas. Use when the user is done with persistent reference or explicitly asks to unpin.
 
 ### Default = Don't Touch
 
