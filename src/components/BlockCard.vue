@@ -92,20 +92,21 @@ const cardStyle = computed(() => {
   const c = props.card
   const hasImage = c.type === 'media' || (c.type === 'card' && c.data.image)
 
-  // Docked cards: flow layout in docked-zone (position handled by CSS flex)
+  // Docked cards: fly to left side, absolute positioned in canvas-space
   if (c._isDocked) {
     const isHovered = c.scale > 1.01
     const isSelected = c.selected
     return {
-      position: 'relative',
-      width: '100%',
-      maxWidth: '100%',
-      transform: `scale(${isHovered || isSelected ? c.scale : 1})`,
+      left: '12px',
+      top: `${c._dockTop || 12}px`,
+      width: '276px',
+      maxWidth: '276px',
+      transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,
       opacity: 1,
       zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
       filter: 'none',
       pointerEvents: 'auto',
-      transition: 'transform 0.3s, opacity 0.3s',
+      transition: 'left 0.6s cubic-bezier(.22,1,.36,1), top 0.6s cubic-bezier(.22,1,.36,1), width 0.6s cubic-bezier(.22,1,.36,1), transform 0.3s, opacity 0.3s',
     }
   }
 
