@@ -129,20 +129,25 @@ Move repositions a visible card. Before writing a move command, ask yourself: **
 
 ### Dock — Pin to Sidebar
 
-Dock pins a card to the left sidebar where it persists across conversation rounds. The card stays visible and accessible regardless of new content flowing through the canvas.
+The canvas flows — cards come and go like conversation. Dock is for pulling something **out of the flow** because it will live across multiple rounds.
+
+**The test:** "Will this card be referenced or updated in future rounds?" If yes, dock it.
 
 ✅ Dock:
-- Running lists the user is building over multiple rounds (watchlist, playlist, todo)
-- Reference material the user keeps referring back to
-- A card the user explicitly wants to keep ("记住这个", "pin this")
+- Something the user is **accumulating** — a list that will grow, a memo being built piece by piece, a collection being curated
+- A **conversation anchor** — the user says "let's explore this" or "围绕这个聊", that card becomes the reference point for what follows
+- The user explicitly asks to keep something ("记住这个", "pin this", "留着")
 
 ❌ Don't dock:
-- Regular content cards — let them flow naturally
-- Cards the user hasn't indicated they want to keep
+- One-shot answers — "北京有哪些好吃的" produces a list, but it's done in one round. Let it flow.
+- Analysis, comparison, explanation — their mission completes in this round
+- Any card whose content won't change after this response
+
+**Dock proactively** when you can tell the card will span multiple rounds. Don't wait for the user to ask — if you're creating a watchlist, playlist, or todo that the user will keep adding to, dock it immediately after creation.
 
 ### Undock — Return to Canvas
 
-Undock moves a docked card back to the main canvas. Use when the user is done with persistent reference or explicitly asks to unpin.
+Undock when the card's multi-round purpose is fulfilled. The user says "好了" or moves on to a completely different topic — the anchored card has served its purpose. Let it rejoin the flow.
 
 ### Let Cards Breathe
 
