@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
 import { SYSTEM } from '../lib/system-prompt.js'
+import { useConfigStore } from '../stores/config.js'
 
 // Skills
 import tmdbSkill from '../skills/tmdb.js'
@@ -60,7 +61,7 @@ export function useLLM() {
       baseUrl: cfg.baseUrl || undefined,
       model: cfg.model || undefined,
       proxyUrl: cfg.proxyUrl || undefined,
-      systemPrompt: SYSTEM,
+      systemPrompt: useConfigStore().customSystemPrompt || SYSTEM,
       maxTokens: 4096,
       stream: true,
       persist: 'localStorage',
