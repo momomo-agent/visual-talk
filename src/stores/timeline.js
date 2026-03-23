@@ -600,11 +600,6 @@ export const useTimelineStore = defineStore('timeline', () => {
         dockedSnapshots.set(id, snap)
       }
     }
-    // Backward compat: old format had dockedIds (Set) without snapshots
-    if (data.dockedIds && !data.dockedSnapshots) {
-      // Can't restore snapshots from just IDs — they'll be lost
-      // User will need to re-dock
-    }
     if (activeTip.value != null) {
       restoreToNode(activeTip.value)
     }
