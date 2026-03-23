@@ -85,6 +85,9 @@ const extraProps = computed(() => {
   if (props.card.type === 'media' || props.card.type === 'embed') {
     return { type: props.card.type }
   }
+  if (props.card.type === 'card') {
+    return { w: props.card.w || 25 }
+  }
   return {}
 })
 
