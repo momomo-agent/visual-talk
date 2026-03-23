@@ -43,9 +43,11 @@ export function useTimeline() {
     clearTimeout(navTimer)
     navTimer = setTimeout(() => { canvas.isNavigating = false }, 500)
 
-    // direction: 'back' = going to older nodes, 'forward' = going to newer nodes
-    // Camera moves forward (into screen) = forward, backward (out of screen) = back
-    const navDir = direction === 'back' ? -1 : 1
+    // direction: 'up' = going to parent/older, 'down' = going to child/newer
+    // 'left'/'right' = sibling navigation (treated as lateral, use forward direction)
+    // Forward in time (down) = camera pushes deeper, new room from far
+    // Backward in time (up) = camera pulls back, old room emerges from behind
+    const navDir = direction === 'up' ? -1 : 1
 
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {
