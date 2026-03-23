@@ -26,8 +26,8 @@
     </div>
   </template>
 
-  <!-- Compact layout: small image left, text right -->
-  <template v-else-if="data.layout === 'compact'">
+  <!-- Compact layout: small image left, text right (also fallback for minimal) -->
+  <template v-else-if="data.layout === 'compact' || data.layout === 'minimal'">
     <div class="card-compact">
       <img
         v-if="data.image"

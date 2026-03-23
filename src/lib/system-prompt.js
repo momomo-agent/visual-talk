@@ -69,7 +69,6 @@ Every block **must** include a "key" — a short, unique, semantic slug in Engli
   layout controls how the image and text relate:
   - "hero" (default): large image on top, text below. For when the image IS the content — movie posters, landscapes, product shots. The image dominates.
   - "compact": small square image left, text right. For when the image supports the text — album covers next to reviews, author photos next to bios, app icons next to descriptions.
-  - "minimal": tiny thumbnail + title inline. For lists of things — search results, recommendations, references. The image is just for recognition.
 - metric: {"key":"imdb","x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
 - steps: {"key":"timeline","x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
 - columns: {"key":"compare","x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}

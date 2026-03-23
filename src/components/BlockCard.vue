@@ -111,8 +111,7 @@ const cardStyle = computed(() => {
   }
 
     const layout = c.data?.layout
-    const maxW = layout === 'compact' ? '300px'
-      : layout === 'minimal' ? '240px'
+    const maxW = (layout === 'compact' || layout === 'minimal') ? '300px'
       : hasImage ? '340px'
       : undefined
 
