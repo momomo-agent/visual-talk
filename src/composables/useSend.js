@@ -119,6 +119,23 @@ export function useSend({ tts } = {}) {
         timeline.addOperation(nodeId, { op: 'push' })
         state.pushRecorded = true
       }
+      // Dedupe: if a card with this key already exists, convert to update
+      const existingKey = b.data?.key
+      if (existingKey) {
+        const matchedIds = timeline.findCardsByKey(nodeId, existingKey)
+        if (matchedIds.length > 0) {
+          // Card exists — update it instead of creating a duplicate
+          matchedIds.forEach(cardId => {
+            timeline.addOperation(nodeId, {
+              op: 'update',
+              cardId,
+              changes: { ...b.data },
+            })
+          })
+          return // skip create
+        }
+      }
+
       // Write to timeline — canvas updates automatically via addOperation
       timeline.addOperation(nodeId, {
         op: 'create',
