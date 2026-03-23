@@ -67,6 +67,16 @@ export const useCanvasStore = defineStore('canvas', () => {
         // Update existing card
         const card = cards.get(existingId)
         if (card) {
+          // Debug: detect cross-card data overwrite
+          if (card.data?.key && target.data?.key && card.data.key !== target.data.key) {
+            console.warn('[canvas] contentKey match overwrites different card!', {
+              contentKey: key,
+              existingCardKey: card.data.key,
+              targetCardKey: target.data.key,
+              existingId,
+              targetId: target.id,
+            })
+          }
           card.x = target.x
           card.y = target.y
           card.z = target.z ?? 0
