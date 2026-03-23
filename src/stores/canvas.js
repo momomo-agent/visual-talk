@@ -72,17 +72,15 @@ export const useCanvasStore = defineStore('canvas', () => {
       } else {
         // Create new card
         if (navigate) {
-          // Navigation: new cards arrive from Z-depth
-          // Forward (navDir=1): new room comes from in front (positive Z → 0)
-          // Back (navDir=-1): new room comes from behind (negative Z → 0)
-          const entryZ = navDir * 600
-          const entryScale = navDir > 0 ? 1.25 : 0.75
+          // Navigation: new cards arrive from Z-depth (gentle)
+          const entryZ = navDir * 300
+          const entryScale = navDir > 0 ? 1.1 : 0.9
           const card = reactive({
             ...target,
             opacity: 0,
             scale: entryScale,
             z: entryZ,
-            blur: 4,
+            blur: 2,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
@@ -137,20 +135,18 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (snapshotIds.has(id)) return
 
       if (navigate) {
-        // Navigation: old cards fly away in opposite direction
-        // Forward: current room recedes behind you (negative Z)
-        // Back: current room flies forward past you (positive Z)
-        const exitZ = -navDir * 600
-        const exitScale = navDir > 0 ? 0.75 : 1.25
+        // Navigation: old cards drift away gently
+        const exitZ = -navDir * 300
+        const exitScale = navDir > 0 ? 0.9 : 1.1
         card.opacity = 0
         card.z = exitZ
         card.scale = exitScale
-        card.blur = 4
+        card.blur = 2
         card.pointerEvents = 'none'
         setTimeout(() => {
           if (snapshotGen !== gen) return
           cards.delete(id)
-        }, 500)
+        }, 650)
       } else if (animate) {
         // Fade out: grow + fade (flying away from you)
         card.opacity = 0

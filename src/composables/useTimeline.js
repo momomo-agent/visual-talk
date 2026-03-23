@@ -41,7 +41,7 @@ export function useTimeline() {
     // Trigger container-level Z animation
     canvas.isNavigating = true
     clearTimeout(navTimer)
-    navTimer = setTimeout(() => { canvas.isNavigating = false }, 500)
+    navTimer = setTimeout(() => { canvas.isNavigating = false }, 650)
 
     // direction: 'up' = going to parent/older, 'down' = going to child/newer
     // 'left'/'right' = sibling navigation (treated as lateral, use forward direction)
