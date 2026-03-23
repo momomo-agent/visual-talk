@@ -151,7 +151,8 @@ export class CanvasState {
   _update(op) {
     const card = this.cards.get(op.cardId)
     if (!card) return
-    if (this.dockedIds.has(op.cardId)) return  // AI can't update docked cards
+    // Docked cards CAN be updated (add to playlist, edit content)
+    // Only move is blocked
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
