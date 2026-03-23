@@ -76,8 +76,8 @@ export const useCanvasStore = defineStore('canvas', () => {
             ...target,
             opacity: 0,
             z: Z_ENTER,
-            scale: 0.8,
-            blur: 4,
+            scale: 0.4,
+            blur: 6,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
@@ -113,8 +113,8 @@ export const useCanvasStore = defineStore('canvas', () => {
       if (animate) {
         card.opacity = 0
         card.z = Z_FADE_OUT
-        card.scale = 0.5
-        card.blur = 8
+        card.scale = 0.3
+        card.blur = 10
         card.pointerEvents = 'none'
         setTimeout(() => {
           if (snapshotGen !== gen) return
