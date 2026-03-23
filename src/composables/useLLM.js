@@ -6,8 +6,11 @@ import { SYSTEM } from '../lib/system-prompt.js'
 import tmdbSkill from '../skills/tmdb.js'
 import tavilySkill from '../skills/tavily.js'
 import webFetchSkill from '../skills/web-fetch.js'
+import weatherSkill from '../skills/weather.js'
+import calculateSkill from '../skills/calculate.js'
+import locationSkill from '../skills/location.js'
 
-const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill]
+const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill]
 
 let claw = null
 let clawConfigKey = null
