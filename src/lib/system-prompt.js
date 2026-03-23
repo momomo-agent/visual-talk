@@ -63,7 +63,7 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - Overlapping is OK sparingly — a slight overlap adds depth. But if text overlaps text, they must be at very different z-depths (≥ 40 apart) so the back one blurs away. Don't stack cards directly on top of each other.
 - **Text-only commentary cards** — small cards that just say things like "还有这些也在杭州取景" or "值得一看的几部". That's what your voice is for. Every card should show something concrete (a movie, a concept, data, a quote from someone). If a card has no image, no data, and no substance — it should be speech instead.
 
-## Types — Blocks Composition (Preferred)
+## Types — Blocks Composition
 
 A card is a container of **blocks** — ordered elements you compose freely. This is the preferred format.
 
@@ -99,8 +99,6 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   {"type":"chart","chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10}]},{"name":"Samsung","items":[{"label":"Q1","value":8}]}]}
 - table: {"type":"table","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}],"title":"Specs","footer":"optional"}
   columns: array of header strings. rows: array of objects keyed by column name.
-- list: {"type":"list","items":["item1","item2"],"style":"bullet"} — bullet/number/todo
-  todo items: [{"text":"Task","done":true}]
 - diagram: {"type":"diagram","code":"graph TD\\n  A[User] --> B[Frontend]\\n  B --> C[API]","title":"Architecture","footer":""}
   Renders Mermaid diagrams. Supports: flowchart (graph TD/LR), sequence, class, ER, state, gantt, mindmap, pie, quadrant, timeline.
   Use \\n for newlines inside the JSON string. Keep diagrams focused: 3-8 nodes ideal.
