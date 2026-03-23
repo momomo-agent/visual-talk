@@ -164,9 +164,9 @@ export const useCanvasStore = defineStore('canvas', () => {
         card.blur = 0
         card.zIndex = 900
       } else if (card.depth != null) {
-        // Restore depth appearance
+        // Restore depth — exclude docked cards from maxDepth calculation
         let maxDepth = 0
-        cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
+        cards.forEach(c => { if (!c._isDocked && c.depth > maxDepth) maxDepth = c.depth })
         const d = maxDepth - (card.depth || 0)
         applyDepth(card, d)
       }
@@ -182,8 +182,9 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function clearSelection() {
+    // maxDepth should only consider non-docked cards (docked have inflated depth from activeTip)
     let maxDepth = 0
-    cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
+    cards.forEach(c => { if (!c._isDocked && c.depth > maxDepth) maxDepth = c.depth })
     selectedIds.value.forEach(id => {
       const card = cards.get(id)
       if (card) {
