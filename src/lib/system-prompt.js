@@ -61,7 +61,7 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 ## Types
 
-Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas.
+Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round. If you want to change an existing card's content, use update. If you're creating something new (even about the same topic), give it a fresh key.
 
 - card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":"","layout":"hero"}
   layout controls how the image and text relate:
