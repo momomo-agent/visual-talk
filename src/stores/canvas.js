@@ -42,7 +42,7 @@ export const useCanvasStore = defineStore('canvas', () => {
    * @param {Map} snapshot - Map<id, CardState> from computeCanvas or liveState
    * @param {Object} opts - { animate: true } for streaming, false for instant
    */
-  function applySnapshot(snapshot, { animate = true } = {}) {
+  function applySnapshot(snapshot, { animate = true, navigate = false } = {}) {
     const gen = ++snapshotGen
 
     if (snapshot.size > 0) greetingVisible.value = false
@@ -68,10 +68,31 @@ export const useCanvasStore = defineStore('canvas', () => {
         existing.pinned = target.pinned ?? false
         existing.pointerEvents = target.pointerEvents || 'auto'
         existing.contentKey = target.contentKey
-        // Don't touch card.selected — that's UI state
       } else {
         // Create new card
-        if (animate) {
+        if (navigate) {
+          // Navigation: cards already exist in space, just appear at final size
+          // Start slightly smaller + faded, scale up smoothly
+          const card = reactive({
+            ...target,
+            opacity: 0,
+            scale: 0.85,
+            blur: 2,
+            selected: false,
+            pointerEvents: 'auto',
+            entranceDelay: 0,
+          })
+          cards.set(targetId, card)
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (snapshotGen !== gen) return
+              card.opacity = target.opacity ?? 1
+              card.scale = target.scale ?? 1
+              card.blur = target.blur ?? 0
+            })
+          })
+        } else if (animate) {
+          // Streaming: fly in from deep space
           const card = reactive({
             ...target,
             opacity: 0,
@@ -107,10 +128,20 @@ export const useCanvasStore = defineStore('canvas', () => {
     // ── Pass 2: Cleanup — fade out cards not in snapshot ──
     const snapshotIds = new Set(snapshot.keys())
     cards.forEach((card, id) => {
-      if (card.pointerEvents === 'none') return // already fading
-      if (snapshotIds.has(id)) return // still alive
+      if (card.pointerEvents === 'none') return
+      if (snapshotIds.has(id)) return
 
-      if (animate) {
+      if (navigate) {
+        // Navigation: cards shrink and fade as you walk away
+        card.opacity = 0
+        card.scale = 0.85
+        card.blur = 2
+        card.pointerEvents = 'none'
+        setTimeout(() => {
+          if (snapshotGen !== gen) return
+          cards.delete(id)
+        }, 400)
+      } else if (animate) {
         card.opacity = 0
         card.z = Z_FADE_OUT
         card.scale = 0.3

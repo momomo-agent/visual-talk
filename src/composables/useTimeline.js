@@ -40,13 +40,13 @@ export function useTimeline() {
     if (viewId != null) {
       if (timeline.isLive) {
         const snapshot = timeline.computeCanvas(timeline.activeTip)
-        canvas.applySnapshot(snapshot, { animate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true })
         isScrollingTimeline.value = false
         clearTimeout(bubbleHideTimer)
       } else {
         showTimelineBubble()
         const snapshot = timeline.computeCanvas(viewId)
-        canvas.applySnapshot(snapshot, { animate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true })
       }
     }
     return true
