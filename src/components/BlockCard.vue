@@ -110,11 +110,17 @@ const cardStyle = computed(() => {
     }
   }
 
-  return {
-    left: `${c._mappedX ?? c.x}%`,
-    top: `${c.y}%`,
-    width: c.w ? `${c.w}%` : undefined,
-    maxWidth: hasImage ? '340px' : undefined,
+    const layout = c.data?.layout
+    const maxW = layout === 'compact' ? '300px'
+      : layout === 'minimal' ? '240px'
+      : hasImage ? '340px'
+      : undefined
+
+    return {
+      left: `${c._mappedX ?? c.x}%`,
+      top: `${c.y}%`,
+      width: c.w ? `${c.w}%` : undefined,
+      maxWidth: maxW,
     transform: `translateZ(${c.z}px) scale(${c.scale})`,
     opacity: c.opacity,
     zIndex: c.zIndex,

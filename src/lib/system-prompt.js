@@ -63,7 +63,11 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 
 Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas.
 
-- card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
+- card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":"","layout":"hero"}
+  layout controls how the image and text relate:
+  - "hero" (default): large image on top, text below. For when the image IS the content — movie posters, landscapes, product shots. The image dominates.
+  - "compact": small square image left, text right. For when the image supports the text — album covers next to reviews, author photos next to bios, app icons next to descriptions.
+  - "minimal": tiny thumbnail + title inline. For lists of things — search results, recommendations, references. The image is just for recognition.
 - metric: {"key":"imdb","x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
 - steps: {"key":"timeline","x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
 - columns: {"key":"compare","x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}
