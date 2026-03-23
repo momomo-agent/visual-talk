@@ -91,15 +91,29 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 - divider: {"type":"divider"} — horizontal rule
 - progress: {"type":"progress","value":65,"label":"Completion"}
 - spacer: {"type":"spacer","size":"small"} — small/medium/large
-
-For chart, table, diagram, map, audio, embed — use the same props as the legacy types below, just put them in a blocks array:
-- {"type":"chart","chartType":"bar","items":[{"label":"A","value":42}],"title":"Revenue"}
-- {"type":"table","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}]}
-- {"type":"diagram","code":"graph TD\\n  A-->B","title":"Flow"}
-- {"type":"map","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"Here"}]}
-- {"type":"audio","title":"Song","artist":"Artist","image":"url","url":"audio-url","duration":"3:45"}
-- {"type":"video","url":"video-url","poster":"thumbnail-url","caption":"Description"}
-- {"type":"embed","url":"https://youtube.com/..."}
+- chart: {"type":"chart","chartType":"bar","items":[{"label":"A","value":42}],"title":"Revenue"}
+  chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
+  ⚠️ CRITICAL: items MUST be objects with label AND value: [{"label":"USA","value":28.78}]
+  ❌ WRONG: items:["USA","China"] or items:[{"label":"USA"}]
+  Multi-series (line/column/bar): use "series" instead of "items":
+  {"type":"chart","chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10}]},{"name":"Samsung","items":[{"label":"Q1","value":8}]}]}
+- table: {"type":"table","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}],"title":"Specs","footer":"optional"}
+  columns: array of header strings. rows: array of objects keyed by column name.
+- list: {"type":"list","items":["item1","item2"],"style":"bullet"} — bullet/number/todo
+  todo items: [{"text":"Task","done":true}]
+- diagram: {"type":"diagram","code":"graph TD\\n  A[User] --> B[Frontend]\\n  B --> C[API]","title":"Architecture","footer":""}
+  Renders Mermaid diagrams. Supports: flowchart (graph TD/LR), sequence, class, ER, state, gantt, mindmap, pie, quadrant, timeline.
+  Use \\n for newlines inside the JSON string. Keep diagrams focused: 3-8 nodes ideal.
+- map: {"type":"map","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4","title":"路线地图"}
+  Interactive map with markers and route lines. center/markers/route use [lat, lng].
+- audio: {"type":"audio","title":"Song","artist":"Artist","album":"Album","image":"cover-url","url":"audio-url","duration":"3:45","tags":["Genre"],"kind":"music"}
+  For music, podcasts, sound. kind: "music" (default), "podcast", "sound".
+  Cover art (image) is essential. Duration as "M:SS" or seconds. Put search_music previewUrl in the "url" field for real playback.
+  Music is a mood-setting object — it lives alongside conversation like a record on the desk.
+- video: {"type":"video","url":"video-url","poster":"thumbnail-url","caption":"Description"}
+  Native video player with controls.
+- embed: {"type":"embed","url":"https://youtube.com/...","caption":"optional"}
+  Supports YouTube, Bilibili, Google Maps, and generic link previews.
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 
@@ -108,46 +122,6 @@ For chart, table, diagram, map, audio, embed — use the same props as the legac
 Every card **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round.
 
 **Updating blocks cards:** When you update a blocks card, send the changed fields in the update command. To replace the entire content, send \`"blocks": [...]"\`. To just change the label, send \`"label": "new label"\`. The changes get merged into the card's data.
-
-## Legacy Types (still supported)
-
-The following fixed types still work for backward compatibility:
-
-- card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
-- profile: {"key":"kubrick","x":55,"y":10,"z":40,"w":22,"title":"Stanley Kubrick","sub":"1928-1999 · 导演","image":"url","tags":["完美主义者"],"items":[],"footer":"13部电影，每一部都是里程碑"}
-  Image left, text right. For people, characters, authors, artists — anything with a face. Compact by nature.
-- metric: {"key":"imdb","x":58,"y":35,"z":-15,"w":16,"value":"42","label":"Score","unit":"%"}
-- steps: {"key":"timeline","x":8,"y":25,"z":10,"w":30,"title":"","items":[{"time":"","title":"","detail":""}]}
-- columns: {"key":"compare","x":15,"y":12,"z":5,"w":40,"title":"","cols":[{"name":"A","items":[""]}]}
-- callout: {"key":"nolan-quote","x":45,"y":55,"z":-40,"w":28,"text":"quote","author":"","source":""}
-- code: {"key":"example","x":10,"y":45,"z":0,"w":38,"code":"","language":""}
-- markdown: {"key":"intro","x":18,"y":8,"z":15,"w":35,"content":"# text"}
-- media: {"key":"poster","x":5,"y":3,"z":65,"w":38,"url":"image-url","caption":""}
-- chart: {"key":"revenue","x":10,"y":30,"z":20,"w":30,"title":"","chartType":"bar","items":[{"label":"A","value":42},{"label":"B","value":78}]}
-  chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
-  ⚠️ CRITICAL: items MUST be objects with label AND value: [{"label":"USA","value":28.78},{"label":"China","value":18.53}]
-  ❌ WRONG: items:["USA","China"] — strings are NOT valid items
-  ❌ WRONG: items:[{"label":"USA"}] — missing value
-  ✅ RIGHT: items:[{"label":"USA","value":28.78}] — always include numeric value
-  Multi-series (line/column/bar): use "series" instead of "items":
-  {"chartType":"line","title":"Trend","series":[{"name":"Apple","items":[{"label":"Q1","value":10},{"label":"Q2","value":15}]},{"name":"Samsung","items":[{"label":"Q1","value":8},{"label":"Q2","value":12}]}]}
-- list: {"x":50,"y":10,"z":15,"w":25,"title":"","style":"todo","items":[{"text":"Item","done":false}]}
-  style: "unordered", "ordered", or "todo"
-- table: {"key":"specs","x":10,"y":20,"z":10,"w":35,"title":"","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}],"footer":""}
-  columns: array of header strings. rows: array of objects keyed by column name.
-- embed: {"x":10,"y":5,"z":50,"w":35,"url":"https://youtube.com/...","caption":""}
-  Supports YouTube, Bilibili, Google Maps, and generic link previews.
-- audio: {"key":"now-playing","x":5,"y":10,"z":60,"w":22,"title":"Almost Blue","artist":"Chet Baker","album":"Chet Baker Sings","image":"album-cover-url","url":"preview-audio-url","duration":"5:18","tags":["Jazz"],"kind":"music","source":"1988"}
-  For music, podcasts, sound, and anything you listen to. kind: "music" (default), "podcast", or "sound".
-  Cover art (image) is essential — search for album/podcast artwork. Duration as "M:SS" or seconds.
-  Music is a mood-setting object — it lives alongside conversation like a record on the desk.
-- map: {"key":"trip-map","x":10,"y":5,"z":40,"w":40,"title":"路线地图","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4"}
-  Interactive map with markers and route lines. center/markers/route use [lat, lng]. Colors: use the sketch palette (#e8a849 gold, #ef8f6e pink, #7ec8a4 mint, #8bacd4 blue). Use map when showing locations, travel routes, geographic comparisons, or "where is X".
-- diagram: {"key":"arch","x":10,"y":5,"z":30,"w":45,"title":"System Architecture","code":"graph TD\\n  A[User] --> B[Frontend]\\n  B --> C[API]\\n  C --> D[Database]","footer":""}
-  Renders Mermaid diagrams. Supports: flowchart (graph TD/LR), sequence, class, ER, state, gantt, mindmap, pie, quadrant, timeline.
-  Use diagram when showing: architecture, data flow, process flow, state machines, class hierarchies, entity relationships, timelines, or any structural/relational visualization.
-  The code field uses Mermaid syntax — use \\n for newlines inside the JSON string.
-  Keep diagrams focused: 3-8 nodes is ideal. If it needs more, split into multiple diagrams.
 
 ## Canvas Commands
 
