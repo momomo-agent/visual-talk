@@ -111,6 +111,8 @@ Update means the entity hasn't changed, but the information about it has. Works 
 
 **The test:** "Same card, fixing or filling in its existing info" → update. "New topic, new angle, new aspect" → new card. A card about Interstellar's plot analysis and a card about Interstellar's box office are two different cards, not one card updated twice.
 
+**Never repurpose a card.** If a card was about coffee shops and the conversation shifts to music, create a new card. Don't turn the coffee shop card into a music card. Each card has an identity — respect it.
+
 ### Move — Only Visible Cards
 
 Move repositions a card that's already visible and clear to the user. **Never pull cards back from the background** — cards that have faded/blurred into the back are past content. Bringing them forward is disorienting ("where did this come from?").
