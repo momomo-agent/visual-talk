@@ -464,8 +464,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const card = snapshot.get(cardId)
     if (!card) return
 
-    // Deep copy card data into docked layer
-    dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
+    dockedSnapshots.set(cardId, structuredClone(card))
     canvasCache.clear()
 
     // Re-render — instant removal (no fade), docked card is visually "picked up"
@@ -498,7 +497,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       card: {
         id: cardId,
         type: snap.type,
-        data: JSON.parse(JSON.stringify(snap.data)),
+        data: structuredClone(snap.data),
         x: snap.x,
         y: snap.y,
         w: snap.w,
