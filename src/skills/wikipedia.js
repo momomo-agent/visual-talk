@@ -2,7 +2,22 @@
  * Wikipedia Skill — Wikimedia REST API (free, no key)
  * 
  * Provides: get_wikipedia
+ * GFW fallback through fetch.link2web.site
  */
+
+async function fetchWithFallback(url) {
+  try {
+    const res = await fetch(url)
+    if (res.ok) return res
+    throw new Error(`${res.status}`)
+  } catch (e) {
+    // GFW fallback — use fetch proxy
+    const proxyUrl = `https://fetch.link2web.site?url=${encodeURIComponent(url)}&mode=json`
+    const proxyRes = await fetch(proxyUrl)
+    if (!proxyRes.ok) throw new Error(`Proxy also failed: ${proxyRes.status}`)
+    return proxyRes
+  }
+}
 
 async function getWikipedia(args) {
   const query = args.query?.trim()
@@ -12,16 +27,36 @@ async function getWikipedia(args) {
   const encoded = encodeURIComponent(query)
 
   try {
-    // Try direct page summary first
-    let res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encoded}`)
-    
-    // If not found, try search
+    const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encoded}`
+    let res
+    try {
+      res = await fetch(summaryUrl)
+    } catch (e) {
+      // Direct fetch failed (GFW), try proxy for the whole page content
+      const proxyUrl = `https://fetch.link2web.site?url=${encodeURIComponent(summaryUrl)}&mode=raw`
+      const proxyRes = await fetch(proxyUrl)
+      if (!proxyRes.ok) throw new Error(`Wikipedia unreachable: ${e.message}`)
+      const data = JSON.parse(await proxyRes.text())
+      return {
+        title: data.title,
+        description: data.description,
+        extract: data.extract?.slice(0, 1000),
+        thumbnail: data.thumbnail?.source,
+        url: data.content_urls?.desktop?.page,
+      }
+    }
+
+    // Direct worked — check 404 for search fallback
     if (res.status === 404) {
-      const searchRes = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encoded}&limit=1&format=json`)
-      const searchData = await searchRes.json()
-      const firstResult = searchData?.[1]?.[0]
-      if (!firstResult) return { error: `No Wikipedia article found for "${query}"` }
-      res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstResult)}`)
+      try {
+        const searchRes = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encoded}&limit=1&format=json`)
+        const searchData = await searchRes.json()
+        const firstResult = searchData?.[1]?.[0]
+        if (!firstResult) return { error: `No Wikipedia article found for "${query}"` }
+        res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstResult)}`)
+      } catch (e) {
+        return { error: `Wikipedia search failed: ${e.message}` }
+      }
     }
 
     if (!res.ok) throw new Error(`Wikipedia ${res.status}`)

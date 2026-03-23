@@ -19,15 +19,16 @@ async function getStock(args) {
       if (!res.ok) throw new Error(`Yahoo ${res.status}`)
       data = await res.json()
     } catch (e) {
-      // GFW fallback through proxy
-      const proxyRes = await fetch('https://proxy.link2web.site', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, method: 'GET', mode: 'raw' }),
-      })
-      const proxyData = await proxyRes.json()
-      if (!proxyData.success) throw new Error(proxyData.error || 'Proxy failed')
-      data = typeof proxyData.body === 'string' ? JSON.parse(proxyData.body) : proxyData.body
+      // GFW fallback through fetch proxy
+      try {
+        const proxyUrl = `https://fetch.link2web.site?url=${encodeURIComponent(url)}&mode=raw`
+        const proxyRes = await fetch(proxyUrl)
+        if (!proxyRes.ok) throw new Error(`Proxy ${proxyRes.status}`)
+        const text = await proxyRes.text()
+        data = JSON.parse(text)
+      } catch (e2) {
+        throw new Error(`Direct: ${e.message}, Proxy: ${e2.message}`)
+      }
     }
 
     const result = data?.chart?.result?.[0]
