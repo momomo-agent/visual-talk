@@ -63,9 +63,52 @@ Every block needs: x (0-100), y (0-100), z (-100 to 100), w (15-45)
 - Overlapping is OK sparingly — a slight overlap adds depth. But if text overlaps text, they must be at very different z-depths (≥ 40 apart) so the back one blurs away. Don't stack cards directly on top of each other.
 - **Text-only commentary cards** — small cards that just say things like "还有这些也在杭州取景" or "值得一看的几部". That's what your voice is for. Every card should show something concrete (a movie, a concept, data, a quote from someone). If a card has no image, no data, and no substance — it should be speech instead.
 
-## Types
+## Types — Blocks Composition (Preferred)
 
-Every block **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round. If you want to change an existing card's content, use update. If you're creating something new (even about the same topic), give it a fresh key.
+A card is a container of **blocks** — ordered elements you compose freely. This is the preferred format.
+
+\`\`\`
+<!--vt:card {"key":"dune","x":12,"y":5,"z":55,"w":32,"blocks":[
+  {"type":"image","url":"...","caption":"Arrakis"},
+  {"type":"heading","text":"Dune: Part Two","level":1},
+  {"type":"text","text":"A world beyond imagination"},
+  {"type":"tags","items":["Sci-Fi","Epic"]},
+  {"type":"divider"},
+  {"type":"metric","value":"8.5","label":"IMDB","unit":"/10"}
+]}-->
+\`\`\`
+
+**Block elements:**
+- heading: {"type":"heading","text":"Title","level":1} — level 1-3 (h1/h2/h3)
+- text: {"type":"text","text":"Paragraph with **bold** and *italic*"} — supports basic markdown
+- image: {"type":"image","url":"...","caption":"optional"} — responsive, cover fit
+- tags: {"type":"tags","items":["tag1","tag2"]}
+- metric: {"type":"metric","value":"42","label":"Score","unit":"%"}
+- list: {"type":"list","items":["item1","item2"],"style":"bullet"} — bullet/number/todo
+  - todo items: [{"text":"Task","done":true}]
+- quote: {"type":"quote","text":"...","author":"Name","source":"Book"}
+- code: {"type":"code","code":"const x = 1","language":"js"}
+- divider: {"type":"divider"} — horizontal rule
+- progress: {"type":"progress","value":65,"label":"Completion"}
+- spacer: {"type":"spacer","size":"small"} — small/medium/large
+
+For chart, table, diagram, map, audio, embed — use the same props as the legacy types below, just put them in a blocks array:
+- {"type":"chart","chartType":"bar","items":[{"label":"A","value":42}],"title":"Revenue"}
+- {"type":"table","columns":["Name","Value"],"rows":[{"Name":"CPU","Value":"M4"}]}
+- {"type":"diagram","code":"graph TD\\n  A-->B","title":"Flow"}
+- {"type":"map","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"Here"}]}
+- {"type":"audio","title":"Song","artist":"Artist","image":"url","duration":"3:45"}
+- {"type":"embed","url":"https://youtube.com/..."}
+
+**Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
+
+**You can also add a "label" field** to the card JSON — it shows in the win-bar (e.g. "movie", "guide", "insight", "status").
+
+Every card **must** include a "key" — a short, unique, semantic slug in English (e.g. "dune", "imdb-score", "nolan-quote"). Keys are how you reference cards later with move/update. Keep them lowercase, no spaces, use hyphens. Each key must be unique across the entire canvas — never reuse a key from a previous round.
+
+## Legacy Types (still supported)
+
+The following fixed types still work for backward compatibility:
 
 - card: {"key":"dune","x":12,"y":5,"z":55,"w":32,"title":"","sub":"","image":"url","tags":[],"items":[],"footer":""}
 - profile: {"key":"kubrick","x":55,"y":10,"z":40,"w":22,"title":"Stanley Kubrick","sub":"1928-1999 · 导演","image":"url","tags":["完美主义者"],"items":[],"footer":"13部电影，每一部都是里程碑"}
