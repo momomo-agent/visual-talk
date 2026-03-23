@@ -103,8 +103,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!node) return
 
     // Assign card identity at timeline level — never depend on canvas apply
-    if (operation.op === 'create' && operation.card && !operation.card.id) {
-      operation.card.id = nextId()
+    if (operation.op === 'create' && operation.card) {
+      if (!operation.card.id) {
+        operation.card.id = nextId()
+      }
+      if (!operation.card.contentKey) {
+        operation.card.contentKey = `n${nodeId}-${operation.card.id}`
+      }
       const data = operation.card.data || {}
       operation.card.x = data.x != null ? 5 + (data.x / 100) * 90 : 50
       operation.card.y = data.y != null ? 5 + (data.y / 100) * 75 : 30
@@ -461,10 +466,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
     canvasCache.clear()
 
-    // Re-render
+    // Re-render — instant removal (no fade), docked card is visually "picked up"
     const canvas = useCanvasStore()
     const newSnapshot = computeCanvas(viewId)
-    canvas.applySnapshot(newSnapshot, { animate: true })
+    canvas.applySnapshot(newSnapshot, { animate: false })
   }
 
   /**
@@ -480,8 +485,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     const node = nodes.get(tipId)
     if (!node) return
 
-    // Create op with snapshot data
-    node.operations.push({
+    // Remove from docked FIRST — so computeCanvas won't filter it out
+    dockedSnapshots.delete(cardId)
+    canvasCache.clear()
+
+    // Create op with snapshot data — go through addOperation for contentKey assignment
+    addOperation(tipId, {
       op: 'create',
       card: {
         id: cardId,
@@ -493,14 +502,10 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     })
 
-    dockedSnapshots.delete(cardId)
-    canvasCache.clear()
-    invalidateFrom(tipId)
-
     // Re-render
     const viewId = viewingId.value ?? tipId
     const canvas = useCanvasStore()
-    canvas.applySnapshot(computeCanvas(viewId), { animate: true })
+    canvas.applySnapshot(computeCanvas(viewId), { animate: false })
   }
 
   /**
@@ -513,7 +518,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const viewId = viewingId.value ?? activeTip.value
     if (viewId != null) {
       const canvas = useCanvasStore()
-      canvas.applySnapshot(computeCanvas(viewId), { animate: true })
+      canvas.applySnapshot(computeCanvas(viewId), { animate: false })
     }
   }
 
