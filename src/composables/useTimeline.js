@@ -29,6 +29,8 @@ export function useTimeline() {
     }, 3000)
   }
 
+  let navTimer = null
+
   function navigateAndRestore(direction) {
     const moved = timeline.navigate(direction)
     if (!moved) return false
@@ -36,17 +38,28 @@ export function useTimeline() {
     // Clear selection when navigating timeline
     canvas.clearSelection()
 
+    // Trigger container-level Z animation
+    canvas.isNavigating = true
+    clearTimeout(navTimer)
+    navTimer = setTimeout(() => { canvas.isNavigating = false }, 650)
+
+    // direction: 'up' = going to parent/older, 'down' = going to child/newer
+    // 'left'/'right' = sibling navigation (treated as lateral, use forward direction)
+    // Forward in time (down) = camera pushes deeper, new room from far
+    // Backward in time (up) = camera pulls back, old room emerges from behind
+    const navDir = direction === 'up' ? -1 : 1
+
     const viewId = timeline.viewingId ?? timeline.activeTip
     if (viewId != null) {
       if (timeline.isLive) {
         const snapshot = timeline.computeCanvas(timeline.activeTip)
-        canvas.applySnapshot(snapshot, { animate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true, navDir })
         isScrollingTimeline.value = false
         clearTimeout(bubbleHideTimer)
       } else {
         showTimelineBubble()
         const snapshot = timeline.computeCanvas(viewId)
-        canvas.applySnapshot(snapshot, { animate: true })
+        canvas.applySnapshot(snapshot, { animate: true, navigate: true, navDir })
       }
     }
     return true

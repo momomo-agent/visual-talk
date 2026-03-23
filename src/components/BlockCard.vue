@@ -7,6 +7,7 @@
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
+    @dblclick.stop="onDblClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -41,12 +42,14 @@ import ListBlock from './cards/ListBlock.vue'
 import TableBlock from './cards/TableBlock.vue'
 import MapBlock from './cards/MapBlock.vue'
 import DiagramBlock from './cards/DiagramBlock.vue'
+import AudioBlock from './cards/AudioBlock.vue'
+import ProfileBlock from './cards/ProfileBlock.vue'
 
 const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['toggle-select', 'update-position', 'drag-end'])
+const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock'])
 const blockRef = ref(null)
 const glowBreathing = ref(false)
 
@@ -54,7 +57,7 @@ const typeLabels = {
   card: 'card', metric: 'data', steps: 'timeline', columns: 'compare',
   callout: 'quote', code: 'code', markdown: 'note', media: 'media',
   chart: 'chart', list: 'list', embed: 'embed', table: 'table',
-  diagram: 'diagram',
+  diagram: 'diagram', audio: 'audio', profile: 'profile',
 }
 
 const componentMap = {
@@ -72,6 +75,8 @@ const componentMap = {
   table: TableBlock,
   map: MapBlock,
   diagram: DiagramBlock,
+  audio: AudioBlock,
+  profile: ProfileBlock,
 }
 
 const typeLabel = computed(() => typeLabels[props.card.type] || props.card.type)
@@ -88,11 +93,30 @@ const extraProps = computed(() => {
 const cardStyle = computed(() => {
   const c = props.card
   const hasImage = c.type === 'media' || (c.type === 'card' && c.data.image)
-  return {
-    left: `${c.x}%`,
-    top: `${c.y}%`,
-    width: c.w ? `${c.w}%` : undefined,
-    maxWidth: hasImage ? '380px' : undefined,
+
+  // Docked cards: fly to left side, absolute positioned in canvas-space
+  if (c._isDocked) {
+    const isHovered = c.scale > 1.01
+    const isSelected = c.selected
+    return {
+      left: '24px',
+      top: `${c._dockTop || 36}px`,
+      width: '276px',
+      maxWidth: '276px',
+      transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,
+      opacity: 1,
+      zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
+      filter: 'none',
+      pointerEvents: 'auto',
+      transition: 'left 0.6s cubic-bezier(.22,1,.36,1), top 0.6s cubic-bezier(.22,1,.36,1), width 0.6s cubic-bezier(.22,1,.36,1), transform 0.3s, opacity 0.3s',
+    }
+  }
+
+    return {
+      left: `${c._mappedX ?? c.x}%`,
+      top: `${c.y}%`,
+      width: c.w ? `${c.w}%` : undefined,
+      maxWidth: hasImage ? '340px' : undefined,
     transform: `translateZ(${c.z}px) scale(${c.scale})`,
     opacity: c.opacity,
     zIndex: c.zIndex,
@@ -150,6 +174,11 @@ function onClick(e) {
   } else {
     glowBreathing.value = false
   }
+}
+
+function onDblClick(e) {
+  e.stopPropagation()
+  emit('toggle-dock')
 }
 
 function onMouseDown(e) {

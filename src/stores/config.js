@@ -21,6 +21,7 @@ export const useConfigStore = defineStore('config', () => {
   const proxyUrl = ref('')
   const sketchEnabled = ref(true)
   const sketchFont = ref('Yozai')
+  const customSystemPrompt = ref('')
 
   function load() {
     try {
@@ -42,6 +43,7 @@ export const useConfigStore = defineStore('config', () => {
       if (s.proxyUrl) proxyUrl.value = s.proxyUrl
       if (s.sketchEnabled != null) sketchEnabled.value = !!s.sketchEnabled
       if (s.sketchFont) sketchFont.value = s.sketchFont
+      if (s.customSystemPrompt != null) customSystemPrompt.value = s.customSystemPrompt
     } catch {}
   }
 
@@ -64,6 +66,7 @@ export const useConfigStore = defineStore('config', () => {
       proxyUrl: proxyUrl.value,
       sketchEnabled: sketchEnabled.value,
       sketchFont: sketchFont.value,
+      customSystemPrompt: customSystemPrompt.value,
     }))
   }
 
@@ -100,7 +103,7 @@ export const useConfigStore = defineStore('config', () => {
   // Auto-save on any change
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
-    proxyEnabled, proxyUrl, sketchEnabled, sketchFont], save)
+    proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt], save)
 
   // Load on creation
   load()
@@ -108,7 +111,7 @@ export const useConfigStore = defineStore('config', () => {
   return {
     provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
-    proxyEnabled, proxyUrl, sketchEnabled, sketchFont,
+    proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     load, save, getConfig,
   }
 })

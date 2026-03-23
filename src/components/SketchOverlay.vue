@@ -414,6 +414,22 @@ onMounted(() => {
 })
 
 function cardRect(key) {
+  // Data-source-first: use store position (immune to CSS transition lag)
+  // with DOM-measured dimensions for accurate sizing
+  let storeCard = null
+  cards.value.forEach(c => {
+    if (c.contentKey === key || c.data?.key === key) storeCard = c
+  })
+  if (storeCard) {
+    const dims = measuredDims[key]
+    const x = pctX(storeCard.x)
+    const y = pctY(storeCard.y)
+    const w = dims?.w > 0 ? dims.w : (storeCard.w ? pctX(storeCard.w) : 200)
+    const h = dims?.h > 0 ? dims.h : 130
+    return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
+  }
+
+  // No store entry — fall back to measured DOM position
   const dims = measuredDims[key]
   if (dims && dims.w > 0) {
     return {
@@ -422,7 +438,7 @@ function cardRect(key) {
     }
   }
 
-  // Cache miss — try direct DOM read (new card not yet measured)
+  // Last resort — direct DOM read (new card not yet measured)
   const canvas = document.querySelector('.canvas')
   const el = document.querySelector(`[data-block-key="${key}"]`)
     || document.querySelector(`[data-content-key="${key}"]`)
@@ -433,24 +449,11 @@ function cardRect(key) {
       x: er.left - cr.left, y: er.top - cr.top,
       w: er.width, h: er.height,
     }
-    // Cache it for subsequent reads this frame
     measuredDims[key] = r
     return { ...r, cx: r.x + r.w / 2, cy: r.y + r.h / 2 }
   }
 
-  // Fallback: calculate from store data (inaccurate with perspective)
-  let found = null
-  cards.value.forEach(c => {
-    if (c.contentKey === key || c.data?.key === key) found = c
-  })
-  if (!found) return null
-
-  const x = pctX(found.x)
-  const y = pctY(found.y)
-  const w = found.w ? pctX(found.w) : 200
-  const h = 130
-
-  return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 }
+  return null
 }
 
 function edgePoint(rect, tx, ty) {

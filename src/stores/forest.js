@@ -113,6 +113,34 @@ export const useForestStore = defineStore('forest', () => {
     scheduleSave()
   }
 
+  // --- Clear all trees ---
+
+  async function clearAll() {
+    const timeline = useTimelineStore()
+    const canvas = useCanvasStore()
+
+    // Delete all trees from persistent storage
+    if (store) {
+      for (const id of order.value) {
+        await store.delete('tree:' + id)
+      }
+    }
+
+    // Clear in-memory state
+    for (const id of Object.keys(trees)) {
+      delete trees[id]
+    }
+    order.value = []
+    activeTreeId.value = null
+
+    // Reset timeline and canvas
+    timeline.reset()
+    canvas.clear()
+
+    // Create a fresh empty tree
+    newTree()
+  }
+
   // --- Auto-name from first message ---
 
   function autoName(treeId, message) {
@@ -126,7 +154,7 @@ export const useForestStore = defineStore('forest', () => {
 
   async function saveCurrentTree() {
     if (!activeTreeId.value || !trees[activeTreeId.value]) return
-    const data = serializeTimeline()
+    const data = JSON.parse(JSON.stringify(serializeTimeline()))
     trees[activeTreeId.value].updatedAt = Date.now()
 
     if (store) {
@@ -264,6 +292,7 @@ export const useForestStore = defineStore('forest', () => {
     deleteTree,
     renameTree,
     autoName,
+    clearAll,
     saveCurrentTree,
     scheduleSave,
   }

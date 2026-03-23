@@ -1,6 +1,7 @@
 <template>
   <div class="config-overlay" :class="{ open: open }" @click.self="$emit('update:open', false)">
-    <div class="config-box">
+    <div class="config-container">
+      <div class="config-box">
       <div class="field">
         <label>Provider</label>
         <select v-model="config.provider">
@@ -95,7 +96,18 @@
           :disabled="!config.proxyEnabled"
         />
       </div>
+      <button class="config-danger" @click="clearMemory">清除记忆</button>
       <button class="config-close" @click="$emit('update:open', false)">Done</button>
+    </div>
+    <div class="prompt-box">
+      <label class="prompt-label">System Prompt <span class="prompt-hint">编辑后生效，Reset 恢复默认</span></label>
+      <textarea
+        class="prompt-textarea"
+        :value="config.customSystemPrompt || defaultPrompt"
+        @input="config.customSystemPrompt = $event.target.value"
+      ></textarea>
+      <button class="prompt-reset" @click="resetPrompt">Reset</button>
+    </div>
     </div>
   </div>
 </template>
@@ -103,17 +115,31 @@
 <script setup>
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
+import { useForestStore } from '../stores/forest.js'
 import { useTTS } from '../composables/useTTS.js'
+import { SYSTEM } from '../lib/system-prompt.js'
 
 defineProps({
   open: { type: Boolean, default: false },
 })
-defineEmits(['update:open'])
+const emit = defineEmits(['update:open'])
 
 const config = useConfigStore()
+const forest = useForestStore()
 const tts = useTTS()
 const voices = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer']
 const previewingVoice = ref('')
+const defaultPrompt = SYSTEM
+
+function resetPrompt() {
+  config.customSystemPrompt = ''
+}
+
+function clearMemory() {
+  if (!window.confirm('确认清除所有对话记忆？此操作不可撤销。')) return
+  forest.clearAll()
+  emit('update:open', false)
+}
 
 function selectVoice(v) {
   config.ttsVoice = v

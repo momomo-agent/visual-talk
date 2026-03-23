@@ -81,6 +81,14 @@ export function useSend({ tts } = {}) {
         matchedIds.forEach(cardId => {
           timeline.addOperation(nodeId, { op: 'update', cardId, changes: rawChanges })
         })
+      } else if (cmd.cmd === 'dock') {
+        matchedIds.forEach(cardId => {
+          timeline.dockCard(cardId)
+        })
+      } else if (cmd.cmd === 'undock') {
+        matchedIds.forEach(cardId => {
+          timeline.undockCard(cardId)
+        })
       }
     })
   }

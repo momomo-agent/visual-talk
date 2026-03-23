@@ -15,17 +15,39 @@ export function parseResponse(text) {
       try { commands.push({ cmd: 'update', ...JSON.parse(m[2]) }) } catch {}
       continue
     }
+    if (m[1] === 'dock') {
+      try { commands.push({ cmd: 'dock', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
+    if (m[1] === 'undock') {
+      try { commands.push({ cmd: 'undock', ...JSON.parse(m[2]) }) } catch {}
+      continue
+    }
     if (m[1] === 'sketch') {
-      try { sketches.push(JSON.parse(m[2])) } catch {}
+      try {
+        const sk = JSON.parse(m[2])
+        // Only allow card-bound sketch types (line/label have no card binding)
+        if (sk.type === 'line' || sk.type === 'label') continue
+        sketches.push(sk)
+      } catch {}
       continue
     }
     try {
       const data = JSON.parse(m[2])
       const type = m[1]
+      // Skip non-card types (e.g. web_search tool results that LLM echoes)
+      const CARD_TYPES = new Set([
+        'card', 'metric', 'data', 'steps', 'columns', 'callout', 'code',
+        'markdown', 'media', 'embed', 'chart', 'list', 'table', 'map',
+        'diagram', 'audio', 'quote', 'profile',
+      ])
+      if (!CARD_TYPES.has(type)) continue
+      // Normalize aliases
+      const normalizedType = type === 'data' ? 'metric' : type === 'quote' ? 'callout' : type
       // Normalize items to string arrays for card/list types
       // Steps items are {time, title, detail} objects — don't flatten them
       // Chart items are {label, value} objects — don't flatten them either
-      if (Array.isArray(data.items) && type !== 'steps' && type !== 'chart') {
+      if (Array.isArray(data.items) && normalizedType !== 'steps' && normalizedType !== 'chart') {
         data.items = data.items.map(it =>
           typeof it === 'string' ? it : (it.text || it.title || it.label || '')
         )
@@ -41,10 +63,10 @@ export function parseResponse(text) {
         })
       }
       // Skip empty cards — no title, no items, no image, no content
-      if (type === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0)) {
+      if (normalizedType === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0)) {
         continue
       }
-      blocks.push({ type, data })
+      blocks.push({ type: normalizedType, data })
     } catch {}
   }
   return { speech: speech ? speech[1].trim() : null, blocks, commands, sketches }

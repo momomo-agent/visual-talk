@@ -78,16 +78,31 @@ export function getCardText(card) {
  * @param {Map} snapshot - Map of cardId → card objects (from computeCanvas or canvas.cards)
  * @returns {string|null}
  */
-export function buildCanvasContext(snapshot) {
+export function buildCanvasContext(snapshot, dockedSnapshots = new Map()) {
   const entries = Array.from(snapshot.entries())
-  if (!entries.length) return null
 
   const maxDepth = Math.max(...entries.map(([, c]) => c.depth || 0), 0)
   const latestCards = []    // depth === maxDepth (just created)
   const visibleCards = []   // depth === maxDepth - 1 (user is currently looking at)
   const pastCards = []      // depth < maxDepth - 1 (fading into background)
+  const dockedCards = []    // user-docked cards — independent layer
+
+  // Docked cards from independent layer
+  dockedSnapshots.forEach((snap, id) => {
+    const key = snap.data?.key
+    const title = getCardTitle(snap)
+    const label = key ? `[${key}]` : title ? `"${title}"` : null
+    if (label) {
+      try {
+        dockedCards.push(`${label} <!--vt:${snap.type} ${JSON.stringify(snap.data)}-->`)
+      } catch {
+        dockedCards.push(label)
+      }
+    }
+  })
 
   entries.forEach(([id, card]) => {
+
     const d = card.depth || 0
     if (d === maxDepth) {
       try {
@@ -113,10 +128,11 @@ export function buildCanvasContext(snapshot) {
     }
   })
 
-  if (!latestCards.length && !visibleCards.length && !pastCards.length) return null
+  if (!latestCards.length && !visibleCards.length && !pastCards.length && !dockedCards.length) return null
   let ctx = '[Current canvas state]\n'
+  if (dockedCards.length) ctx += `Docked (user's active workspace — update to serve the card's purpose, but don't repurpose into something new. Can't move):\n${dockedCards.join('\n')}\n`
   if (latestCards.length) ctx += `Latest (your last response):\n${latestCards.join('\n')}\n`
-  if (visibleCards.length) ctx += `Visible (user is looking at — you can move these):\n${visibleCards.join('\n')}\n`
+  if (visibleCards.length) ctx += `Visible (previous round — will fade when new cards appear):\n${visibleCards.join('\n')}\n`
   if (pastCards.length) ctx += `Past (faded, do not touch): ${pastCards.join(', ')}\n`
   return ctx
 }

@@ -15,6 +15,7 @@ export const useCanvasStore = defineStore('canvas', () => {
   const selectedIds = ref(new Set())
   const greetingVisible = ref(true)
   const isStreaming = ref(false)
+  const isNavigating = ref(false)
 
   // Generation counter for cancelling stale transitions
   let snapshotGen = 0
@@ -23,10 +24,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     const z = -d * 160
     const s = Math.max(0.5, 1 - d * 0.12)
     const o = Math.max(0, 1 - d * 0.45)
-    card.z = z
+    // For current-round cards (d===0), restore their intraZ ordering
+    card.z = d === 0 ? (card.intraZ || 0) : z
     card.scale = s
     card.opacity = o
-    card.zIndex = Math.max(1, 50 - d * 20)
+    card.zIndex = d === 0 ? (100 + Math.floor((card.intraZ || 0) / 10)) : Math.max(1, 50 - d * 20)
     card.blur = d >= 1 ? d * 4 : 0
     card.pointerEvents = 'auto'
   }
@@ -41,63 +43,70 @@ export const useCanvasStore = defineStore('canvas', () => {
    * @param {Map} snapshot - Map<id, CardState> from computeCanvas or liveState
    * @param {Object} opts - { animate: true } for streaming, false for instant
    */
-  function applySnapshot(snapshot, { animate = true } = {}) {
+  function applySnapshot(snapshot, { animate = true, navigate = false, navDir = 1 } = {}) {
     const gen = ++snapshotGen
 
     if (snapshot.size > 0) greetingVisible.value = false
 
-    // Build snapshot lookup by contentKey
-    const targetByKey = new Map()
-    snapshot.forEach(card => {
-      if (card.contentKey) targetByKey.set(card.contentKey, card)
-    })
+    // ── Pass 1: Upsert — iterate snapshot, update or create by card id ──
+    snapshot.forEach((target, targetId) => {
+      const existing = cards.get(targetId)
 
-    // Build existing lookup by contentKey
-    const existingByKey = new Map()
-    cards.forEach((card, id) => {
-      if (card.contentKey) existingByKey.set(card.contentKey, id)
-    })
-
-    // ── Pass 1: Upsert — iterate snapshot, update or create ──
-    targetByKey.forEach((target, key) => {
-      const existingId = existingByKey.get(key)
-
-      if (existingId != null) {
-        // Update existing card
-        const card = cards.get(existingId)
-        if (card) {
-          card.x = target.x
-          card.y = target.y
-          card.z = target.z ?? 0
-          card.w = target.w ?? card.w
-          card.opacity = target.opacity ?? 1
-          card.scale = target.scale ?? 1
-          card.blur = target.blur ?? 0
-          card.zIndex = target.zIndex ?? 100
-          card.depth = target.depth
-          card.intraZ = target.intraZ ?? 0
-          card.type = target.type
-          card.data = { ...target.data }
-          card.pinned = target.pinned ?? false
-          card.pointerEvents = 'auto'
-          // Don't touch card.selected — that's UI state
-        }
+      if (existing) {
+        // Update existing card — same id, just sync state
+        existing.x = target.x
+        existing.y = target.y
+        existing.z = target.z ?? 0
+        existing.w = target.w ?? existing.w
+        existing.opacity = target.opacity ?? 1
+        existing.scale = target.scale ?? 1
+        existing.blur = target.blur ?? 0
+        existing.zIndex = target.zIndex ?? 100
+        existing.depth = target.depth
+        existing.intraZ = target.intraZ ?? 0
+        existing.type = target.type
+        existing.data = { ...target.data }
+        existing.pinned = target.pinned ?? false
+        existing.pointerEvents = target.pointerEvents || 'auto'
+        existing.contentKey = target.contentKey
       } else {
         // Create new card
-        if (animate) {
-          // Fly in: start behind, animate to target
+        if (navigate) {
+          // Navigation: new cards arrive from Z-depth (gentle)
+          const entryZ = navDir * 300
+          const entryScale = navDir > 0 ? 1.1 : 0.9
           const card = reactive({
             ...target,
             opacity: 0,
-            z: Z_ENTER,
-            scale: 0.8,
-            blur: 4,
+            scale: entryScale,
+            z: entryZ,
+            blur: 2,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
-          cards.set(target.id, card)
-          // Animate to target state — double rAF ensures initial state is painted first
+          cards.set(targetId, card)
+          // Delay slightly so exit starts first
+          setTimeout(() => {
+            if (snapshotGen !== gen) return
+            card.opacity = target.opacity ?? 1
+            card.scale = target.scale ?? 1
+            card.z = target.z ?? 0
+            card.blur = target.blur ?? 0
+          }, 60)
+        } else if (animate) {
+          // Streaming: arrive from far away — start large + faded, shrink to normal
+          const card = reactive({
+            ...target,
+            opacity: 0,
+            z: Z_ENTER,
+            scale: 1.35,
+            blur: 6,
+            selected: false,
+            pointerEvents: 'auto',
+            entranceDelay: 0,
+          })
+          cards.set(targetId, card)
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               if (snapshotGen !== gen) return
@@ -108,29 +117,42 @@ export const useCanvasStore = defineStore('canvas', () => {
             })
           })
         } else {
-          // Instant: no animation
           const card = reactive({
             ...target,
             selected: false,
             pointerEvents: 'auto',
             entranceDelay: 0,
           })
-          cards.set(target.id, card)
+          cards.set(targetId, card)
         }
       }
     })
 
-    // ── Pass 2: Cleanup — remove cards not in snapshot ──
+    // ── Pass 2: Cleanup — fade out cards not in snapshot ──
+    const snapshotIds = new Set(snapshot.keys())
     cards.forEach((card, id) => {
-      if (card.pointerEvents === 'none') return // already fading out
-      if (!card.contentKey) return // no key to match
-      if (targetByKey.has(card.contentKey)) return // still in snapshot
+      if (card.pointerEvents === 'none') return
+      if (snapshotIds.has(id)) return
 
-      if (animate) {
+      if (navigate) {
+        // Navigation: old cards drift away gently
+        const exitZ = -navDir * 300
+        const exitScale = navDir > 0 ? 0.9 : 1.1
+        card.opacity = 0
+        card.z = exitZ
+        card.scale = exitScale
+        card.blur = 2
+        card.pointerEvents = 'none'
+        setTimeout(() => {
+          if (snapshotGen !== gen) return
+          cards.delete(id)
+        }, 650)
+      } else if (animate) {
+        // Fade out: grow + fade (flying away from you)
         card.opacity = 0
         card.z = Z_FADE_OUT
-        card.scale = 0.5
-        card.blur = 8
+        card.scale = 1.3
+        card.blur = 10
         card.pointerEvents = 'none'
         setTimeout(() => {
           if (snapshotGen !== gen) return
@@ -156,9 +178,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     if (card.selected) {
       card.selected = false
       selectedIds.value.delete(id)
-      // Restore depth appearance
       if (card.depth != null) {
-        // Read current max depth from cards
         let maxDepth = 0
         cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
         const d = maxDepth - (card.depth || 0)
@@ -237,6 +257,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedIds,
     greetingVisible,
     isStreaming,
+    isNavigating,
     applySnapshot,
     restoreFrom,
     toggleSelect,

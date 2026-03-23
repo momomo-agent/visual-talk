@@ -19,22 +19,39 @@ import { getCardTitle, matchTitle, buildCanvasContext, buildSelectedContext } fr
  * Data model:
  *   node.operations = [{ op, card?, cardId?, changes?, to? }]
  *   op types: 'create', 'update', 'move', 'push', 'remove'
+ * 
+ * Sections:
+ *   1. STATE          — reactive refs, internal data
+ *   2. TREE           — createNode, removeNode, addOperation
+ *   3. CANVAS         — getPathFromRoot, computeCanvas
+ *   4. NAVIGATION     — navigate, goLive, branchFrom
+ *   5. DOCK           — dockCard, undockCard, closeDocked, toggleDock
+ *   6. CARD SEARCH    — findCardsByKey, findCardsByTitle, context builders
+ *   7. USER INTERACTION — setUserOverride, restoreToNode, getBubbleInfo
+ *   8. SERIALIZATION  — toJSON, fromJSON
+ *   9. LIFECYCLE      — reset, setAiResponse, setNodeCounter
  */
 export const useTimelineStore = defineStore('timeline', () => {
-  // Tree nodes, keyed by id
+
+  // ═══════════════════════════════════════════════
+  // 1. STATE
+  // ═══════════════════════════════════════════════
+
   const nodes = reactive(new Map())
-  
-  // Navigation state
-  const activeTip = ref(null)    // id of the active branch tip (where new messages go)
-  const viewingId = ref(null)    // null = live view, number = viewing history
-
-  // Node ID counter
+  const activeTip = ref(null)
+  const viewingId = ref(null)
   let nodeCounter = 0
-
-  // Cache: computed canvas state per node id
   const canvasCache = new Map()
+  let liveState = null
 
-  // --- Tree operations ---
+  // Docked snapshots — independent layer, not part of the tree
+  const dockedSnapshots = reactive(new Map())
+  const dockedIds = computed(() => new Set(dockedSnapshots.keys()))
+  const nodeCount = computed(() => nodes.size)
+
+  // ═══════════════════════════════════════════════
+  // 2. TREE — node CRUD + operation pipeline
+  // ═══════════════════════════════════════════════
 
   function createNode(parentId, userMessage) {
     const id = nodeCounter++
@@ -49,22 +66,19 @@ export const useTimelineStore = defineStore('timeline', () => {
       aiResponse: '',
       timestamp: Date.now(),
       operations: [],
-      userOverrides: {},  // { cardKey: {x, y} } — user drag adjustments, per-node
+      userOverrides: {},
     })
 
     nodes.set(id, node)
-
     if (parent) {
       parent.childIds.push(id)
       parent.lastChildId = id
     }
-
     activeTip.value = id
-    canvasCache.delete(id) // invalidate
+    canvasCache.delete(id)
     return id
   }
 
-  // Remove a node (e.g. failed/empty responses)
   function removeNode(id) {
     const node = nodes.get(id)
     if (!node) return
@@ -79,86 +93,79 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
     nodes.delete(id)
     canvasCache.delete(id)
-    // If this was the active tip, go back to parent
-    if (activeTip.value === id) {
-      activeTip.value = node.parentId ?? 0
-    }
-    if (viewingId.value === id) {
-      viewingId.value = null
-    }
+    if (activeTip.value === id) activeTip.value = node.parentId ?? 0
+    if (viewingId.value === id) viewingId.value = null
   }
-
-  // Live streaming state — incremental CanvasState for the active node
-  let liveState = null
 
   function addOperation(nodeId, operation) {
     const node = nodes.get(nodeId)
     if (!node) return
 
-    // Assign card identity at timeline level — never depend on canvas apply
-    if (operation.op === 'create' && operation.card && !operation.card.id) {
-      operation.card.id = nextId()
+    // Assign card identity at timeline level
+    if (operation.op === 'create' && operation.card) {
+      if (!operation.card.id) operation.card.id = nextId()
+      if (!operation.card.contentKey) {
+        operation.card.contentKey = `n${nodeId}-${operation.card.id}`
+      }
       const data = operation.card.data || {}
       operation.card.x = data.x != null ? 5 + (data.x / 100) * 90 : 50
       operation.card.y = data.y != null ? 5 + (data.y / 100) * 75 : 30
       operation.card.w = data.w || operation.card.w || 25
     }
 
+    // Intercept updates/moves for docked cards → apply to snapshot, not tree
+    if ((operation.op === 'update' || operation.op === 'move') && operation.cardId) {
+      const snap = dockedSnapshots.get(operation.cardId)
+      if (snap) {
+        if (operation.op === 'update' && operation.changes) {
+          Object.assign(snap.data, operation.changes)
+          dockedSnapshots.set(operation.cardId, snap) // trigger reactivity
+        }
+        if (nodeId === activeTip.value && viewingId.value == null) {
+          const canvas = useCanvasStore()
+          canvas.applySnapshot(liveState?.cards ?? computeCanvas(nodeId), { animate: true })
+        }
+        return // don't add to tree
+      }
+    }
+
     node.operations.push(operation)
     invalidateFrom(nodeId)
 
-    // If this is the live node AND user is viewing it, update canvas
+    // Live streaming: incremental canvas update
     if (nodeId === activeTip.value && viewingId.value == null) {
-      // Maintain incremental state for streaming performance
       if (!liveState) {
-        // First op in this round — bootstrap from parent state
         liveState = new CanvasState()
         const path = getPathFromRoot(nodeId)
-        // Replay all nodes EXCEPT the current one (it's being built incrementally)
         for (let i = 0; i < path.length - 1; i++) {
           const n = path[i]
           liveState.beginNode()
           liveState.preScan(n.operations)
-          for (const op of n.operations) {
-            liveState.apply(op)
-          }
+          for (const op of n.operations) liveState.apply(op)
         }
-        // Begin the current node and replay ALL existing ops (except the one just pushed)
         liveState.beginNode()
         liveState.preScan(node.operations)
-        // Replay ops that existed before this new one was pushed
-        const existingOps = node.operations.length - 1  // -1 because we already pushed the new op
-        for (let i = 0; i < existingOps; i++) {
-          liveState.apply(node.operations[i])
-        }
+        const existingOps = node.operations.length - 1
+        for (let i = 0; i < existingOps; i++) liveState.apply(node.operations[i])
       }
-
-      // Apply this single operation incrementally
-      // For push: re-scan all ops to catch move/update targets that arrived after initial preScan
-      if (operation.op === 'push') {
-        liveState.preScan(node.operations)
-      }
+      if (operation.op === 'push') liveState.preScan(node.operations)
       liveState.apply(operation)
-
-      // Push snapshot to canvas
       const canvas = useCanvasStore()
       canvas.applySnapshot(liveState.cards, { animate: true })
     }
   }
 
-  function resetLiveState() {
-    liveState = null
-  }
+  function resetLiveState() { liveState = null }
 
   function invalidateFrom(nodeId) {
     canvasCache.delete(nodeId)
     const node = nodes.get(nodeId)
-    if (node) {
-      node.childIds.forEach(cid => invalidateFrom(cid))
-    }
+    if (node) node.childIds.forEach(cid => invalidateFrom(cid))
   }
 
-  // --- Path & Canvas computation ---
+  // ═══════════════════════════════════════════════
+  // 3. CANVAS — state computation by replaying ops
+  // ═══════════════════════════════════════════════
 
   function getPathFromRoot(nodeId) {
     const path = []
@@ -172,13 +179,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     return path
   }
 
-  /**
-   * Compute the full canvas state at a given node by replaying
-   * all operations from root to that node.
-   * 
-   * Returns: Map<string, CardState>
-   * Uses CanvasState — the single source of truth for state computation.
-   */
   function computeCanvas(nodeId) {
     if (canvasCache.has(nodeId)) return canvasCache.get(nodeId)
 
@@ -188,10 +188,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     for (const node of path) {
       state.beginNode()
       state.preScan(node.operations)
-      for (const op of node.operations) {
-        state.apply(op)
-      }
-      // Apply user drag overrides — merged at the source so all readers get final positions
+      for (const op of node.operations) state.apply(op)
       if (node.userOverrides) {
         for (const [key, pos] of Object.entries(node.userOverrides)) {
           state.cards.forEach(card => {
@@ -204,11 +201,22 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     }
 
+    // Filter out docked cards
+    dockedSnapshots.forEach((snap, cardId) => {
+      state.cards.forEach((card, id) => {
+        if (id === cardId || (card.data?.key && snap.data?.key && card.data.key === snap.data.key)) {
+          state.cards.delete(id)
+        }
+      })
+    })
+
     canvasCache.set(nodeId, state.cards)
     return state.cards
   }
 
-  // --- Navigation ---
+  // ═══════════════════════════════════════════════
+  // 4. NAVIGATION — time travel through the tree
+  // ═══════════════════════════════════════════════
 
   const currentNode = computed(() => {
     const id = viewingId.value ?? activeTip.value
@@ -238,13 +246,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   })
 
-  /**
-   * Navigate in 4 directions:
-   *   'up'    = go to parent (back in time)
-   *   'down'  = go to last visited child (forward in time)
-   *   'left'  = go to previous sibling branch
-   *   'right' = go to next sibling branch
-   */
   function navigate(direction) {
     const id = viewingId.value ?? activeTip.value
     if (id == null) return false
@@ -259,17 +260,14 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
       case 'down': {
         if (node.childIds.length === 0) {
-          // At leaf — if this is the active tip, go live
           if (node.id === activeTip.value) {
             viewingId.value = null
             return true
           }
           return false
         }
-        // Go to last visited child, or first
         const targetChild = node.lastChildId ?? node.childIds[0]
         viewingId.value = targetChild
-        // Remember this choice
         node.lastChildId = targetChild
         return true
       }
@@ -299,56 +297,156 @@ export const useTimelineStore = defineStore('timeline', () => {
     return false
   }
 
-  function goLive() {
-    viewingId.value = null
-  }
+  function goLive() { viewingId.value = null }
 
-  /**
-   * Send always continues from the active tip — not from where you're viewing.
-   * Viewing history is just looking back, not going back.
-   */
   function getBranchPoint() {
-    // If viewing a historical node, branch from there (fork the timeline)
-    // Otherwise, continue from the active tip
     return viewingId.value ?? activeTip.value
   }
 
-  /**
-   * Start a new branch from activeTip.
-   * Automatically returns to live view.
-   */
   function branchFrom(parentId, userMessage) {
     const newId = createNode(parentId, userMessage)
-    viewingId.value = null // always go live
-    liveState = null // reset incremental state for new branch
+    viewingId.value = null
+    liveState = null
     return newId
   }
 
-  // --- Restore canvas to a historical node ---
+  // ═══════════════════════════════════════════════
+  // 5. DOCK — independent card layer
+  // ═══════════════════════════════════════════════
+
+  function dockCard(cardId) {
+    if (dockedSnapshots.has(cardId)) return
+
+    const viewId = viewingId.value ?? activeTip.value
+    if (viewId == null) return
+    const snapshot = liveState?.cards ?? computeCanvas(viewId)
+    const card = snapshot.get(cardId)
+    if (!card) return
+
+    dockedSnapshots.set(cardId, JSON.parse(JSON.stringify(card)))
+    canvasCache.clear()
+
+    const canvas = useCanvasStore()
+    canvas.applySnapshot(computeCanvas(viewId), { animate: false })
+  }
+
+  function undockCard(cardId) {
+    const snap = dockedSnapshots.get(cardId)
+    if (!snap) return
+
+    const targetId = viewingId.value ?? activeTip.value
+    if (targetId == null) return
+    const node = nodes.get(targetId)
+    if (!node) return
+
+    dockedSnapshots.delete(cardId)
+    canvasCache.clear()
+
+    addOperation(targetId, {
+      op: 'create',
+      card: {
+        id: cardId,
+        type: snap.type,
+        data: JSON.parse(JSON.stringify(snap.data)),
+        x: snap.x,
+        y: snap.y,
+        w: snap.w,
+      }
+    })
+
+    const canvas = useCanvasStore()
+    canvas.applySnapshot(computeCanvas(targetId), { animate: true })
+  }
+
+  function closeDocked(cardId) {
+    dockedSnapshots.delete(cardId)
+    canvasCache.clear()
+
+    const viewId = viewingId.value ?? activeTip.value
+    if (viewId != null) {
+      const canvas = useCanvasStore()
+      canvas.applySnapshot(computeCanvas(viewId), { animate: false })
+    }
+  }
+
+  function toggleDock(cardId) {
+    if (dockedSnapshots.has(cardId)) {
+      undockCard(cardId)
+    } else {
+      dockCard(cardId)
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  // 6. CARD SEARCH — find cards for LLM commands
+  // ═══════════════════════════════════════════════
+
+  function getSearchableCards(nodeId) {
+    const snapshot = (nodeId === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(nodeId)
+    return function* () {
+      yield* snapshot
+      yield* dockedSnapshots
+    }()
+  }
+
+  function findCardsByKey(nodeId, key) {
+    const target = (key || '').toLowerCase()
+    const matched = []
+    for (const [id, card] of getSearchableCards(nodeId)) {
+      const cardKey = (card.data?.key || '').toLowerCase()
+      if (cardKey && cardKey === target) matched.push(id)
+    }
+    return matched
+  }
+
+  function findCardsByTitle(nodeId, titleQuery) {
+    const target = (titleQuery || '').toLowerCase()
+    const exact = []
+    const partial = []
+    for (const [id, card] of getSearchableCards(nodeId)) {
+      const cardTitle = getCardTitle(card)
+      const match = matchTitle(cardTitle, target)
+      if (match === 'exact') exact.push(id)
+      else if (match === 'partial') partial.push(id)
+    }
+    return exact.length ? exact : partial
+  }
+
+  function getCanvasContext(nodeId) {
+    const id = nodeId ?? viewingId.value ?? activeTip.value
+    if (id == null) return null
+    const snapshot = (id === activeTip.value && liveState)
+      ? liveState.cards
+      : computeCanvas(id)
+    return buildCanvasContext(snapshot, dockedSnapshots)
+  }
+
+  function getSelectedContext(nodeId, selectedIds) {
+    const id = nodeId ?? viewingId.value ?? activeTip.value
+    if (id == null || !selectedIds?.length) return null
+    const snapshot = computeCanvas(id)
+    return buildSelectedContext(snapshot, selectedIds)
+  }
+
+  // ═══════════════════════════════════════════════
+  // 7. USER INTERACTION — drag overrides, display
+  // ═══════════════════════════════════════════════
 
   function restoreToNode(nodeId) {
     const canvas = useCanvasStore()
-    const computedCanvas = computeCanvas(nodeId)
-    canvas.restoreFrom(computedCanvas)
-    // Sketch restore is automatic — sketch store watches currentNode
+    canvas.restoreFrom(computeCanvas(nodeId))
   }
 
-  /**
-   * Record a user drag override for the current viewed node.
-   * Only persists if the card was created in this node's round.
-   * Old cards can be dragged freely but positions aren't saved
-   * (unless user navigates to the node that created them).
-   */
   function setUserOverride(cardKey, x, y) {
     const id = viewingId.value ?? activeTip.value
     if (id == null) return
     const node = nodes.get(id)
     if (!node) return
 
-    // Persist for cards that this node created, updated, or moved
     const isThisNodesCard = node.operations.some(op => {
       if (op.op === 'create' && op.card?.data?.key === cardKey) return true
-      // update/move use cardId — resolve to key via canvas snapshot
       if ((op.op === 'update' || op.op === 'move') && op.cardId != null) {
         const snapshot = (id === activeTip.value && liveState)
           ? liveState.cards
@@ -363,7 +461,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     node.userOverrides[cardKey] = { x, y }
     invalidateFrom(id)
 
-    // If streaming, also apply to liveState so it survives incremental snapshots
     if (id === activeTip.value && liveState) {
       liveState.cards.forEach(card => {
         if ((card.data?.key || '') === cardKey) {
@@ -373,8 +470,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       })
     }
   }
-
-    // --- Bubble display info ---
 
   function getBubbleInfo() {
     const node = currentNode.value
@@ -397,26 +492,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     return { text, hasSiblings: !!sib }
   }
 
-  // --- State ---
-
-  const nodeCount = computed(() => nodes.size)
-
-  function reset() {
-    nodes.clear()
-    activeTip.value = null
-    viewingId.value = null
-    nodeCounter = 0
-    canvasCache.clear()
-  }
-
-  function setAiResponse(nodeId, response) {
-    const node = nodes.get(nodeId)
-    if (node) node.aiResponse = response
-  }
-
-  function setNodeCounter(n) { nodeCounter = n }
-
-  // --- Serialization (for forest persistence) ---
+  // ═══════════════════════════════════════════════
+  // 8. SERIALIZATION — save/load for forest
+  // ═══════════════════════════════════════════════
 
   function toJSON() {
     const nodesData = {}
@@ -438,6 +516,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       nodeCounter,
       activeTip: activeTip.value,
       nodes: nodesData,
+      dockedSnapshots: Object.fromEntries(dockedSnapshots),
     }
   }
 
@@ -463,112 +542,62 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (data.activeTip != null && nodes.has(data.activeTip)) {
       activeTip.value = data.activeTip
     }
-    if (data.nodeCounter != null) {
-      nodeCounter = data.nodeCounter
+    if (data.nodeCounter != null) nodeCounter = data.nodeCounter
+
+    dockedSnapshots.clear()
+    if (data.dockedSnapshots) {
+      for (const [id, snap] of Object.entries(data.dockedSnapshots)) {
+        dockedSnapshots.set(id, snap)
+      }
     }
-    if (activeTip.value != null) {
-      restoreToNode(activeTip.value)
-    }
+
+    if (activeTip.value != null) restoreToNode(activeTip.value)
   }
 
-  /**
-   * Find cards by title substring in the computed canvas state.
-   * Searches in timeline data (not canvas view layer).
-   * Returns array of card IDs that match.
-   */
-  /**
-   * Find a card by its semantic key (exact match).
-   * Keys are LLM-assigned, unique, and stable.
-   */
-  function findCardsByKey(nodeId, key) {
-    const snapshot = (nodeId === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(nodeId)
+  // ═══════════════════════════════════════════════
+  // 9. LIFECYCLE — reset, misc setters
+  // ═══════════════════════════════════════════════
 
-    const target = (key || '').toLowerCase()
-    const matched = []
-    snapshot.forEach((card, id) => {
-      const cardKey = (card.data?.key || '').toLowerCase()
-      if (cardKey && cardKey === target) matched.push(id)
-    })
-    return matched
+  function reset() {
+    nodes.clear()
+    activeTip.value = null
+    viewingId.value = null
+    nodeCounter = 0
+    canvasCache.clear()
+    dockedSnapshots.clear()
   }
 
-  /**
-   * Find cards by title in the current live state or computed snapshot.
-   * During streaming, uses liveState for O(n) lookup without recomputation.
-   * Falls back to computeCanvas for navigation/historical queries.
-   */
-  function findCardsByTitle(nodeId, titleQuery) {
-    // Use liveState if querying the active streaming node
-    const snapshot = (nodeId === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(nodeId)
-
-    const target = (titleQuery || '').toLowerCase()
-    const exact = []
-    const partial = []
-    snapshot.forEach((card, id) => {
-      const cardTitle = getCardTitle(card)
-      const match = matchTitle(cardTitle, target)
-      if (match === 'exact') exact.push(id)
-      else if (match === 'partial') partial.push(id)
-    })
-    return exact.length ? exact : partial
+  function setAiResponse(nodeId, response) {
+    const node = nodes.get(nodeId)
+    if (node) node.aiResponse = response
   }
 
-  /**
-   * Build canvas context string for LLM from timeline data.
-   */
-  function getCanvasContext(nodeId) {
-    const id = nodeId ?? viewingId.value ?? activeTip.value
-    if (id == null) return null
-    const snapshot = (id === activeTip.value && liveState)
-      ? liveState.cards
-      : computeCanvas(id)
-    return buildCanvasContext(snapshot)
-  }
+  function setNodeCounter(n) { nodeCounter = n }
 
-  /**
-   * Build selected cards context for LLM from timeline data.
-   */
-  function getSelectedContext(nodeId, selectedIds) {
-    const id = nodeId ?? viewingId.value ?? activeTip.value
-    if (id == null || !selectedIds?.length) return null
-    const snapshot = computeCanvas(id)
-    return buildSelectedContext(snapshot, selectedIds)
-  }
+  // ═══════════════════════════════════════════════
+  // EXPORTS
+  // ═══════════════════════════════════════════════
 
   return {
-    nodes,
-    activeTip,
-    viewingId,
-    currentNode,
-    isLive,
-    hasSiblings,
-    siblingInfo,
-    nodeCount,
-    createNode,
-    addOperation,
-    computeCanvas,
-    navigate,
-    goLive,
-    getBranchPoint,
-    branchFrom,
-    restoreToNode,
-    setUserOverride,
-    getBubbleInfo,
-    reset,
-    setAiResponse,
-    setNodeCounter,
-    removeNode,
-    resetLiveState,
-    findCardsByKey,
-    findCardsByTitle,
-    getCanvasContext,
-    getSelectedContext,
-    getPathFromRoot,
-    toJSON,
-    fromJSON,
+    // State
+    nodes, activeTip, viewingId, nodeCount,
+    // Tree
+    createNode, removeNode, addOperation, resetLiveState,
+    // Canvas
+    computeCanvas, getPathFromRoot,
+    // Navigation
+    currentNode, isLive, hasSiblings, siblingInfo,
+    navigate, goLive, getBranchPoint, branchFrom,
+    // Dock
+    dockedIds, dockedSnapshots,
+    dockCard, undockCard, closeDocked, toggleDock,
+    // Card search
+    findCardsByKey, findCardsByTitle, getCanvasContext, getSelectedContext,
+    // User interaction
+    restoreToNode, setUserOverride, getBubbleInfo,
+    // Serialization
+    toJSON, fromJSON,
+    // Lifecycle
+    reset, setAiResponse, setNodeCounter,
   }
 })

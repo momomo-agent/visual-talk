@@ -6,5 +6,11 @@ import './styles/canvas.css'
 import './styles/blocks.css'
 
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.mount('#app')
+
+// Expose for testing/debugging
+if (typeof window !== 'undefined') {
+  window.__pinia = pinia
+}

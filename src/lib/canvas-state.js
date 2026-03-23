@@ -85,7 +85,11 @@ export class CanvasState {
         card.blur = d >= 1 ? d * 4 : 0
         card.zIndex = Math.max(1, 50 - d * 20)
       }
-      if (card.opacity <= 0) this.cards.delete(id)
+      // Don't delete sunk cards — they can be revived by update/move
+      if (card.opacity <= 0) {
+        card.pointerEvents = 'none'
+        card.sunk = true
+      }
     })
   }
 
@@ -137,21 +141,27 @@ export class CanvasState {
     this.currentRoundIds.add(c.id)
   }
 
+  _revive(card, cardId, z = Z_PINNED) {
+    card.sunk = false
+    card.pointerEvents = 'auto'
+    card.depth = this.depthLevel
+    card.intraZ = z
+    card.z = z
+    card.opacity = 1
+    card.blur = 0
+    card.scale = 1
+    card.zIndex = 100 + Math.floor(z / 10)
+    card.pinned = true
+    this.currentRoundIds.add(cardId)
+  }
+
   _update(op) {
     const card = this.cards.get(op.cardId)
     if (!card) return
     if (op.changes) {
       Object.assign(card.data, op.changes)
     }
-    card.depth = this.depthLevel
-    card.intraZ = Z_PINNED
-    card.z = Z_PINNED
-    card.opacity = 1
-    card.blur = 0
-    card.scale = 1
-    card.zIndex = 100 + Math.floor(Z_PINNED / 10)
-    card.pinned = true
-    this.currentRoundIds.add(op.cardId)
+    this._revive(card, op.cardId)
   }
 
   _move(op) {
@@ -159,16 +169,7 @@ export class CanvasState {
     if (!card || !op.to) return
     if (op.to.x != null) card.x = op.to.x
     if (op.to.y != null) card.y = op.to.y
-    // LLM can specify z, but clamp to PINNED range (never above new cards)
     const targetZ = op.to.z != null ? Math.min(op.to.z, Z_PINNED) : Z_PINNED
-    card.z = targetZ
-    card.intraZ = targetZ
-    card.depth = this.depthLevel
-    card.opacity = 1
-    card.blur = 0
-    card.scale = 1
-    card.zIndex = 100 + Math.floor(targetZ / 10)
-    card.pinned = true
-    this.currentRoundIds.add(op.cardId)
+    this._revive(card, op.cardId, targetZ)
   }
 }

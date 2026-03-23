@@ -6,17 +6,17 @@ const PROXY = 'https://proxy.link2web.site/?url='
 /**
  * Three-layer image fallback:
  * 1. Direct URL
- * 2. CORS proxy
- * 3. images.weserv.nl
+ * 2. wsrv.nl (handles hotlink-protected images like QQ Music)
+ * 3. CORS proxy
  * 4. TMDB search (if card has a title — movie/show poster)
  */
 export function getProxiedUrl(originalUrl, retryLevel = 0) {
   if (!originalUrl) return ''
   if (retryLevel === 1) {
-    return PROXY + encodeURIComponent(originalUrl)
+    return 'https://wsrv.nl/?url=' + encodeURIComponent(originalUrl)
   }
   if (retryLevel === 2) {
-    return 'https://images.weserv.nl/?url=' + encodeURIComponent(originalUrl)
+    return PROXY + encodeURIComponent(originalUrl)
   }
   return originalUrl
 }

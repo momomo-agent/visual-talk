@@ -1,12 +1,12 @@
 <template>
-  <div class="card-inner">
+  <div class="profile-inner">
     <img
       v-if="data.image"
       :src="data.image"
       :data-original-src="data.image"
       loading="eager"
       referrerpolicy="no-referrer"
-      style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)"
+      class="profile-img"
       @error="handleImageError"
     />
     <div class="win-body">
@@ -14,9 +14,6 @@
       <div v-if="data.sub" class="sub">{{ data.sub }}</div>
       <div v-if="data.tags?.length" class="tags">
         <span v-for="(t, i) in data.tags" :key="i" class="tag">{{ t }}</span>
-      </div>
-      <div v-if="data.progress != null" class="progress-track">
-        <div class="progress-bar" :style="{ width: data.progress + '%' }"></div>
       </div>
       <div v-for="(it, i) in (data.items || [])" :key="i" class="list-item">
         {{ typeof it === 'string' ? it : it.title }}
@@ -33,3 +30,32 @@ defineProps({
   data: { type: Object, required: true },
 })
 </script>
+
+<style scoped>
+.profile-inner {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+}
+.profile-img {
+  width: 88px;
+  min-height: 88px;
+  object-fit: cover;
+  border-radius: 0;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.05);
+}
+.profile-inner .win-body {
+  padding: 10px 14px;
+  min-width: 0;
+}
+.profile-inner .win-body h2 {
+  font-size: 14px;
+  margin: 0 0 3px;
+}
+.profile-inner .win-body .sub {
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+</style>
