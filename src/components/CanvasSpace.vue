@@ -14,7 +14,8 @@
       />
     </div>
     <!-- Canvas: 3D perspective, flowing cards -->
-    <div class="canvas-space" ref="spaceRef">
+    <div class="canvas-space" ref="spaceRef"
+         :style="dockedCards.length ? { marginLeft: '300px', width: 'calc(100% - 300px)' } : {}">
       <BlockCard
         v-for="[id, card] in canvasCards"
         :key="id"
