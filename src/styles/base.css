@@ -163,6 +163,13 @@ body {
   font-size: 13px; width: 100%; outline: none;
 }
 .config-box input:focus { border-color: rgba(196,168,130,0.2); }
+.config-danger {
+  width: 100%; margin-top: 16px; padding: 9px;
+  background: rgba(180,60,50,0.15); border: 1px solid rgba(200,70,60,0.25);
+  border-radius: 6px; color: #c85040; font-size: 13px;
+  cursor: pointer; transition: background 0.3s;
+}
+.config-danger:hover { background: rgba(180,60,50,0.3); }
 .config-close {
   width: 100%; margin-top: 8px; padding: 9px;
   background: rgba(196,168,130,0.06); border: 1px solid rgba(196,168,130,0.08);

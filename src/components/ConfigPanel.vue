@@ -95,6 +95,7 @@
           :disabled="!config.proxyEnabled"
         />
       </div>
+      <button class="config-danger" @click="clearMemory">清除记忆</button>
       <button class="config-close" @click="$emit('update:open', false)">Done</button>
     </div>
   </div>
@@ -103,17 +104,25 @@
 <script setup>
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
+import { useForestStore } from '../stores/forest.js'
 import { useTTS } from '../composables/useTTS.js'
 
 defineProps({
   open: { type: Boolean, default: false },
 })
-defineEmits(['update:open'])
+const emit = defineEmits(['update:open'])
 
 const config = useConfigStore()
+const forest = useForestStore()
 const tts = useTTS()
 const voices = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer']
 const previewingVoice = ref('')
+
+function clearMemory() {
+  if (!window.confirm('确认清除所有对话记忆？此操作不可撤销。')) return
+  forest.clearAll()
+  emit('update:open', false)
+}
 
 function selectVoice(v) {
   config.ttsVoice = v
