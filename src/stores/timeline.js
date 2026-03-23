@@ -481,10 +481,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     const snap = dockedSnapshots.get(cardId)
     if (!snap) return
 
-    // Inject as create op into activeTip node
-    const tipId = activeTip.value
-    if (tipId == null) return
-    const node = nodes.get(tipId)
+    // Inject into the node the user is currently VIEWING (not activeTip)
+    // If viewing E but activeTip is F, injecting into F means E's snapshot won't show it
+    const targetId = viewingId.value ?? activeTip.value
+    if (targetId == null) return
+    const node = nodes.get(targetId)
     if (!node) return
 
     // Remove from docked FIRST — so computeCanvas won't filter it out
@@ -492,7 +493,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     canvasCache.clear()
 
     // Create op with snapshot data — go through addOperation for contentKey assignment
-    addOperation(tipId, {
+    addOperation(targetId, {
       op: 'create',
       card: {
         id: cardId,
@@ -504,10 +505,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     })
 
-    // Re-render
-    const viewId = viewingId.value ?? tipId
+    // Re-render the current view
     const canvas = useCanvasStore()
-    canvas.applySnapshot(computeCanvas(viewId), { animate: true })
+    canvas.applySnapshot(computeCanvas(targetId), { animate: true })
   }
 
   /**
