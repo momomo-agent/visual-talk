@@ -247,3 +247,32 @@ body.theme-mercury {
   border-color: rgba(0,0,0,0.15);
   color: #333;
 }
+
+/* ── Chart/Table color tokens ── */
+.theme-mercury {
+  --chart-color-1: #888;
+  --chart-color-2: #aaa;
+  --chart-color-3: #c07070;
+  --chart-color-4: #70a888;
+  --chart-color-5: #7090b8;
+  --chart-color-6: #9878a8;
+  --chart-color-7: #b8a060;
+  --chart-color-8: #60aaa8;
+  --chart-color-9: #b06060;
+  --chart-color-10: #80a060;
+  --chart-label: #777;
+  --chart-value: #999;
+  --chart-bar-bg: rgba(0,0,0,0.05);
+  --chart-bar-gradient: linear-gradient(180deg, #888, #aaa);
+  --chart-bar-h-gradient: linear-gradient(90deg, #888, #aaa);
+  --chart-bar-neg: linear-gradient(180deg, #c07070, #b06060);
+  --chart-bar-neg-h: linear-gradient(90deg, #c07070, #b06060);
+  --chart-axis: rgba(0,0,0,0.1);
+  --chart-area-fill: rgba(136,136,136,0.1);
+  --table-header-border: rgba(0,0,0,0.1);
+  --table-header-color: #1a1a1a;
+  --table-cell-border: rgba(0,0,0,0.04);
+  --table-cell-color: #555;
+  --table-hover-bg: rgba(0,0,0,0.02);
+  --table-footer-color: #999;
+}

@@ -22,47 +22,50 @@ let idCounter = 0
 async function loadMermaid() {
   if (mermaidModule.value) return mermaidModule.value
   const { default: mermaid } = await import('mermaid')
+
+  // Read theme colors from CSS variables
+  const cs = getComputedStyle(document.documentElement)
+  const c1 = cs.getPropertyValue('--chart-color-1').trim() || '#c8a96e'
+  const c2 = cs.getPropertyValue('--chart-color-2').trim() || '#8a7a60'
+  const label = cs.getPropertyValue('--chart-label').trim() || '#6a5a4a'
+  const cellColor = cs.getPropertyValue('--table-cell-color').trim() || '#5a4a38'
+  const headerColor = cs.getPropertyValue('--table-header-color').trim() || '#3a2a18'
+
+  // Derive mermaid theme from CSS variables
+  const bgLight = `color-mix(in srgb, ${c1} 15%, white 85%)`
+
   mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
     themeVariables: {
-    // Background & text
-    primaryColor: '#f5ede0',
-    primaryTextColor: '#4a3520',
-    primaryBorderColor: '#c4a060',
-    // Secondary
-    secondaryColor: '#faf3e8',
-    secondaryTextColor: '#5a4a38',
-    secondaryBorderColor: '#d4b88a',
-    // Tertiary
-    tertiaryColor: '#f0e8d8',
-    tertiaryTextColor: '#4a3520',
-    tertiaryBorderColor: '#b89860',
-    // Lines & edges
-    lineColor: '#b08040',
-    // Fonts
+    primaryColor: bgLight,
+    primaryTextColor: headerColor,
+    primaryBorderColor: c1,
+    secondaryColor: `color-mix(in srgb, ${c1} 8%, white 92%)`,
+    secondaryTextColor: cellColor,
+    secondaryBorderColor: `color-mix(in srgb, ${c1} 40%, white 60%)`,
+    tertiaryColor: `color-mix(in srgb, ${c2} 12%, white 88%)`,
+    tertiaryTextColor: headerColor,
+    tertiaryBorderColor: c2,
+    lineColor: c1,
     fontFamily: "'Inter', -apple-system, sans-serif",
     fontSize: '13px',
-    // Flowchart specific
-    nodeBorder: '#c4a060',
-    mainBkg: '#f5ede0',
-    clusterBkg: '#faf3e8',
-    clusterBorder: '#d4b88a',
-    // Sequence diagram
-    actorBorder: '#c4a060',
-    actorBkg: '#f5ede0',
-    actorTextColor: '#4a3520',
-    signalColor: '#b08040',
-    signalTextColor: '#4a3520',
-    labelBoxBkgColor: '#faf3e8',
-    labelBoxBorderColor: '#d4b88a',
-    labelTextColor: '#4a3520',
-    noteBkgColor: '#f5ede0',
-    noteBorderColor: '#e8a849',
-    noteTextColor: '#4a3520',
-    // Misc
-    edgeLabelBackground: '#faf3e8',
-    // Critical / done / active
+    nodeBorder: c1,
+    mainBkg: bgLight,
+    clusterBkg: `color-mix(in srgb, ${c1} 8%, white 92%)`,
+    clusterBorder: `color-mix(in srgb, ${c1} 40%, white 60%)`,
+    actorBorder: c1,
+    actorBkg: bgLight,
+    actorTextColor: headerColor,
+    signalColor: c1,
+    signalTextColor: headerColor,
+    labelBoxBkgColor: `color-mix(in srgb, ${c1} 8%, white 92%)`,
+    labelBoxBorderColor: `color-mix(in srgb, ${c1} 40%, white 60%)`,
+    labelTextColor: headerColor,
+    noteBkgColor: bgLight,
+    noteBorderColor: c1,
+    noteTextColor: headerColor,
+    edgeLabelBackground: `color-mix(in srgb, ${c1} 8%, white 92%)`,
     crit0: '#ef8f6e',
     done0: '#7ec8a4',
     active0: '#8bacd4',
@@ -108,7 +111,7 @@ watch(() => props.data.code, renderDiagram)
   height: auto;
 }
 .footer {
-  color: #7a6a50;
+  color: var(--chart-label, #7a6a50);
   font-size: 11px;
   margin: 8px 0 0;
   text-align: right;

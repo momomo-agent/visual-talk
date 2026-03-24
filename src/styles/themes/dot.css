@@ -284,3 +284,32 @@ body.theme-dot {
   border-color: rgba(196,149,106,0.25);
   color: #c4956a;
 }
+
+/* ── Chart/Table color tokens ── */
+.theme-dot {
+  --chart-color-1: #c4956a;
+  --chart-color-2: #a08870;
+  --chart-color-3: #d4826a;
+  --chart-color-4: #7ab89a;
+  --chart-color-5: #8aa8c4;
+  --chart-color-6: #b088b8;
+  --chart-color-7: #c4a060;
+  --chart-color-8: #6ab4ae;
+  --chart-color-9: #c07070;
+  --chart-color-10: #8aaa68;
+  --chart-label: #888;
+  --chart-value: #aaa;
+  --chart-bar-bg: rgba(196,149,106,0.08);
+  --chart-bar-gradient: linear-gradient(180deg, #c4956a, #a08870);
+  --chart-bar-h-gradient: linear-gradient(90deg, #c4956a, #a08870);
+  --chart-bar-neg: linear-gradient(180deg, #d4826a, #c07070);
+  --chart-bar-neg-h: linear-gradient(90deg, #d4826a, #c07070);
+  --chart-axis: rgba(196,149,106,0.2);
+  --chart-area-fill: rgba(196,149,106,0.1);
+  --table-header-border: rgba(0,0,0,0.08);
+  --table-header-color: #1a1a1a;
+  --table-cell-border: rgba(0,0,0,0.04);
+  --table-cell-color: #444;
+  --table-hover-bg: rgba(196,149,106,0.04);
+  --table-footer-color: #aaa;
+}

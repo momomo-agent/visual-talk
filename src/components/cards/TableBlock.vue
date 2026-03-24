@@ -49,25 +49,25 @@ table {
 th {
   text-align: left;
   padding: 6px 10px;
-  border-bottom: 2px solid rgba(180,150,110,0.25);
-  color: #3a2a18;
+  border-bottom: 2px solid var(--table-header-border);
+  color: var(--table-header-color);
   font-weight: 600;
   font-size: 11px;
   white-space: nowrap;
 }
 td {
   padding: 5px 10px;
-  border-bottom: 1px solid rgba(180,150,110,0.08);
-  color: #5a4a38;
+  border-bottom: 1px solid var(--table-cell-border);
+  color: var(--table-cell-color);
 }
 tr:last-child td {
   border-bottom: none;
 }
 tbody tr:hover {
-  background: rgba(180,150,110,0.05);
+  background: var(--table-hover-bg);
 }
 .table-footer {
-  color: #9a8a70;
+  color: var(--table-footer-color);
   font-size: 10px;
   margin-top: 8px;
 }
