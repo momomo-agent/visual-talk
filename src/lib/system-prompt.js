@@ -69,7 +69,7 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 
 \`\`\`
 <!--vt:card {"key":"dune","x":12,"y":5,"z":55,"w":32,"blocks":[
-  {"type":"image","url":"...","caption":"Arrakis"},
+  {"type":"image","url":"..."},
   {"type":"heading","text":"Dune: Part Two","level":1},
   {"type":"text","text":"A world beyond imagination"},
   {"type":"tags","items":["Sci-Fi","Epic"]},
@@ -81,7 +81,7 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 **Block elements:**
 - heading: {"type":"heading","text":"Title","level":1} — level 1-3 (h1/h2/h3)
 - text: {"type":"text","text":"Paragraph with **bold** and *italic*"} — supports basic markdown
-- image: {"type":"image","url":"...","caption":"optional"} — responsive, cover fit
+- image: {"type":"image","url":"...","caption":"optional"} — responsive, cover fit. Omit caption when a heading block follows with the same title — avoid redundancy.
 - tags: {"type":"tags","items":["tag1","tag2"]}
 - metric: {"type":"metric","value":"42","label":"Score","unit":"%"}
 - list: {"type":"list","items":["item1","item2"],"style":"bullet"} — bullet/number/todo
