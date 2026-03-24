@@ -34,7 +34,7 @@
           @click="onTopicClick(topic.id)"
         >
           <div class="gallery-preview">
-            <div class="gallery-canvas">
+            <div class="gallery-canvas" :style="galleryCanvasStyle">
               <BlockCard
                 v-for="card in topic.cards"
                 :key="card.id"
@@ -281,20 +281,37 @@ const gridStyle = computed(() => ({
 
 // Dynamically compute preview scale from actual container width
 const galleryScrollRef = ref(null)
+const previewScale = ref(0.25)
+
+// Gallery canvas style — simulates the real viewport inside preview
+const galleryCanvasStyle = computed(() => {
+  const vw = window.innerWidth || 1280
+  const vh = window.innerHeight || 800
+  const s = previewScale.value
+  return {
+    width: vw + 'px',
+    height: vh + 'px',
+    transform: `scale(${s})`,
+    transformOrigin: 'top left',
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    pointerEvents: 'none',
+  }
+})
 
 function updatePreviewScale() {
   nextTick(() => {
     const container = galleryScrollRef.value
     if (!container) return
     const cw = container.clientWidth
-    const padX = 96 // 48*2
+    const padX = 96
     const gaps = (COLS - 1) * 24
     const itemW = (Math.min(cw, 1200) - padX - gaps) / COLS
-    // Scale based on actual viewport width (canvas uses 100vw)
     const vw = window.innerWidth || 1280
     const vh = window.innerHeight || 800
-    const scale = itemW / vw
-    container.style.setProperty('--preview-scale', scale.toFixed(4))
+    previewScale.value = itemW / vw
+    container.style.setProperty('--vp-ratio', `${vw} / ${vh}`)
   })
 }
 
@@ -462,7 +479,7 @@ onUnmounted(() => {
 
 .gallery-preview {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--vp-ratio, 16 / 9);
   overflow: hidden;
   border-radius: 12px;
   background: rgba(0,0,0,0.04);
@@ -480,14 +497,7 @@ onUnmounted(() => {
 
 /* Scaled real canvas inside preview */
 .gallery-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  transform: scale(var(--preview-scale, 0.25));
-  transform-origin: top left;
-  pointer-events: none;
+  /* Styles set via :style binding */
 }
 
 .gallery-canvas .v-block {
@@ -600,10 +610,7 @@ onUnmounted(() => {
   overflow: visible;
 }
 
-/* ── Compute --preview-scale from container ── */
-.gallery-item {
-  --preview-scale: 0.25;
-}
+
 
 /* ═══ Theme: Mercury ═══ */
 .theme-mercury .gallery-scroll {
