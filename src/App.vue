@@ -22,6 +22,7 @@
       :class="{ fading: log.fading }"
     >{{ log.text }}</div>
   </div>
+  <button class="gear-btn" style="right: 72px" @click="newTopic" title="新话题">+</button>
   <button class="gear-btn" style="right: 40px" @click="canvasSpace?.enterGallery()" title="话题">☰</button>
   <button class="gear-btn" @click="configOpen = true">⚙</button>
   <ConfigPanel v-model:open="configOpen" />
@@ -45,6 +46,10 @@ import { useForestStore } from './stores/forest.js'
 
 const configOpen = ref(false)
 const canvasSpace = ref(null)
+
+function newTopic() {
+  forest.newTree()
+}
 const inputBar = ref(null)
 const configStore = useConfigStore()
 const timeline = useTimelineStore()
