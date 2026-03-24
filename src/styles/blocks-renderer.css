@@ -191,3 +191,8 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 .br-spacer-small { height: 4px; }
 .br-spacer-medium { height: 12px; }
 .br-spacer-large { height: 24px; }
+
+/* Kill double padding: legacy components inside BlocksRenderer already have
+   win-body padding, but BlocksRenderer itself has 16px padding too.
+   Zero out their internal win-body when nested. */
+.blocks-renderer .win-body { padding: 0; }
