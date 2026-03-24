@@ -109,16 +109,15 @@ const cardStyle = computed(() => {
 
   // Docked cards: fly to left side, absolute positioned in canvas-space
   if (c._isDocked) {
-    const isHovered = c.scale > 1.01
     const isSelected = c.selected
     return {
       left: '24px',
       top: `${c._dockTop || 36}px`,
       width: '276px',
       maxWidth: '276px',
-      transform: `translateZ(0px) scale(${isHovered || isSelected ? c.scale : 1})`,
+      transform: `translateZ(0px) scale(${isHovered.value || isSelected ? 1.02 : 1})`,
       opacity: 1,
-      zIndex: isSelected ? 999 : (isHovered ? 950 : 900),
+      zIndex: isSelected ? 999 : (isHovered.value ? 950 : 900),
       filter: 'none',
       pointerEvents: 'auto',
       transition: 'left 0.6s cubic-bezier(.22,1,.36,1), top 0.6s cubic-bezier(.22,1,.36,1), width 0.6s cubic-bezier(.22,1,.36,1), transform 0.3s, opacity 0.3s',
@@ -130,10 +129,10 @@ const cardStyle = computed(() => {
       top: `${c.y}%`,
       width: c.w ? `${c.w}%` : undefined,
       maxWidth: hasImage ? '340px' : undefined,
-    transform: `translateZ(${c.z}px) scale(${c.scale})`,
-    opacity: c.opacity,
-    zIndex: c.zIndex,
-    filter: c.blur > 0 ? `blur(${c.blur}px)` : 'none',
+    transform: `translateZ(${isHovered.value && !c.selected ? Z_HOVER : c.z}px) scale(${isHovered.value && !c.selected ? 1.02 : c.scale})`,
+    opacity: isHovered.value && !c.selected ? 1 : c.opacity,
+    zIndex: isHovered.value && !c.selected ? 150 : c.zIndex,
+    filter: isHovered.value && !c.selected ? 'none' : (c.blur > 0 ? `blur(${c.blur}px)` : 'none'),
     pointerEvents: c.pointerEvents || 'auto',
     transitionDelay: c.entranceDelay > 0 ? `${c.entranceDelay}s` : '0s',
     transition: dragging.value ? 'transform 0.15s, opacity 0.3s, filter 0.3s, box-shadow 0.3s' : undefined,
@@ -142,37 +141,18 @@ const cardStyle = computed(() => {
 
 // Interaction state
 const dragging = ref(false)
+const isHovered = ref(false)
 let isDragging = false
 let startX = 0, startY = 0, origLeft = 0, origTop = 0
-let preHover = null
 
 function onMouseEnter() {
   if (props.card.selected || isDragging) return
-  preHover = {
-    z: props.card.z,
-    scale: props.card.scale,
-    opacity: props.card.opacity,
-    zIndex: props.card.zIndex,
-    blur: props.card.blur,
-  }
-  // Lift to front — absolute z guarantees above all other cards
-  props.card.z = Z_HOVER
-  props.card.scale = 1.02
-  props.card.opacity = 1
-  props.card.zIndex = 150
-  props.card.blur = 0
+  isHovered.value = true
 }
 
 function onMouseLeave() {
-  if (props.card.selected || isDragging) return
-  if (preHover) {
-    props.card.z = preHover.z
-    props.card.scale = preHover.scale
-    props.card.opacity = preHover.opacity
-    props.card.zIndex = preHover.zIndex
-    props.card.blur = preHover.blur
-    preHover = null
-  }
+  if (isDragging) return
+  isHovered.value = false
 }
 
 function onClick(e) {
