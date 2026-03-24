@@ -25,6 +25,7 @@ export const useConfigStore = defineStore('config', () => {
   const imageBaseUrl = ref('')
   const imageApiKey = ref('')
   const imageModel = ref('')
+  const theme = ref('basic')
 
   function load() {
     try {
@@ -50,6 +51,7 @@ export const useConfigStore = defineStore('config', () => {
       if (s.imageBaseUrl) imageBaseUrl.value = s.imageBaseUrl
       if (s.imageApiKey) imageApiKey.value = s.imageApiKey
       if (s.imageModel) imageModel.value = s.imageModel
+      if (s.theme) theme.value = s.theme
     } catch {}
   }
 
@@ -76,6 +78,7 @@ export const useConfigStore = defineStore('config', () => {
       imageBaseUrl: imageBaseUrl.value,
       imageApiKey: imageApiKey.value,
       imageModel: imageModel.value,
+      theme: theme.value,
     }))
   }
 
@@ -116,7 +119,12 @@ export const useConfigStore = defineStore('config', () => {
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
-    imageBaseUrl, imageApiKey, imageModel], save)
+    imageBaseUrl, imageApiKey, imageModel, theme], save)
+
+  // Apply theme class to body
+  watch(theme, (t) => {
+    document.body.className = t === 'basic' ? '' : `theme-${t}`
+  }, { immediate: true })
 
   // Load on creation
   load()
@@ -126,6 +134,7 @@ export const useConfigStore = defineStore('config', () => {
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel,
+    theme,
     load, save, getConfig,
   }
 })

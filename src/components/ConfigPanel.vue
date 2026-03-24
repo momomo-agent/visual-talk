@@ -99,6 +99,20 @@
         </template>
       </fieldset>
 
+      <!-- ═══ Theme ═══ -->
+      <fieldset class="config-section">
+        <legend>🎨 主题</legend>
+        <div class="voice-picker">
+          <button
+            v-for="t in themes"
+            :key="t.id"
+            class="voice-chip theme-chip"
+            :class="{ active: config.theme === t.id }"
+            @click="config.theme = t.id"
+          >{{ t.label }}</button>
+        </div>
+      </fieldset>
+
       <!-- ═══ Display ═══ -->
       <fieldset class="config-section">
         <legend>⚙️ 显示</legend>
@@ -171,6 +185,11 @@ const config = useConfigStore()
 const forest = useForestStore()
 const tts = useTTS()
 const voices = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer']
+const themes = [
+  { id: 'basic', label: 'Basic' },
+  { id: 'mercury', label: 'Mercury' },
+  { id: 'dot', label: 'Dot' },
+]
 const previewingVoice = ref('')
 const defaultPrompt = SYSTEM
 

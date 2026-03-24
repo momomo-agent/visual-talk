@@ -1,6 +1,6 @@
 <template>
   <div class="blocks-renderer">
-    <template v-for="(block, i) in blocks" :key="i">
+    <template v-for="(block, i) in filteredBlocks" :key="i">
       <!-- heading -->
       <component
         v-if="block.type === 'heading'"
@@ -98,6 +98,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { getProxiedUrl } from '../../lib/imageProxy.js'
 import ChartBlock from './ChartBlock.vue'
 import TableBlock from './TableBlock.vue'
@@ -106,8 +107,23 @@ import MapBlock from './MapBlock.vue'
 import AudioBlock from './AudioBlock.vue'
 import MediaBlock from './MediaBlock.vue'
 
-defineProps({
+const props = defineProps({
   blocks: { type: Array, required: true },
+})
+
+// Deduplicate: remove image blocks whose URL matches a subsequent audio block's cover
+const filteredBlocks = computed(() => {
+  const audioCoverUrls = new Set()
+  for (const b of props.blocks) {
+    if (b.type === 'audio' && b.image) {
+      audioCoverUrls.add(b.image)
+    }
+  }
+  if (audioCoverUrls.size === 0) return props.blocks
+  return props.blocks.filter(b => {
+    if (b.type === 'image' && b.url && audioCoverUrls.has(b.url)) return false
+    return true
+  })
 })
 
 function headingTag(level) {

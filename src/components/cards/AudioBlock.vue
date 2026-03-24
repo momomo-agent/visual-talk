@@ -99,6 +99,7 @@ onMounted(() => {
   if (audioUrl.value) {
     audioEl = new Audio(audioUrl.value)
     audioEl.addEventListener('timeupdate', () => {
+      if (!audioEl) return
       currentTime.value = audioEl.currentTime
     })
     audioEl.addEventListener('ended', () => {

@@ -1,0 +1,280 @@
+/* ── Dot Theme ──
+   Inspired by new.computer Dot — paper, ink, warmth.
+   Serif titles, clean white, warm accent. Typography is the design.
+   Fonts: Inter + Lora loaded in index.html */
+
+body.theme-dot {
+  background: #fefefe;
+  color: #444;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Canvas ── */
+.theme-dot .canvas {
+  background: #fefefe;
+}
+.theme-dot .greeting {
+  color: rgba(0,0,0,0.04);
+  letter-spacing: 10px;
+  font-family: 'Lora', 'Georgia', serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* ── Cards ── */
+.theme-dot .v-block {
+  background: linear-gradient(145deg, #fff 0%, #faf5f0 60%, #f5ede5 100%);
+  backdrop-filter: none;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+}
+.theme-dot .v-block:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+}
+.theme-dot .v-block.selected {
+  box-shadow: 0 2px 8px rgba(196,149,106,0.12), 0 8px 24px rgba(0,0,0,0.05);
+}
+.theme-dot .v-block.selected.glow-breathe {
+  animation: dot-select-pulse 3.5s ease-in-out infinite;
+}
+@keyframes dot-select-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(196,149,106,0.12), 0 8px 24px rgba(0,0,0,0.05); }
+  50% { box-shadow: 0 4px 16px rgba(196,149,106,0.18), 0 8px 24px rgba(0,0,0,0.06); }
+}
+.theme-dot .v-block.is-docked {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+}
+.theme-dot .v-block.is-docked:not(:hover):not(.selected) {
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+
+/* Window bar — hidden in Dot style */
+.theme-dot .v-block .win-bar {
+  background: transparent;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  color: rgba(0,0,0,0.15);
+  padding: 4px 10px;
+}
+.theme-dot .v-block .win-dot {
+  display: none;
+}
+
+/* Card content — serif titles, warm tones */
+.theme-dot .v-block h2 {
+  color: #1a1a1a;
+  font-family: 'Lora', 'Georgia', serif;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.2px;
+}
+.theme-dot .v-block h3 {
+  color: #555;
+  font-family: 'Lora', 'Georgia', serif;
+  font-weight: 400;
+}
+.theme-dot .v-block .sub { color: #888; }
+.theme-dot .v-block .tag {
+  color: #8a7560;
+  background: rgba(196,149,106,0.08);
+  border-color: rgba(196,149,106,0.12);
+}
+.theme-dot .v-block .footer { color: #aaa; }
+.theme-dot .v-block .big-num {
+  color: #1a1a1a;
+  font-family: 'Lora', 'Georgia', serif;
+  font-weight: 400;
+}
+.theme-dot .v-block .big-label { color: #888; }
+.theme-dot .v-block .list-item { color: #444; border-bottom-color: rgba(0,0,0,0.04); }
+.theme-dot .v-block .md-body { color: #444; line-height: 1.8; }
+.theme-dot .v-block .md-body h1,
+.theme-dot .v-block .md-body h2,
+.theme-dot .v-block .md-body h3 {
+  color: #1a1a1a;
+  font-family: 'Lora', 'Georgia', serif;
+}
+.theme-dot .v-block .md-body strong { color: #1a1a1a; }
+.theme-dot .v-block .md-body a { color: #c4956a; text-decoration: none; border-bottom: 1px solid rgba(196,149,106,0.3); }
+.theme-dot .v-block .md-body a:hover { border-bottom-color: #c4956a; }
+.theme-dot .v-block .md-body code { background: rgba(196,149,106,0.06); color: #6a5040; }
+.theme-dot .v-block .md-body hr { border-top-color: #f0ece6; }
+.theme-dot .v-block .md-body th { border-bottom-color: #e8e2d8; color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot .v-block .md-body td { border-bottom-color: rgba(0,0,0,0.03); color: #444; }
+.theme-dot .v-block .md-body tbody tr:hover { background: rgba(196,149,106,0.03); }
+.theme-dot .v-block .quote {
+  color: #333;
+  font-family: 'Lora', 'Georgia', serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+.theme-dot .v-block .attribution { color: #aaa; }
+.theme-dot .v-block .highlight {
+  color: #1a1a1a;
+  font-family: 'Lora', 'Georgia', serif;
+}
+.theme-dot .v-block .progress-track { background: rgba(196,149,106,0.1); }
+.theme-dot .v-block .progress-bar { background: linear-gradient(90deg, #c4956a, #d4a87a); }
+.theme-dot .v-block .col h4 { color: #333; border-bottom-color: #f0ece6; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot .v-block .col-item { color: #666; }
+.theme-dot .v-block .tl-item { border-left-color: #f0ece6; }
+.theme-dot .v-block .tl-item::before { background: #c4956a; }
+.theme-dot .v-block .tl-time { color: #aaa; }
+.theme-dot .v-block .tl-title { color: #333; }
+.theme-dot .v-block .tl-detail { color: #666; }
+
+/* Blocks renderer */
+.theme-dot .br-heading { color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot h3.br-heading { color: #888; font-family: 'Inter', sans-serif; }
+.theme-dot .br-text { color: #444; }
+.theme-dot .br-text code { background: rgba(196,149,106,0.06); color: #6a5040; }
+.theme-dot .br-tag { background: rgba(196,149,106,0.08); color: #8a7560; }
+.theme-dot .br-metric-value { color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot .br-metric-unit, .theme-dot .br-metric-label { color: #aaa; }
+.theme-dot .br-list { color: #444; }
+.theme-dot .br-quote { border-left-color: #c4956a; color: #555; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot .br-code { background: rgba(196,149,106,0.04); }
+.theme-dot .br-divider { border-top-color: #f0ece6; }
+.theme-dot .br-progress { background: rgba(196,149,106,0.08); }
+.theme-dot .br-progress-bar { background: linear-gradient(90deg, #c4956a, #d4a87a); }
+.theme-dot .br-progress-label { color: #555; }
+
+/* Audio block */
+.theme-dot .audio-title { color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
+.theme-dot .audio-artist { color: #888; }
+.theme-dot .audio-album { color: #aaa; }
+.theme-dot .audio-progress-track { background: rgba(196,149,106,0.1); }
+.theme-dot .audio-progress-bar { background: linear-gradient(90deg, #c4956a, #d4a87a); }
+.theme-dot .audio-progress-knob { background: #c4956a; }
+.theme-dot .audio-times { color: #bbb; }
+.theme-dot .audio-source { color: #ccc; }
+
+/* ── Bubble & Thinking ── */
+.theme-dot .bubble {
+  color: rgba(0,0,0,0.3);
+  font-family: 'Lora', 'Georgia', serif;
+  font-style: italic;
+  font-size: 15px;
+}
+/* Dot uses "reflecting..." text instead of dots — handled in component, but style the dots as fallback */
+.theme-dot .thinking-dot { background: rgba(196,149,106,0.3); }
+
+/* ── Input bar ── */
+.theme-dot .input-bar input {
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  border-bottom: 1px solid #f0ece6;
+  border-radius: 0;
+  color: #333;
+  font-family: 'Lora', 'Georgia', serif;
+  font-size: 16px;
+  padding: 14px 4px;
+  box-shadow: none;
+}
+.theme-dot .input-bar input:focus {
+  border-bottom-color: #c4956a;
+  background: transparent;
+}
+.theme-dot .input-bar input::placeholder {
+  color: rgba(0,0,0,0.15);
+  font-style: italic;
+}
+
+.theme-dot .mic-btn {
+  background: transparent;
+  backdrop-filter: none;
+  border: 1px solid #f0ece6;
+  color: rgba(0,0,0,0.2);
+}
+.theme-dot .mic-btn:hover {
+  background: rgba(196,149,106,0.06);
+  border-color: #e8e2d8;
+  color: rgba(0,0,0,0.35);
+}
+.theme-dot .mic-btn.recording {
+  background: rgba(196,149,106,0.1);
+  border-color: rgba(196,149,106,0.3);
+  color: #c4956a;
+}
+
+/* ── Tool log ── */
+.theme-dot .tool-log-item {
+  color: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.8);
+  border-color: rgba(0,0,0,0.03);
+}
+
+/* ── Config panel ── */
+.theme-dot .config-overlay { background: rgba(254,254,254,0.75); backdrop-filter: blur(4px); }
+.theme-dot .config-box, .theme-dot .prompt-box {
+  background: #fff;
+  border-color: #f0ece6;
+}
+.theme-dot .config-box label { color: rgba(0,0,0,0.3); }
+.theme-dot .config-box input, .theme-dot .config-box select {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: #333;
+  font-family: 'Inter', sans-serif;
+}
+.theme-dot .config-box input:focus { border-color: #c4956a; }
+.theme-dot .config-section { border-color: #f0ece6; }
+.theme-dot .config-section legend { color: rgba(0,0,0,0.35); }
+.theme-dot .config-section .section-note { color: rgba(0,0,0,0.2); }
+.theme-dot .config-section .hint { color: rgba(0,0,0,0.18); }
+.theme-dot .config-section .toggle span { color: rgba(0,0,0,0.35); }
+.theme-dot .config-section .toggle input[type="checkbox"] { accent-color: #c4956a; }
+.theme-dot .config-close {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: #555;
+}
+.theme-dot .config-close:hover { background: #f5f0ea; }
+.theme-dot .config-danger {
+  background: rgba(200,80,60,0.04);
+  border-color: rgba(200,80,60,0.1);
+  color: #c55;
+}
+.theme-dot .config-danger:hover { background: rgba(200,80,60,0.08); }
+.theme-dot .prompt-label { color: rgba(0,0,0,0.3); }
+.theme-dot .prompt-hint { color: rgba(0,0,0,0.18); }
+.theme-dot .prompt-textarea {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: rgba(0,0,0,0.55);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.theme-dot .prompt-textarea:focus { border-color: #c4956a; }
+.theme-dot .prompt-reset {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: rgba(0,0,0,0.35);
+}
+.theme-dot .prompt-reset:hover { background: #f5f0ea; color: rgba(0,0,0,0.5); }
+.theme-dot .voice-chip {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: #888;
+}
+.theme-dot .voice-chip:hover { background: #f5f0ea; color: #666; }
+.theme-dot .voice-chip.active {
+  background: rgba(196,149,106,0.1);
+  border-color: rgba(196,149,106,0.25);
+  color: #c4956a;
+}
+.theme-dot .gear-btn { color: rgba(0,0,0,0.12); }
+.theme-dot .gear-btn:hover { color: rgba(0,0,0,0.3); }
+
+/* Theme picker */
+.theme-dot .theme-chip {
+  background: #faf8f5;
+  border-color: #f0ece6;
+  color: #888;
+}
+.theme-dot .theme-chip:hover { background: #f5f0ea; color: #666; }
+.theme-dot .theme-chip.active {
+  background: rgba(196,149,106,0.1);
+  border-color: rgba(196,149,106,0.25);
+  color: #c4956a;
+}

@@ -13,8 +13,10 @@ import imageGenSkill from '../skills/image-gen.js'
 import stockSkill from '../skills/stock.js'
 import wikipediaSkill from '../skills/wikipedia.js'
 import musicSkill from '../skills/music.js'
+import neteaseSkill from '../skills/netease-music.js'
+import podcastSkill from '../skills/podcast.js'
 
-const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill, imageGenSkill, stockSkill, wikipediaSkill, musicSkill]
+const SKILLS = [tavilySkill, tmdbSkill, webFetchSkill, weatherSkill, calculateSkill, locationSkill, imageGenSkill, stockSkill, wikipediaSkill, musicSkill, neteaseSkill, podcastSkill]
 
 let claw = null
 let clawConfigKey = null

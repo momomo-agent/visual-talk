@@ -23,7 +23,7 @@
         :data-original-src="data.url"
         loading="eager"
         referrerpolicy="no-referrer"
-        style="width:100%;object-fit:cover;border-radius:0;margin:0;background:rgba(0,0,0,0.05)"
+        style="width:100%;object-fit:cover;border-radius:12px 12px 0 0;margin:0;background:rgba(0,0,0,0.05)"
         @error="handleImageError"
       />
       <div class="win-body">
@@ -37,21 +37,21 @@
     <template v-if="youtubeId">
       <iframe
         :src="`https://www.youtube.com/embed/${youtubeId}`"
-        style="width:100%;aspect-ratio:16/9;border:none;border-radius:8px 8px 0 0;display:block"
+        style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px 12px 0 0;display:block"
         allowfullscreen
       ></iframe>
     </template>
     <template v-else-if="bilibiliId">
       <iframe
         :src="`https://player.bilibili.com/player.html?bvid=${bilibiliId}&page=1`"
-        style="width:100%;aspect-ratio:16/9;border:none;border-radius:8px 8px 0 0;display:block"
+        style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px 12px 0 0;display:block"
         allowfullscreen
       ></iframe>
     </template>
     <template v-else-if="isMap">
       <iframe
         :src="`https://maps.google.com/maps?q=${encodeURIComponent(data.query || data.title || '')}&output=embed`"
-        style="width:100%;height:200px;border:none;border-radius:8px 8px 0 0;display:block"
+        style="width:100%;height:200px;border:none;border-radius:12px 12px 0 0;display:block"
       ></iframe>
     </template>
     <template v-else>

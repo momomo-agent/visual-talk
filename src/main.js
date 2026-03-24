@@ -5,6 +5,8 @@ import './styles/base.css'
 import './styles/canvas.css'
 import './styles/blocks.css'
 import './styles/blocks-renderer.css'
+import './styles/themes/mercury.css'
+import './styles/themes/dot.css'
 
 const app = createApp(App)
 const pinia = createPinia()
