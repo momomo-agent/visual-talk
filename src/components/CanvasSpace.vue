@@ -22,14 +22,15 @@
     </div>
 
     <!-- Gallery mode: all topics as uniform thumbnails -->
-    <div v-if="galleryMode" class="gallery-scroll" ref="galleryScrollRef" @click.self="exitGallery">
+    <div v-if="galleryMode" class="gallery-scroll" :class="{ zooming: zoomingTopicId }" ref="galleryScrollRef" @click.self="exitGallery">
       <button class="gallery-close-btn" @click="exitGallery">×</button>
       <div class="gallery-grid" :style="gridStyle">
         <div
           v-for="topic in sortedTopics"
           :key="topic.id"
           class="gallery-item"
-          :class="{ active: topic.id === activeTreeId }"
+          :class="{ active: topic.id === activeTreeId, 'zoom-target': zoomingTopicId === topic.id }"
+          :ref="el => setGalleryItemRef(topic.id, el)"
           @click="onTopicClick(topic.id)"
         >
           <div class="gallery-preview">
@@ -81,6 +82,13 @@ const { activeTreeId } = storeToRefs(forest)
 // ── Gallery (Mission Control) mode ──
 const galleryMode = ref(false)
 const galleryTopics = ref([])     // snapshot of topics when gallery opens
+const zoomingTopicId = ref(null)  // topic being zoomed into
+const galleryItemRefs = new Map()
+
+function setGalleryItemRef(id, el) {
+  if (el) galleryItemRefs.set(id, el)
+  else galleryItemRefs.delete(id)
+}
 
 // Snapshot ordering when gallery opens — only re-sort on open, not on re-enter
 let lastSortOrder = null
@@ -158,13 +166,48 @@ function exitGallery() {
 }
 
 async function onTopicClick(treeId) {
-  if (treeId === activeTreeId.value) {
-    // Clicking current topic just exits gallery
-    exitGallery()
-    return
+  // Get the clicked preview element's position for zoom animation
+  const itemEl = galleryItemRefs.get(treeId)
+  const previewEl = itemEl?.querySelector?.('.gallery-preview') || itemEl?.$el?.querySelector?.('.gallery-preview')
+
+  if (previewEl) {
+    const rect = previewEl.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+
+    // Calculate transform to go from current position to fullscreen
+    const scaleX = vw / rect.width
+    const scaleY = vh / rect.height
+    const scale = Math.max(scaleX, scaleY)
+    const tx = (vw / 2) - (rect.left + rect.width / 2)
+    const ty = (vh / 2) - (rect.top + rect.height / 2)
+
+    // Apply zoom transform to the preview element
+    previewEl.style.transition = 'transform 0.4s cubic-bezier(.22,1,.36,1), opacity 0.3s'
+    previewEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+    previewEl.style.zIndex = '200'
+    previewEl.style.borderRadius = '0'
+
+    zoomingTopicId.value = treeId
+
+    // Wait for animation
+    await new Promise(r => setTimeout(r, 350))
   }
-  exitGallery()
-  await forest.switchTree(treeId)
+
+  // Now switch
+  galleryMode.value = false
+  zoomingTopicId.value = null
+  galleryTopics.value = []
+  galleryItemRefs.clear()
+
+  if (treeId !== activeTreeId.value) {
+    await forest.switchTree(treeId)
+  }
+
+  // Reset parallax
+  if (spaceRef.value) {
+    spaceRef.value.style.transform = ''
+  }
 }
 
 async function deleteTopic(treeId) {
@@ -341,6 +384,12 @@ onUnmounted(() => {
   background: rgba(220,221,224,0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  animation: gallery-fade-in 0.3s ease;
+}
+
+@keyframes gallery-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .gallery-scroll::-webkit-scrollbar {
@@ -472,6 +521,28 @@ onUnmounted(() => {
 .gallery-close-btn:hover {
   background: rgba(0,0,0,0.1);
   color: rgba(0,0,0,0.6);
+}
+
+/* Zoom animation */
+.gallery-scroll.zooming {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.gallery-scroll.zooming .gallery-item:not(.zoom-target) {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gallery-scroll.zooming .gallery-close-btn,
+.gallery-scroll.zooming .gallery-label {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.gallery-scroll.zooming .zoom-target .gallery-preview {
+  overflow: visible;
 }
 
 /* ── Compute --preview-scale from container ── */
