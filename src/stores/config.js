@@ -25,7 +25,7 @@ export const useConfigStore = defineStore('config', () => {
   const imageBaseUrl = ref('')
   const imageApiKey = ref('')
   const imageModel = ref('')
-  const theme = ref('basic')
+  const theme = ref('mercury')
 
   function load() {
     try {
