@@ -157,6 +157,16 @@ export const useForestStore = defineStore('forest', () => {
     const data = JSON.parse(JSON.stringify(serializeTimeline()))
     trees[activeTreeId.value].updatedAt = Date.now()
 
+    // Snapshot last 3 visible cards for gallery preview
+    const canvasStore = useCanvasStore()
+    const allCards = Array.from(canvasStore.cards.entries())
+    const last3 = allCards.slice(-3).map(([id, c]) => ({
+      id, x: c.x, y: c.y, w: c.w,
+      type: c.type || 'blocks',
+      data: JSON.parse(JSON.stringify(c.data || {})),
+    }))
+    trees[activeTreeId.value].lastCards = last3
+
     if (store) {
       await store.set('tree:' + activeTreeId.value, data)
     }
@@ -189,6 +199,7 @@ export const useForestStore = defineStore('forest', () => {
         trees: Object.fromEntries(
           Object.entries(trees).map(([id, t]) => [id, {
             id: t.id, name: t.name, createdAt: t.createdAt, updatedAt: t.updatedAt,
+            lastCards: t.lastCards || [],
           }])
         ),
       }))
@@ -271,6 +282,7 @@ export const useForestStore = defineStore('forest', () => {
         name: t.name || '新对话',
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
+        lastCards: t.lastCards || [],
         isActive: t.id === activeTreeId.value,
       }))
   })

@@ -1,11 +1,12 @@
 <template>
   <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick">
-    <!-- Normal mode: live canvas -->
+    <!-- Live canvas — always present, transform-ed in gallery mode -->
     <div
-      v-show="!galleryMode"
       class="canvas-space"
       ref="spaceRef"
-      :class="{ 'nav-zoom': isNavigating }"
+      :class="{ 'nav-zoom': isNavigating, 'gallery-current': galleryMode }"
+      :style="galleryMode ? currentTransformStyle : undefined"
+      @click="galleryMode ? onCurrentClick() : null"
     >
       <BlockCard
         v-for="[id, card] in allCards"
@@ -13,50 +14,60 @@
         :ref="el => setCardRef(id, el)"
         :card="card"
         :class="{ 'is-docked': dockedIds.has(id) }"
-        @toggle-select="(e) => toggleSelect(id, e)"
-        @toggle-dock="() => onToggleDock(id)"
-        @update-position="(x, y) => updateCardPosition(id, x, y)"
-        @drag-end="(x, y) => onDragEnd(card, x, y)"
+        @toggle-select="(e) => galleryMode ? null : toggleSelect(id, e)"
+        @toggle-dock="() => galleryMode ? null : onToggleDock(id)"
+        @update-position="(x, y) => galleryMode ? null : updateCardPosition(id, x, y)"
+        @drag-end="(x, y) => galleryMode ? null : onDragEnd(card, x, y)"
       />
-      <SketchOverlay />
+      <SketchOverlay v-if="!galleryMode" />
     </div>
 
-    <!-- Gallery mode: all topics as uniform thumbnails -->
-    <div v-if="galleryMode" class="gallery-scroll" :class="{ zooming: zoomingTopicId }" ref="galleryScrollRef" @click.self="exitGallery">
-      <button class="gallery-close-btn" @click="exitGallery">×</button>
-      <div class="gallery-grid" :style="gridStyle">
-        <div
-          v-for="topic in sortedTopics"
-          :key="topic.id"
-          class="gallery-item"
-          :class="{ active: topic.id === activeTreeId, 'zoom-target': zoomingTopicId === topic.id }"
-          :ref="el => setGalleryItemRef(topic.id, el)"
-          @click="onTopicClick(topic.id)"
-        >
-          <div class="gallery-preview">
-            <div class="gallery-canvas" :style="galleryCanvasStyle">
-              <BlockCard
-                v-for="card in topic.cards"
-                :key="card.id"
-                :card="card"
-                @toggle-select="() => {}"
-                @toggle-dock="() => {}"
-                @update-position="() => {}"
-                @drag-end="() => {}"
-              />
-            </div>
-            <div v-if="topic.cards.length === 0" class="preview-empty">空</div>
-            <!-- Delete button -->
-            <button
-              v-if="sortedTopics.length > 1"
-              class="gallery-delete"
-              @click.stop="deleteTopic(topic.id)"
-            >×</button>
+    <!-- Gallery: overlay with other topics -->
+    <Transition name="gallery-fade">
+      <div v-if="galleryMode" class="gallery-overlay" :class="{ zooming: zoomingId }" @click.self="exitGallery">
+        <button class="gallery-close-btn" @click="exitGallery">×</button>
+
+        <!-- Other topics grid -->
+        <div class="gallery-grid" :style="gridStyle">
+          <!-- Slot for current topic (empty — real canvas is behind) -->
+          <div class="gallery-item gallery-item-current" :class="{ active: true }" @click="exitGallery">
+            <div class="gallery-preview gallery-preview-ghost"></div>
+            <div class="gallery-label">{{ currentTopicName }}</div>
           </div>
-          <div class="gallery-label">{{ topic.name }}</div>
+
+          <!-- Other topics -->
+          <div
+            v-for="topic in otherTopics"
+            :key="topic.id"
+            class="gallery-item"
+            :class="{ 'zoom-target': zoomingId === topic.id }"
+            :ref="el => setItemRef(topic.id, el)"
+            @click="onOtherClick(topic.id)"
+          >
+            <div class="gallery-preview">
+              <div class="gallery-thumb" :style="thumbStyle">
+                <BlockCard
+                  v-for="card in topic.cards"
+                  :key="card.id"
+                  :card="card"
+                  @toggle-select="() => {}"
+                  @toggle-dock="() => {}"
+                  @update-position="() => {}"
+                  @drag-end="() => {}"
+                />
+              </div>
+              <div v-if="topic.cards.length === 0" class="preview-empty">空</div>
+              <button
+                v-if="otherTopics.length > 0"
+                class="gallery-delete"
+                @click.stop="deleteTopic(topic.id)"
+              >×</button>
+            </div>
+            <div class="gallery-label">{{ topic.name }}</div>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <div class="greeting" :class="{ hidden: !greetingVisible || galleryMode }">visual talk</div>
   </div>
@@ -79,197 +90,28 @@ const { dockedIds, dockedSnapshots } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
 const { activeTreeId } = storeToRefs(forest)
 
-// ── Gallery (Mission Control) mode ──
+// ════════════════════════════════════════════
+//  Gallery (Mission Control) Mode
+// ════════════════════════════════════════════
+
 const galleryMode = ref(false)
-const galleryTopics = ref([])     // snapshot of topics when gallery opens
-const zoomingTopicId = ref(null)  // topic being zoomed into
-const galleryItemRefs = new Map()
-
-function setGalleryItemRef(id, el) {
-  if (el) galleryItemRefs.set(id, el)
-  else galleryItemRefs.delete(id)
-}
-
-// Snapshot ordering when gallery opens — only re-sort on open, not on re-enter
+const otherTopics = ref([])
+const zoomingId = ref(null)
+const itemRefs = new Map()
 let lastSortOrder = null
 
-async function enterGallery() {
-  // Save current before taking snapshot
-  await forest.saveCurrentTree()
-
-  // Build topic list: current + others, all uniform
-  const topics = []
-  for (const t of forest.treeList) {
-    let topicCards = []
-    if (t.isActive) {
-      // Current tree: read cards from live canvas store
-      topicCards = Array.from(cards.value.entries()).map(([id, c]) => reactive({
-        id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
-        z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
-        selected: false, pointerEvents: 'none', entranceDelay: 0,
-        _isDocked: false, type: c.type || 'blocks',
-        contentKey: String(id),
-        data: c.data || { key: String(id), blocks: [{ type: 'text', text: '...' }] },
-      }))
-    } else {
-      // Other trees: load from IndexedDB
-      const rawCards = await forest.getTreePreview(t.id)
-      topicCards = rawCards.map(c => reactive({
-        id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
-        z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
-        selected: false, pointerEvents: 'none', entranceDelay: 0,
-        _isDocked: false, type: c.type || 'blocks',
-        contentKey: String(c.id),
-        data: c.data || { key: String(c.id), blocks: [{ type: 'text', text: '...' }] },
-      }))
-    }
-    topics.push({
-      id: t.id,
-      name: t.name || '新对话',
-      updatedAt: t.updatedAt || t.createdAt || 0,
-      cards: topicCards,
-    })
-  }
-
-  // Sort by updatedAt descending (most recent first)
-  // But if we have a previous sort order and no new conversations, keep it stable
-  const sorted = topics.sort((a, b) => b.updatedAt - a.updatedAt)
-  const currentIds = sorted.map(t => t.id)
-
-  if (lastSortOrder && arraysEqual(currentIds.sort(), [...lastSortOrder].sort())) {
-    // Same set of topics — use previous order for stability
-    const orderMap = new Map(lastSortOrder.map((id, i) => [id, i]))
-    sorted.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
-  } else {
-    // New set or first open — sort by updatedAt
-    sorted.sort((a, b) => b.updatedAt - a.updatedAt)
-    lastSortOrder = sorted.map(t => t.id)
-  }
-
-  galleryTopics.value = sorted
-  galleryMode.value = true
-
-  // Animate: current topic's preview zooms FROM fullscreen TO grid position
-  await nextTick()
-  updatePreviewScale()
-  await nextTick()
-
-  const activeId = activeTreeId.value
-  const activeEl = galleryItemRefs.get(activeId)
-  const previewEl = activeEl?.querySelector?.('.gallery-preview')
-  if (previewEl) {
-    const rect = previewEl.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    // Reverse zoom: from fullscreen to current rect
-    const scaleX = vw / rect.width
-    const scaleY = vh / rect.height
-    const scale = Math.max(scaleX, scaleY)
-    const tx = (vw / 2) - (rect.left + rect.width / 2)
-    const ty = (vh / 2) - (rect.top + rect.height / 2)
-
-    // Set initial state: fullscreen
-    previewEl.style.transition = 'none'
-    previewEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
-    previewEl.style.zIndex = '200'
-    previewEl.style.borderRadius = '0'
-
-    // Force layout
-    previewEl.offsetHeight
-
-    // Animate back to grid position
-    previewEl.style.transition = 'transform 0.45s cubic-bezier(.22,1,.36,1), border-radius 0.3s'
-    previewEl.style.transform = ''
-    previewEl.style.borderRadius = ''
-
-    // Cleanup after animation
-    setTimeout(() => {
-      previewEl.style.transition = ''
-      previewEl.style.transform = ''
-      previewEl.style.zIndex = ''
-      previewEl.style.borderRadius = ''
-    }, 500)
-  }
+function setItemRef(id, el) {
+  if (el) itemRefs.set(id, el)
+  else itemRefs.delete(id)
 }
 
-function arraysEqual(a, b) {
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
-  return true
-}
-
-function exitGallery() {
-  galleryMode.value = false
-  galleryTopics.value = []
-  // Reset parallax transform so it doesn't stay cleared
-  if (spaceRef.value) {
-    spaceRef.value.style.transform = ''
-  }
-}
-
-async function onTopicClick(treeId) {
-  // Get the clicked preview element's position for zoom animation
-  const itemEl = galleryItemRefs.get(treeId)
-  const previewEl = itemEl?.querySelector?.('.gallery-preview') || itemEl?.$el?.querySelector?.('.gallery-preview')
-
-  if (previewEl) {
-    const rect = previewEl.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-
-    // Calculate transform to go from current position to fullscreen
-    const scaleX = vw / rect.width
-    const scaleY = vh / rect.height
-    const scale = Math.max(scaleX, scaleY)
-    const tx = (vw / 2) - (rect.left + rect.width / 2)
-    const ty = (vh / 2) - (rect.top + rect.height / 2)
-
-    // Apply zoom transform to the preview element
-    previewEl.style.transition = 'transform 0.4s cubic-bezier(.22,1,.36,1), opacity 0.3s'
-    previewEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
-    previewEl.style.zIndex = '200'
-    previewEl.style.borderRadius = '0'
-
-    zoomingTopicId.value = treeId
-
-    // Wait for animation
-    await new Promise(r => setTimeout(r, 350))
-  }
-
-  // Now switch
-  galleryMode.value = false
-  zoomingTopicId.value = null
-  galleryTopics.value = []
-  galleryItemRefs.clear()
-
-  if (treeId !== activeTreeId.value) {
-    await forest.switchTree(treeId)
-  }
-
-  // Reset parallax
-  if (spaceRef.value) {
-    spaceRef.value.style.transform = ''
-  }
-}
-
-async function deleteTopic(treeId) {
-  galleryTopics.value = galleryTopics.value.filter(t => t.id !== treeId)
-  lastSortOrder = galleryTopics.value.map(t => t.id)
-  await forest.deleteTree(treeId)
-  // If deleted the only topic, exit gallery
-  if (galleryTopics.value.length === 0) {
-    exitGallery()
-  }
-}
-
-const sortedTopics = computed(() => galleryTopics.value)
-
-// Expose for App.vue
-defineExpose({ enterGallery, galleryMode })
+const currentTopicName = computed(() => {
+  const t = forest.treeList.find(t => t.isActive)
+  return t?.name || '新对话'
+})
 
 // ── Grid layout ──
 const COLS = 3
-
 const gridStyle = computed(() => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${COLS}, 1fr)`,
@@ -279,19 +121,16 @@ const gridStyle = computed(() => ({
   margin: '0 auto',
 }))
 
-// Dynamically compute preview scale from actual container width
-const galleryScrollRef = ref(null)
-const previewScale = ref(0.25)
-
-// Gallery canvas style — simulates the real viewport inside preview
-const galleryCanvasStyle = computed(() => {
+// Thumb style: vw×vh scaled down to fit preview
+const thumbStyle = computed(() => {
   const vw = window.innerWidth || 1280
   const vh = window.innerHeight || 800
-  const s = previewScale.value
+  // Preview box width ≈ (1200 - 96 - 48) / 3 = 352px approx
+  // Actual scale set by container; we just provide the virtual size
   return {
     width: vw + 'px',
     height: vh + 'px',
-    transform: `scale(${s})`,
+    transform: `scale(var(--thumb-scale, 0.25))`,
     transformOrigin: 'top left',
     position: 'absolute',
     top: '0',
@@ -300,31 +139,168 @@ const galleryCanvasStyle = computed(() => {
   }
 })
 
-function updatePreviewScale() {
-  nextTick(() => {
-    const container = galleryScrollRef.value
-    if (!container) return
-    const cw = container.clientWidth
-    const padX = 96
-    const gaps = (COLS - 1) * 24
-    const itemW = (Math.min(cw, 1200) - padX - gaps) / COLS
-    const vw = window.innerWidth || 1280
-    const vh = window.innerHeight || 800
-    previewScale.value = itemW / vw
-    container.style.setProperty('--vp-ratio', `${vw} / ${vh}`)
-  })
-}
+// Current canvas position in gallery grid
+const currentCanvasPos = ref(null) // { left, top, width, scale }
 
-watch(galleryMode, (v) => {
-  if (v) {
-    updatePreviewScale()
-    window.addEventListener('resize', updatePreviewScale)
-  } else {
-    window.removeEventListener('resize', updatePreviewScale)
+const currentTransformStyle = computed(() => {
+  if (!galleryMode.value || !currentCanvasPos.value) return undefined
+  const { left, top, width, scale } = currentCanvasPos.value
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  return {
+    position: 'fixed',
+    left: left + 'px',
+    top: top + 'px',
+    width: vw + 'px',
+    height: vh + 'px',
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+    transition: 'all 0.45s cubic-bezier(.22,1,.36,1)',
+    zIndex: '101',
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    borderRadius: (12 / scale) + 'px',
+    overflow: 'hidden',
   }
 })
 
-// ── Existing card logic (unchanged) ──
+// ── Enter / Exit ──
+async function enterGallery() {
+  await forest.saveCurrentTree()
+
+  // Build other topics from lastCards (sync, no IndexedDB)
+  const topics = []
+  for (const t of forest.treeList) {
+    if (t.isActive) continue
+    const topicCards = (t.lastCards || []).map(c => reactive({
+      id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
+      z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
+      selected: false, pointerEvents: 'none', entranceDelay: 0,
+      _isDocked: false, type: c.type || 'blocks',
+      contentKey: String(c.id),
+      data: c.data || { key: String(c.id), blocks: [{ type: 'text', text: '...' }] },
+    }))
+    topics.push({
+      id: t.id,
+      name: t.name || '新对话',
+      updatedAt: t.updatedAt || 0,
+      cards: topicCards,
+    })
+  }
+
+  // Sort by updatedAt desc, but stable on re-enter
+  topics.sort((a, b) => b.updatedAt - a.updatedAt)
+  const ids = topics.map(t => t.id)
+  if (lastSortOrder && arrEq(ids.sort(), [...lastSortOrder].sort())) {
+    const m = new Map(lastSortOrder.map((id, i) => [id, i]))
+    topics.sort((a, b) => (m.get(a.id) ?? 999) - (m.get(b.id) ?? 999))
+  } else {
+    topics.sort((a, b) => b.updatedAt - a.updatedAt)
+    lastSortOrder = topics.map(t => t.id)
+  }
+
+  otherTopics.value = topics
+  galleryMode.value = true
+
+  await nextTick()
+  updateThumbScale()
+  await nextTick()
+
+  // Measure ghost position for current canvas
+  const ghost = document.querySelector('.gallery-preview-ghost')
+  if (ghost) {
+    const rect = ghost.getBoundingClientRect()
+    const vw = window.innerWidth
+    currentCanvasPos.value = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      scale: rect.width / vw,
+    }
+  }
+}
+
+function exitGallery() {
+  currentCanvasPos.value = null
+  galleryMode.value = false
+  otherTopics.value = []
+  itemRefs.clear()
+  // Reset parallax
+  if (spaceRef.value) {
+    spaceRef.value.style = ''
+  }
+}
+
+function onCurrentClick() {
+  exitGallery()
+}
+
+async function onOtherClick(treeId) {
+  // Zoom animation on clicked item
+  const el = itemRefs.get(treeId)?.querySelector?.('.gallery-preview')
+  if (el) {
+    const rect = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const scale = Math.max(vw / rect.width, vh / rect.height)
+    const tx = (vw / 2) - (rect.left + rect.width / 2)
+    const ty = (vh / 2) - (rect.top + rect.height / 2)
+
+    el.style.transition = 'transform 0.4s cubic-bezier(.22,1,.36,1)'
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+    el.style.zIndex = '200'
+    el.style.borderRadius = '0'
+    zoomingId.value = treeId
+
+    await new Promise(r => setTimeout(r, 350))
+  }
+
+  galleryMode.value = false
+  zoomingId.value = null
+  otherTopics.value = []
+  itemRefs.clear()
+  if (spaceRef.value) spaceRef.value.style = ''
+
+  await forest.switchTree(treeId)
+}
+
+async function deleteTopic(treeId) {
+  otherTopics.value = otherTopics.value.filter(t => t.id !== treeId)
+  lastSortOrder = otherTopics.value.map(t => t.id)
+  await forest.deleteTree(treeId)
+  if (otherTopics.value.length === 0 && forest.treeList.length <= 1) exitGallery()
+}
+
+function arrEq(a, b) {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+// Thumb scale — match preview box width to vw
+function updateThumbScale() {
+  const items = document.querySelectorAll('.gallery-preview:not(.gallery-preview-ghost)')
+  if (!items.length) return
+  const w = items[0].clientWidth
+  const vw = window.innerWidth || 1280
+  const scale = w / vw
+  document.documentElement.style.setProperty('--thumb-scale', scale.toFixed(4))
+  // Also set vp-ratio
+  const vh = window.innerHeight || 800
+  document.documentElement.style.setProperty('--vp-ratio', `${vw} / ${vh}`)
+}
+
+watch(galleryMode, (v) => {
+  if (v) window.addEventListener('resize', updateThumbScale)
+  else window.removeEventListener('resize', updateThumbScale)
+})
+
+defineExpose({ enterGallery, galleryMode })
+
+// ════════════════════════════════════════════
+//  Card Logic (unchanged)
+// ════════════════════════════════════════════
+
 const cardRefs = new Map()
 function setCardRef(id, el) {
   if (el) cardRefs.set(id, el)
@@ -332,15 +308,14 @@ function setCardRef(id, el) {
 }
 
 const dockSlots = ref(new Map())
-
 function recalcDockSlots() {
   const slots = new Map()
   let y = 36
   const gap = 20
   dockedSnapshots.value.forEach((snap, id) => {
     slots.set(id, y)
-    const ref = cardRefs.get(id)
-    const el = ref?.$el || ref
+    const r = cardRefs.get(id)
+    const el = r?.$el || r
     const h = el?.offsetHeight || 200
     y += h + gap
   })
@@ -395,7 +370,7 @@ function handleBgClick(e) {
   emit('click-canvas')
 }
 
-function onToggleDock(cardId) { timeline.toggleDock(cardId) }
+function onToggleDock(id) { timeline.toggleDock(id) }
 
 function onDragEnd(card, x, y) {
   if (card._isDocked) return
@@ -411,9 +386,7 @@ function onMouseMove(e) {
 }
 
 function onKeyDown(e) {
-  if (e.key === 'Escape' && galleryMode.value) {
-    exitGallery()
-  }
+  if (e.key === 'Escape' && galleryMode.value) exitGallery()
 }
 
 onMounted(() => {
@@ -423,17 +396,16 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('resize', updatePreviewScale)
+  window.removeEventListener('resize', updateThumbScale)
 })
 </script>
 
 <style>
-/* ── Gallery mode ── */
-.canvas.mission-control {
-  cursor: default;
-}
+/* ════════════════════════════════════════════
+   Gallery Overlay
+   ════════════════════════════════════════════ */
 
-.gallery-scroll {
+.gallery-overlay {
   position: fixed;
   inset: 0;
   overflow-y: auto;
@@ -442,28 +414,37 @@ onUnmounted(() => {
   background: rgba(220,221,224,0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  animation: gallery-fade-in 0.3s ease;
 }
 
-@keyframes gallery-fade-in {
-  from { opacity: 0; backdrop-filter: blur(0); }
-  to { opacity: 1; backdrop-filter: blur(24px); }
+.gallery-overlay::-webkit-scrollbar { width: 6px; }
+.gallery-overlay::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1); border-radius: 3px;
 }
 
-.gallery-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-.gallery-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.1);
-  border-radius: 3px;
+/* Fade transition */
+.gallery-fade-enter-active { transition: opacity 0.3s, backdrop-filter 0.3s; }
+.gallery-fade-leave-active { transition: opacity 0.2s; }
+.gallery-fade-enter-from { opacity: 0; }
+.gallery-fade-leave-to { opacity: 0; }
+
+/* ── Gallery current (real canvas in grid) ── */
+.canvas-space.gallery-current {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
-/* ── Gallery item ── */
+.canvas-space.gallery-current .v-block {
+  pointer-events: none !important;
+  cursor: pointer !important;
+}
+
+.canvas-space.gallery-current .v-block .win-bar { display: none !important; }
+
+/* ── Grid Items ── */
 .gallery-item {
   cursor: pointer;
-  animation: item-fade-in 0.35s ease both;
+  animation: item-up 0.35s ease both;
 }
-
 .gallery-item:nth-child(1) { animation-delay: 0s; }
 .gallery-item:nth-child(2) { animation-delay: 0.04s; }
 .gallery-item:nth-child(3) { animation-delay: 0.08s; }
@@ -472,7 +453,7 @@ onUnmounted(() => {
 .gallery-item:nth-child(6) { animation-delay: 0.2s; }
 .gallery-item:nth-child(n+7) { animation-delay: 0.24s; }
 
-@keyframes item-fade-in {
+@keyframes item-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
@@ -486,6 +467,12 @@ onUnmounted(() => {
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
+.gallery-preview-ghost {
+  /* Invisible placeholder — real canvas sits behind here */
+  background: transparent;
+  border: 2px solid rgba(0,0,0,0.06);
+}
+
 .gallery-item:hover .gallery-preview {
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   transform: translateY(-2px);
@@ -495,12 +482,14 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(0,0,0,0.12);
 }
 
-/* Scaled real canvas inside preview */
-.gallery-canvas {
-  /* Styles set via :style binding */
+/* Thumb — scaled canvas */
+.gallery-thumb {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
 }
 
-.gallery-canvas .v-block {
+.gallery-thumb .v-block {
   transition: none !important;
   animation: none !important;
   pointer-events: none !important;
@@ -508,10 +497,9 @@ onUnmounted(() => {
   max-width: none !important;
 }
 
-.gallery-canvas .win-bar { display: none !important; }
-
-.gallery-canvas .win-body { padding: 6px !important; }
-.gallery-canvas .blocks-renderer {
+.gallery-thumb .win-bar { display: none !important; }
+.gallery-thumb .win-body { padding: 6px !important; }
+.gallery-thumb .blocks-renderer {
   gap: 3px !important;
   padding: 6px !important;
 }
@@ -530,111 +518,68 @@ onUnmounted(() => {
 
 /* Delete */
 .gallery-delete {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.2);
-  color: rgba(255,255,255,0.8);
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
+  position: absolute; top: 8px; right: 8px;
+  width: 24px; height: 24px;
+  border: none; border-radius: 50%;
+  background: rgba(0,0,0,0.2); color: rgba(255,255,255,0.8);
+  font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s, background 0.15s;
   z-index: 2;
 }
-
 .gallery-item:hover .gallery-delete { opacity: 1; }
 .gallery-delete:hover { background: rgba(200,60,60,0.6); color: #fff; }
 
-/* Empty preview */
+/* Empty */
 .preview-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(0,0,0,0.06);
-  font-size: 14px;
-  letter-spacing: 4px;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(0,0,0,0.06); font-size: 14px; letter-spacing: 4px;
 }
 
-/* Close button */
+/* Close */
 .gallery-close-btn {
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  z-index: 110;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.4);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: fixed; top: 14px; right: 14px; z-index: 110;
+  width: 32px; height: 32px;
+  border: none; border-radius: 50%;
+  background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.4);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s;
 }
-.gallery-close-btn:hover {
-  background: rgba(0,0,0,0.1);
-  color: rgba(0,0,0,0.6);
-}
+.gallery-close-btn:hover { background: rgba(0,0,0,0.1); color: rgba(0,0,0,0.6); }
 
-/* Zoom animation */
-.gallery-scroll.zooming {
+/* Zoom out animation */
+.gallery-overlay.zooming {
   background: transparent;
   backdrop-filter: none;
   pointer-events: none;
 }
+.gallery-overlay.zooming .gallery-item:not(.zoom-target) { opacity: 0; transition: opacity 0.2s; }
+.gallery-overlay.zooming .gallery-close-btn { opacity: 0; transition: opacity 0.15s; }
+.gallery-overlay.zooming .gallery-label { opacity: 0; transition: opacity 0.15s; }
+.gallery-overlay.zooming .zoom-target .gallery-preview { overflow: visible; }
+.gallery-overlay.zooming .gallery-item-current { opacity: 0; transition: opacity 0.15s; }
 
-.gallery-scroll.zooming .gallery-item:not(.zoom-target) {
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.gallery-scroll.zooming .gallery-close-btn,
-.gallery-scroll.zooming .gallery-label {
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.gallery-scroll.zooming .zoom-target .gallery-preview {
-  overflow: visible;
-}
-
-
-
-/* ═══ Theme: Mercury ═══ */
-.theme-mercury .gallery-scroll {
-  background: rgba(220,221,224,0.92);
-}
+/* ═══ Mercury ═══ */
+.theme-mercury .gallery-overlay { background: rgba(220,221,224,0.92); }
 .theme-mercury .gallery-preview { background: rgba(0,0,0,0.035); }
 .theme-mercury .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
 .theme-mercury .gallery-label { color: rgba(0,0,0,0.45); }
 
-/* ═══ Theme: Dot ═══ */
-.theme-dot .gallery-scroll {
-  background: rgba(240,230,220,0.92);
-}
+/* ═══ Dot ═══ */
+.theme-dot .gallery-overlay { background: rgba(240,230,220,0.92); }
 .theme-dot .gallery-preview { background: rgba(0,0,0,0.025); }
 .theme-dot .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(180,140,100,0.2); }
 .theme-dot .gallery-label { color: rgba(100,80,60,0.45); }
 
-/* ═══ Theme: Basic (dark) ═══ */
-body:not(.theme-mercury):not(.theme-dot) .gallery-scroll {
-  background: rgba(10,10,8,0.9);
-}
+/* ═══ Basic (dark) ═══ */
+body:not(.theme-mercury):not(.theme-dot) .gallery-overlay { background: rgba(10,10,8,0.9); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-preview { background: rgba(255,255,255,0.04); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(196,168,130,0.2); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-label { color: rgba(196,168,130,0.45); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-delete { background: rgba(255,255,255,0.1); }
 body:not(.theme-mercury):not(.theme-dot) .preview-empty { color: rgba(196,168,130,0.08); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-preview-ghost { border-color: rgba(196,168,130,0.08); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-close-btn { background: rgba(255,255,255,0.06); color: rgba(196,168,130,0.3); }
 </style>
