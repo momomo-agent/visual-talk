@@ -1,11 +1,13 @@
 <template>
   <CanvasSpace ref="canvasSpace" @click-canvas="blurInput" />
   <SpeechBubble
+    v-show="!isGalleryOpen"
     :text="isScrollingTimeline ? timelineBubbleText : bubbleText"
     :visible="isScrollingTimeline ? timelineBubbleVisible : bubbleVisible"
   />
-  <ThinkingDots :visible="isThinking" />
+  <ThinkingDots :visible="isThinking && !isGalleryOpen" />
   <InputBar
+    v-show="!isGalleryOpen"
     ref="inputBar"
     :recording="stt.state.isRecording"
     :mic-active="spaceDown"
@@ -14,7 +16,7 @@
     @mic-down="startRecording"
     @mic-up="stopRecording"
   />
-  <div class="tool-log">
+  <div v-show="!isGalleryOpen" class="tool-log">
     <div
       v-for="log in toolLogs"
       :key="log.id"
@@ -22,9 +24,9 @@
       :class="{ fading: log.fading }"
     >{{ log.text }}</div>
   </div>
-  <button class="gear-btn" style="right: 72px" @click="newTopic" title="新话题">+</button>
-  <button class="gear-btn" style="right: 40px" @click="canvasSpace?.enterGallery()" title="话题">☰</button>
-  <button class="gear-btn" @click="configOpen = true">⚙</button>
+  <button v-show="!isGalleryOpen" class="gear-btn" style="right: 72px" @click="newTopic" title="新话题">+</button>
+  <button v-show="!isGalleryOpen" class="gear-btn" style="right: 40px" @click="toggleGallery" title="话题">☰</button>
+  <button v-show="!isGalleryOpen" class="gear-btn" @click="configOpen = true">⚙</button>
   <ConfigPanel v-model:open="configOpen" />
 </template>
 
@@ -46,9 +48,18 @@ import { useForestStore } from './stores/forest.js'
 
 const configOpen = ref(false)
 const canvasSpace = ref(null)
+const isGalleryOpen = computed(() => canvasSpace.value?.galleryMode ?? false)
 
 function newTopic() {
   forest.newTree()
+}
+
+function toggleGallery() {
+  if (canvasSpace.value?.galleryMode) {
+    canvasSpace.value.galleryMode = false
+  } else {
+    canvasSpace.value?.enterGallery()
+  }
 }
 const inputBar = ref(null)
 const configStore = useConfigStore()

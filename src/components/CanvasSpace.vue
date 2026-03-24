@@ -1,12 +1,11 @@
 <template>
   <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick">
-    <!-- Current canvas -->
+    <!-- Normal mode: live canvas -->
     <div
+      v-show="!galleryMode"
       class="canvas-space"
       ref="spaceRef"
       :class="{ 'nav-zoom': isNavigating }"
-      :style="galleryMode ? currentCanvasStyle : undefined"
-      @click.self="galleryMode ? exitGallery() : null"
     >
       <BlockCard
         v-for="[id, card] in allCards"
@@ -22,49 +21,40 @@
       <SketchOverlay />
     </div>
 
-    <!-- Other topics (only in gallery mode) -->
-    <div
-      v-for="(topic, i) in otherTopics"
-      :key="topic.id"
-      class="topic-canvas-wrapper"
-      :style="topicStyle(i)"
-      @click.stop="switchToTopic(topic.id)"
-    >
-      <div class="topic-canvas-inner">
-        <BlockCard
-          v-for="card in topic.cards"
-          :key="card.id"
-          :card="card"
-          @toggle-select="() => {}"
-          @toggle-dock="() => {}"
-          @update-position="() => {}"
-          @drag-end="() => {}"
-        />
+    <!-- Gallery mode: all topics as uniform thumbnails -->
+    <div v-if="galleryMode" class="gallery-scroll" ref="galleryScrollRef" @click.self="exitGallery">
+      <button class="gallery-close-btn" @click="exitGallery">×</button>
+      <div class="gallery-grid" :style="gridStyle">
+        <div
+          v-for="topic in sortedTopics"
+          :key="topic.id"
+          class="gallery-item"
+          :class="{ active: topic.id === activeTreeId }"
+          @click="onTopicClick(topic.id)"
+        >
+          <div class="gallery-preview">
+            <div class="gallery-canvas">
+              <BlockCard
+                v-for="card in topic.cards"
+                :key="card.id"
+                :card="card"
+                @toggle-select="() => {}"
+                @toggle-dock="() => {}"
+                @update-position="() => {}"
+                @drag-end="() => {}"
+              />
+            </div>
+            <div v-if="topic.cards.length === 0" class="preview-empty">空</div>
+            <!-- Delete button -->
+            <button
+              v-if="sortedTopics.length > 1"
+              class="gallery-delete"
+              @click.stop="deleteTopic(topic.id)"
+            >×</button>
+          </div>
+          <div class="gallery-label">{{ topic.name }}</div>
+        </div>
       </div>
-    </div>
-    <div
-      v-for="(topic, i) in otherTopics"
-      :key="'label-' + topic.id"
-      class="topic-label"
-      :style="topicLabelStyle(i)"
-    >{{ topic.name || '新对话' }}</div>
-
-    <!-- New topic button (only in gallery mode) -->
-    <div
-      v-if="galleryMode"
-      class="topic-canvas-wrapper topic-new"
-      :style="newTopicStyle"
-      @click.stop="createNewTopic"
-    >
-      <div class="topic-canvas-inner topic-new-inner">
-        <span class="topic-new-icon">+</span>
-      </div>
-    </div>
-    <div v-if="galleryMode" class="topic-label" :style="newTopicLabelStyle">新话题</div>
-
-    <!-- Current topic label (only in gallery mode) -->
-    <div v-if="galleryMode" class="current-topic-label" :style="currentLabelStyle">
-      {{ currentTopicName }}
     </div>
 
     <div class="greeting" :class="{ hidden: !greetingVisible || galleryMode }">visual talk</div>
@@ -86,159 +76,143 @@ const forest = useForestStore()
 const { cards, greetingVisible, isNavigating } = storeToRefs(canvas)
 const { dockedIds, dockedSnapshots } = storeToRefs(timeline)
 const { toggleSelect, clearSelection, updateCardPosition } = canvas
+const { activeTreeId } = storeToRefs(forest)
 
 // ── Gallery (Mission Control) mode ──
 const galleryMode = ref(false)
-const otherTopics = ref([])
+const galleryTopics = ref([])     // snapshot of topics when gallery opens
 
-// Layout constants
-const SCALE = 0.24
-const GAP = 24 // px between topics
-const COLS_MAX = 3
+// Snapshot ordering when gallery opens — only re-sort on open, not on re-enter
+let lastSortOrder = null
 
-function enterGallery() {
-  galleryMode.value = true
-  loadOtherTopics()
-}
-
-function exitGallery() {
-  galleryMode.value = false
-  otherTopics.value = []
-}
-
-async function loadOtherTopics() {
+async function enterGallery() {
+  // Save current before taking snapshot
   await forest.saveCurrentTree()
+
+  // Build topic list: current + others, all uniform
   const topics = []
   for (const t of forest.treeList) {
-    if (t.isActive) continue
-    const rawCards = await forest.getTreePreview(t.id)
-    topics.push({
-      id: t.id,
-      name: t.name,
-      cards: rawCards.map(c => reactive({
+    let topicCards = []
+    if (t.isActive) {
+      // Current tree: read cards from live canvas store
+      topicCards = Array.from(cards.value.entries()).map(([id, c]) => reactive({
+        id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
+        z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
+        selected: false, pointerEvents: 'none', entranceDelay: 0,
+        _isDocked: false, type: c.type || 'blocks',
+        contentKey: String(id),
+        data: c.data || { key: String(id), blocks: [{ type: 'text', text: '...' }] },
+      }))
+    } else {
+      // Other trees: load from IndexedDB
+      const rawCards = await forest.getTreePreview(t.id)
+      topicCards = rawCards.map(c => reactive({
         id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
         z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
         selected: false, pointerEvents: 'none', entranceDelay: 0,
         _isDocked: false, type: c.type || 'blocks',
         contentKey: String(c.id),
         data: c.data || { key: String(c.id), blocks: [{ type: 'text', text: '...' }] },
-      })),
+      }))
+    }
+    topics.push({
+      id: t.id,
+      name: t.name || '新对话',
+      updatedAt: t.updatedAt || t.createdAt || 0,
+      cards: topicCards,
     })
   }
-  otherTopics.value = topics
+
+  // Sort by updatedAt descending (most recent first)
+  // But if we have a previous sort order and no new conversations, keep it stable
+  const sorted = topics.sort((a, b) => b.updatedAt - a.updatedAt)
+  const currentIds = sorted.map(t => t.id)
+
+  if (lastSortOrder && arraysEqual(currentIds.sort(), [...lastSortOrder].sort())) {
+    // Same set of topics — use previous order for stability
+    const orderMap = new Map(lastSortOrder.map((id, i) => [id, i]))
+    sorted.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999))
+  } else {
+    // New set or first open — sort by updatedAt
+    sorted.sort((a, b) => b.updatedAt - a.updatedAt)
+    lastSortOrder = sorted.map(t => t.id)
+  }
+
+  galleryTopics.value = sorted
+  galleryMode.value = true
 }
 
-async function switchToTopic(treeId) {
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
+}
+
+function exitGallery() {
   galleryMode.value = false
-  otherTopics.value = []
+  galleryTopics.value = []
+}
+
+async function onTopicClick(treeId) {
+  if (treeId === activeTreeId.value) {
+    // Clicking current topic just exits gallery
+    exitGallery()
+    return
+  }
+  exitGallery()
   await forest.switchTree(treeId)
 }
 
-function createNewTopic() {
-  galleryMode.value = false
-  otherTopics.value = []
-  forest.newTree()
+async function deleteTopic(treeId) {
+  galleryTopics.value = galleryTopics.value.filter(t => t.id !== treeId)
+  lastSortOrder = galleryTopics.value.map(t => t.id)
+  await forest.deleteTree(treeId)
+  // If deleted the only topic, exit gallery
+  if (galleryTopics.value.length === 0) {
+    exitGallery()
+  }
 }
+
+const sortedTopics = computed(() => galleryTopics.value)
 
 // Expose for App.vue
 defineExpose({ enterGallery, galleryMode })
 
-// ── Layout math ──
-// Total items = 1 (current) + otherTopics + 1 (new)
-const totalItems = computed(() => 1 + otherTopics.value.length + (galleryMode.value ? 1 : 0))
-const cols = computed(() => Math.min(totalItems.value, COLS_MAX))
-const canvasW = computed(() => typeof window !== 'undefined' ? window.innerWidth : 1280)
-const canvasH = computed(() => typeof window !== 'undefined' ? window.innerHeight : 800)
+// ── Grid layout ──
+const COLS = 3
 
-const itemW = computed(() => canvasW.value * SCALE)
-const itemH = computed(() => canvasH.value * SCALE)
-const totalW = computed(() => cols.value * itemW.value + (cols.value - 1) * GAP)
-const rows = computed(() => Math.ceil(totalItems.value / cols.value))
-const totalH = computed(() => rows.value * (itemH.value + 28) + (rows.value - 1) * GAP) // 28 for label
-const startX = computed(() => (canvasW.value - totalW.value) / 2)
-const startY = computed(() => Math.max(40, (canvasH.value - totalH.value) / 2))
+const gridStyle = computed(() => ({
+  display: 'grid',
+  gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+  gap: '24px',
+  padding: '60px 48px 48px',
+  maxWidth: '1200px',
+  margin: '0 auto',
+}))
 
-function getItemPos(index) {
-  const col = index % cols.value
-  const row = Math.floor(index / cols.value)
-  const x = startX.value + col * (itemW.value + GAP)
-  const y = startY.value + row * (itemH.value + GAP + 28) // 28 for label
-  return { x, y }
+// Dynamically compute preview scale from actual container width
+const galleryScrollRef = ref(null)
+
+function updatePreviewScale() {
+  nextTick(() => {
+    const container = galleryScrollRef.value
+    if (!container) return
+    // Grid item width ≈ (container width - padding - gaps) / cols
+    const cw = container.clientWidth
+    const padX = 96 // 48*2
+    const gaps = (COLS - 1) * 24
+    const itemW = (Math.min(cw, 1200) - padX - gaps) / COLS
+    const scale = itemW / 1280
+    container.style.setProperty('--preview-scale', scale.toFixed(4))
+  })
 }
 
-const currentCanvasStyle = computed(() => {
-  if (!galleryMode.value) return undefined
-  const { x, y } = getItemPos(0)
-  return {
-    transform: `translate(${x}px, ${y}px) scale(${SCALE})`,
-    transformOrigin: 'top left',
-    cursor: 'default',
-  }
-})
-
-const currentLabelStyle = computed(() => {
-  if (!galleryMode.value) return { display: 'none' }
-  const { x, y } = getItemPos(0)
-  return {
-    position: 'absolute',
-    left: `${x}px`,
-    top: `${y + itemH.value + 8}px`,
-    width: `${itemW.value}px`,
-  }
-})
-
-const currentTopicName = computed(() => {
-  const active = forest.treeList.find(t => t.isActive)
-  return active?.name || '当前话题'
-})
-
-function topicStyle(i) {
-  if (!galleryMode.value) return { display: 'none' }
-  const { x, y } = getItemPos(i + 1)
-  return {
-    position: 'absolute',
-    left: `${x}px`,
-    top: `${y}px`,
-    width: `${canvasW.value}px`,
-    height: `${canvasH.value}px`,
-    transform: `scale(${SCALE})`,
-    transformOrigin: 'top left',
-  }
-}
-
-function topicLabelStyle(i) {
-  if (!galleryMode.value) return { display: 'none' }
-  const { x, y } = getItemPos(i + 1)
-  return {
-    position: 'absolute',
-    left: `${x}px`,
-    top: `${y + itemH.value + 8}px`,
-    width: `${itemW.value}px`,
-  }
-}
-
-const newTopicStyle = computed(() => {
-  if (!galleryMode.value) return { display: 'none' }
-  const { x, y } = getItemPos(1 + otherTopics.value.length)
-  return {
-    position: 'absolute',
-    left: `${x}px`,
-    top: `${y}px`,
-    width: `${canvasW.value}px`,
-    height: `${canvasH.value}px`,
-    transform: `scale(${SCALE})`,
-    transformOrigin: 'top left',
-  }
-})
-
-const newTopicLabelStyle = computed(() => {
-  if (!galleryMode.value) return { display: 'none' }
-  const { x, y } = getItemPos(1 + otherTopics.value.length)
-  return {
-    position: 'absolute',
-    left: `${x}px`,
-    top: `${y + itemH.value + 8}px`,
-    width: `${itemW.value}px`,
+watch(galleryMode, (v) => {
+  if (v) {
+    updatePreviewScale()
+    window.addEventListener('resize', updatePreviewScale)
+  } else {
+    window.removeEventListener('resize', updatePreviewScale)
   }
 })
 
@@ -328,49 +302,84 @@ function onMouseMove(e) {
   spaceRef.value.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
 }
 
-onMounted(() => document.addEventListener('mousemove', onMouseMove))
-onUnmounted(() => document.removeEventListener('mousemove', onMouseMove))
+function onKeyDown(e) {
+  if (e.key === 'Escape' && galleryMode.value) {
+    exitGallery()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('keydown', onKeyDown)
+})
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('resize', updatePreviewScale)
+})
 </script>
 
 <style>
-/* ── Mission Control mode ── */
+/* ── Gallery mode ── */
 .canvas.mission-control {
   cursor: default;
 }
 
-.canvas.mission-control .canvas-space {
-  transition: transform 0.5s cubic-bezier(.22,1,.36,1);
-  pointer-events: none;
+.gallery-scroll {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  background: rgba(220,221,224,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.gallery-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.gallery-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+/* ── Gallery item ── */
+.gallery-item {
   cursor: pointer;
 }
 
-.canvas.mission-control .canvas-space:hover {
-  filter: brightness(1.05);
-}
-
-/* Topic canvas wrappers */
-.topic-canvas-wrapper {
+.gallery-preview {
+  position: relative;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
-  z-index: 10;
+  background: rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s, transform 0.2s;
 }
 
-.topic-canvas-wrapper:hover {
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+.gallery-item:hover .gallery-preview {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
 }
 
-.topic-canvas-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
+.gallery-item.active .gallery-preview {
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.12);
+}
+
+/* Scaled real canvas inside preview */
+.gallery-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 800px;
+  transform: scale(var(--preview-scale, 0.25));
+  transform-origin: top left;
   pointer-events: none;
-  background: rgba(0,0,0,0.03);
-  border-radius: 12px;
 }
 
-.topic-canvas-inner .v-block {
+.gallery-canvas .v-block {
   transition: none !important;
   animation: none !important;
   pointer-events: none !important;
@@ -378,58 +387,114 @@ onUnmounted(() => document.removeEventListener('mousemove', onMouseMove))
   max-width: none !important;
 }
 
-.topic-canvas-inner .win-bar { display: none !important; }
+.gallery-canvas .win-bar { display: none !important; }
 
-/* Topic label — positioned outside scaled wrapper */
-.topic-label,
-.current-topic-label {
+.gallery-canvas .win-body { padding: 6px !important; }
+.gallery-canvas .blocks-renderer {
+  gap: 3px !important;
+  padding: 6px !important;
+}
+
+/* Label */
+.gallery-label {
   font-size: 13px;
   font-weight: 500;
   color: rgba(0,0,0,0.5);
   text-align: center;
+  padding: 8px 4px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
-  z-index: 11;
 }
 
-/* New topic */
-.topic-new-inner {
+/* Delete */
+.gallery-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.2);
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed rgba(0,0,0,0.06);
-  background: rgba(0,0,0,0.015);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 2;
 }
 
-.topic-new-icon {
-  font-size: 48px;
-  color: rgba(0,0,0,0.08);
-  transition: color 0.2s;
+.gallery-item:hover .gallery-delete { opacity: 1; }
+.gallery-delete:hover { background: rgba(200,60,60,0.6); color: #fff; }
+
+/* Empty preview */
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0,0,0,0.06);
+  font-size: 14px;
+  letter-spacing: 4px;
 }
 
-.topic-new:hover .topic-new-icon {
-  color: rgba(0,0,0,0.2);
+/* Close button */
+.gallery-close-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 110;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.4);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.gallery-close-btn:hover {
+  background: rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.6);
 }
 
-/* ═══ Mercury Theme ═══ */
-.theme-mercury .topic-canvas-inner { background: rgba(0,0,0,0.025); }
-.theme-mercury .topic-label,
-.theme-mercury .current-topic-label { color: rgba(0,0,0,0.4); }
-.theme-mercury .topic-canvas-wrapper:hover { box-shadow: 0 0 0 2px rgba(0,0,0,0.08); }
+/* ── Compute --preview-scale from container ── */
+.gallery-item {
+  --preview-scale: 0.25;
+}
 
-/* ═══ Dot Theme ═══ */
-.theme-dot .topic-canvas-inner { background: rgba(0,0,0,0.02); }
-.theme-dot .topic-label,
-.theme-dot .current-topic-label { color: rgba(100,80,60,0.4); }
-.theme-dot .topic-canvas-wrapper:hover { box-shadow: 0 0 0 2px rgba(180,140,100,0.15); }
+/* ═══ Theme: Mercury ═══ */
+.theme-mercury .gallery-scroll {
+  background: rgba(220,221,224,0.92);
+}
+.theme-mercury .gallery-preview { background: rgba(0,0,0,0.035); }
+.theme-mercury .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
+.theme-mercury .gallery-label { color: rgba(0,0,0,0.45); }
 
-/* ═══ Basic (dark) Theme ═══ */
-body:not(.theme-mercury):not(.theme-dot) .topic-canvas-inner { background: rgba(255,255,255,0.03); }
-body:not(.theme-mercury):not(.theme-dot) .topic-label,
-body:not(.theme-mercury):not(.theme-dot) .current-topic-label { color: rgba(196,168,130,0.4); }
-body:not(.theme-mercury):not(.theme-dot) .topic-canvas-wrapper:hover { box-shadow: 0 0 0 2px rgba(196,168,130,0.15); }
-body:not(.theme-mercury):not(.theme-dot) .topic-new-inner { border-color: rgba(196,168,130,0.08); }
-body:not(.theme-mercury):not(.theme-dot) .topic-new-icon { color: rgba(196,168,130,0.08); }
+/* ═══ Theme: Dot ═══ */
+.theme-dot .gallery-scroll {
+  background: rgba(240,230,220,0.92);
+}
+.theme-dot .gallery-preview { background: rgba(0,0,0,0.025); }
+.theme-dot .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(180,140,100,0.2); }
+.theme-dot .gallery-label { color: rgba(100,80,60,0.45); }
+
+/* ═══ Theme: Basic (dark) ═══ */
+body:not(.theme-mercury):not(.theme-dot) .gallery-scroll {
+  background: rgba(10,10,8,0.9);
+}
+body:not(.theme-mercury):not(.theme-dot) .gallery-preview { background: rgba(255,255,255,0.04); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(196,168,130,0.2); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-label { color: rgba(196,168,130,0.45); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-delete { background: rgba(255,255,255,0.1); }
+body:not(.theme-mercury):not(.theme-dot) .preview-empty { color: rgba(196,168,130,0.08); }
 </style>
