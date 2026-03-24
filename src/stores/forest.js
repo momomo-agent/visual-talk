@@ -302,13 +302,10 @@ export const useForestStore = defineStore('forest', () => {
       cur = n.parentId
     }
 
-    // Replay create ops to get card positions
+    // Replay create ops to get card positions (ignore depth for preview)
     const cards = new Map()
-    let depth = 0
     for (const node of path) {
       if (!node.operations) continue
-      const hasPush = node.operations.some(op => op.op === 'push')
-      if (hasPush) depth++
       for (const op of node.operations) {
         if (op.op === 'create' && op.card) {
           cards.set(op.card.id || Math.random(), {
@@ -316,7 +313,7 @@ export const useForestStore = defineStore('forest', () => {
             x: op.card.x ?? 10,
             y: op.card.y ?? 10,
             w: op.card.w,
-            opacity: depth === 0 ? 1 : Math.max(0, 1 - depth * 0.45),
+            opacity: 1,
             type: op.card.type || op.card.data?.type || 'card',
           })
         } else if (op.op === 'remove' && op.cardId != null) {
