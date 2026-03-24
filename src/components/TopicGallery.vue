@@ -10,11 +10,11 @@
           <div
             v-for="tree in trees"
             :key="tree.id"
-            class="topic-card"
+            class="topic-item"
             :class="{ active: tree.isActive }"
             @click="selectTree(tree.id)"
           >
-            <!-- Real canvas scaled down -->
+            <!-- Canvas preview — dark translucent board -->
             <div class="topic-preview-clip">
               <div class="topic-preview-canvas">
                 <BlockCard
@@ -28,12 +28,12 @@
                 />
               </div>
             </div>
-            <!-- Meta -->
+            <!-- Meta — outside the board -->
             <div class="topic-meta">
               <span class="topic-name">{{ tree.name || '新对话' }}</span>
               <span class="topic-time">{{ formatTime(tree.updatedAt) }}</span>
             </div>
-            <!-- Delete button (not for active) -->
+            <!-- Delete button -->
             <button
               v-if="!tree.isActive && trees.length > 1"
               class="topic-delete"
@@ -41,8 +41,8 @@
               title="删除"
             >×</button>
           </div>
-          <!-- New topic card -->
-          <div class="topic-card topic-card-new" @click="createNew">
+          <!-- New topic -->
+          <div class="topic-item topic-item-new" @click="createNew">
             <div class="topic-preview-clip new-preview">
               <span class="new-icon">+</span>
             </div>
@@ -244,35 +244,30 @@ function formatTime(ts) {
   padding: 4px;
 }
 
-/* ── Topic Card ── */
-.topic-card {
+
+/* ── Topic Item — no card wrapper ── */
+.topic-item {
   position: relative;
-  background: var(--card-bg, rgba(28,24,18,0.6));
-  border: 1px solid var(--card-border, rgba(196,168,130,0.06));
-  border-radius: var(--card-radius, 14px);
   cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  overflow: hidden;
 }
 
-.topic-card:hover {
+.topic-item:hover .topic-preview-clip {
   transform: translateY(-2px);
-  border-color: var(--card-border-hover, rgba(196,168,130,0.15));
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
 }
 
-.topic-card.active {
-  border-color: var(--accent, rgba(196,168,130,0.3));
-  box-shadow: 0 0 0 1px var(--accent, rgba(196,168,130,0.15));
+.topic-item.active .topic-preview-clip {
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
 }
 
-/* ── Preview area — real canvas scaled down ── */
+/* ── Preview board — dark translucent canvas ── */
 .topic-preview-clip {
   position: relative;
   height: 140px;
   overflow: hidden;
-  border-bottom: 1px solid var(--card-border, rgba(196,168,130,0.04));
-  border-radius: var(--card-radius, 14px) var(--card-radius, 14px) 0 0;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .topic-preview-canvas {
@@ -284,7 +279,7 @@ function formatTime(ts) {
   pointer-events: none;
 }
 
-/* Override card styles inside preview — no transitions, no hover effects */
+/* Override card styles inside preview */
 .topic-preview-canvas .v-block {
   transition: none !important;
   animation: none !important;
@@ -295,12 +290,10 @@ function formatTime(ts) {
   font-size: 10px !important;
 }
 
-/* Hide card elements that don't make sense at tiny scale */
 .topic-preview-canvas .win-bar {
   display: none !important;
 }
 
-/* Compact blocks inside preview */
 .topic-preview-canvas .win-body {
   padding: 6px !important;
 }
@@ -310,16 +303,10 @@ function formatTime(ts) {
   padding: 6px !important;
 }
 
-.preview-empty {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(196,168,130,0.1); font-size: 12px; letter-spacing: 2px;
-}
-
-/* ── New topic card ── */
-.topic-card-new {
-  border-style: dashed;
-  border-color: var(--card-border, rgba(196,168,130,0.08));
+/* ── New topic ── */
+.topic-item-new .topic-preview-clip {
+  border: 1px dashed rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
 }
 
 .new-preview {
@@ -327,43 +314,50 @@ function formatTime(ts) {
 }
 
 .new-icon {
-  font-size: 28px; color: var(--text-secondary, rgba(196,168,130,0.15));
+  font-size: 28px; color: rgba(0,0,0,0.1);
   transition: color 0.2s;
 }
 
-.topic-card-new:hover .new-icon {
-  color: var(--text-secondary, rgba(196,168,130,0.4));
+.topic-item-new:hover .new-icon {
+  color: rgba(0,0,0,0.25);
 }
 
-/* ── Meta ── */
+/* ── Meta — outside the board ── */
 .topic-meta {
-  padding: 10px 12px;
-  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 2px 4px;
+  display: flex; flex-direction: column; gap: 1px;
 }
 
 .topic-name {
   font-size: 13px; font-weight: 500;
-  color: var(--text-primary, rgba(196,168,130,0.7));
+  color: rgba(0,0,0,0.6);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .topic-time {
   font-size: 11px;
-  color: var(--text-secondary, rgba(196,168,130,0.3));
+  color: rgba(0,0,0,0.3);
 }
 
 /* ── Delete ── */
 .topic-delete {
   position: absolute; top: 6px; right: 6px;
-  background: rgba(0,0,0,0.5); border: none;
-  color: rgba(196,168,130,0.4); font-size: 14px;
+  background: rgba(0,0,0,0.3); border: none;
+  color: rgba(255,255,255,0.7); font-size: 14px;
   width: 22px; height: 22px; border-radius: 50%;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.2s, color 0.2s;
+  z-index: 2;
 }
 
-.topic-card:hover .topic-delete { opacity: 1; }
-.topic-delete:hover { color: #e66; background: rgba(200,60,60,0.3); }
+.topic-item:hover .topic-delete { opacity: 1; }
+.topic-delete:hover { color: #fff; background: rgba(200,60,60,0.6); }
+
+.preview-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(0,0,0,0.06); font-size: 12px; letter-spacing: 2px;
+}
 
 /* ── Transitions ── */
 .gallery-enter-active { transition: opacity 0.25s ease; }
@@ -382,57 +376,18 @@ function formatTime(ts) {
   backdrop-filter: blur(20px);
 }
 
-.theme-mercury .gallery-title {
-  color: rgba(0,0,0,0.35);
-}
-
-.theme-mercury .gallery-close {
-  color: rgba(0,0,0,0.25);
-}
+.theme-mercury .gallery-title { color: rgba(0,0,0,0.35); }
+.theme-mercury .gallery-close { color: rgba(0,0,0,0.25); }
 .theme-mercury .gallery-close:hover { color: rgba(0,0,0,0.6); }
 
-.theme-mercury .topic-card {
-  background: #fff;
-  border: none;
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
-}
-
-.theme-mercury .topic-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.1);
-  border-color: transparent;
-}
-
-.theme-mercury .topic-card.active {
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06);
-  border-color: transparent;
-}
-
-.theme-mercury .topic-preview-clip {
-  background: #f4f4f5;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
-}
-
-.theme-mercury .preview-empty { color: rgba(0,0,0,0.08); }
-
+.theme-mercury .topic-preview-clip { background: rgba(0,0,0,0.04); }
+.theme-mercury .topic-item.active .topic-preview-clip { box-shadow: 0 0 0 2px rgba(0,0,0,0.08); }
+.theme-mercury .topic-item-new .topic-preview-clip { border-color: rgba(0,0,0,0.06); background: rgba(0,0,0,0.02); }
+.theme-mercury .new-icon { color: rgba(0,0,0,0.08); }
+.theme-mercury .topic-item-new:hover .new-icon { color: rgba(0,0,0,0.2); }
 .theme-mercury .topic-name { color: #333; }
 .theme-mercury .topic-time { color: #999; }
-
-.theme-mercury .topic-card-new {
-  border: 1px dashed rgba(0,0,0,0.08);
-  background: rgba(255,255,255,0.6);
-  box-shadow: none;
-}
-
-.theme-mercury .new-icon { color: rgba(0,0,0,0.12); }
-.theme-mercury .topic-card-new:hover .new-icon { color: rgba(0,0,0,0.3); }
-
-.theme-mercury .topic-delete {
-  background: rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.3);
-}
-.theme-mercury .topic-delete:hover { color: #e44; background: rgba(200,60,60,0.1); }
+.theme-mercury .preview-empty { color: rgba(0,0,0,0.06); }
 
 /* ═══════════════════════════════════════════
    Dot Theme
@@ -442,55 +397,34 @@ function formatTime(ts) {
   backdrop-filter: blur(20px);
 }
 
-.theme-dot .gallery-title {
-  color: rgba(100,80,60,0.4);
-}
-
-.theme-dot .gallery-close {
-  color: rgba(100,80,60,0.25);
-}
+.theme-dot .gallery-title { color: rgba(100,80,60,0.4); }
+.theme-dot .gallery-close { color: rgba(100,80,60,0.25); }
 .theme-dot .gallery-close:hover { color: rgba(100,80,60,0.6); }
 
-.theme-dot .topic-card {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.5);
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.theme-dot .topic-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  border-color: rgba(255,255,255,0.7);
-}
-
-.theme-dot .topic-card.active {
-  border-color: rgba(180,140,100,0.25);
-  box-shadow: 0 0 0 1px rgba(180,140,100,0.15), 0 2px 8px rgba(0,0,0,0.04);
-}
-
-.theme-dot .topic-preview-clip {
-  background: rgba(240,230,220,0.3);
-  border-bottom: 1px solid rgba(180,140,100,0.06);
-}
-
-.theme-dot .preview-empty { color: rgba(180,140,100,0.12); }
-
+.theme-dot .topic-preview-clip { background: rgba(0,0,0,0.04); }
+.theme-dot .topic-item.active .topic-preview-clip { box-shadow: 0 0 0 2px rgba(180,140,100,0.2); }
+.theme-dot .topic-item-new .topic-preview-clip { border-color: rgba(180,140,100,0.1); }
+.theme-dot .new-icon { color: rgba(180,140,100,0.12); }
+.theme-dot .topic-item-new:hover .new-icon { color: rgba(180,140,100,0.3); }
 .theme-dot .topic-name { color: #5a4a3a; }
 .theme-dot .topic-time { color: #a09080; }
+.theme-dot .preview-empty { color: rgba(180,140,100,0.08); }
 
-.theme-dot .topic-card-new {
-  border: 1px dashed rgba(180,140,100,0.12);
-  background: rgba(255,255,255,0.4);
+/* ═══════════════════════════════════════════
+   Basic (dark) Theme
+   ═══════════════════════════════════════════ */
+body:not(.theme-mercury):not(.theme-dot) .topic-gallery-overlay {
+  background: rgba(10,10,8,0.85);
+  backdrop-filter: blur(12px);
 }
-
-.theme-dot .new-icon { color: rgba(180,140,100,0.15); }
-.theme-dot .topic-card-new:hover .new-icon { color: rgba(180,140,100,0.4); }
-
-.theme-dot .topic-delete {
-  background: rgba(0,0,0,0.05);
-  color: rgba(100,80,60,0.3);
-}
-.theme-dot .topic-delete:hover { color: #c44; background: rgba(200,60,60,0.1); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-title { color: rgba(196,168,130,0.5); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-close { color: rgba(196,168,130,0.3); }
+body:not(.theme-mercury):not(.theme-dot) .gallery-close:hover { color: rgba(196,168,130,0.8); }
+body:not(.theme-mercury):not(.theme-dot) .topic-preview-clip { background: rgba(255,255,255,0.04); }
+body:not(.theme-mercury):not(.theme-dot) .topic-item.active .topic-preview-clip { box-shadow: 0 0 0 2px rgba(196,168,130,0.2); }
+body:not(.theme-mercury):not(.theme-dot) .topic-item-new .topic-preview-clip { border-color: rgba(196,168,130,0.08); }
+body:not(.theme-mercury):not(.theme-dot) .new-icon { color: rgba(196,168,130,0.12); }
+body:not(.theme-mercury):not(.theme-dot) .topic-name { color: rgba(196,168,130,0.7); }
+body:not(.theme-mercury):not(.theme-dot) .topic-time { color: rgba(196,168,130,0.3); }
+body:not(.theme-mercury):not(.theme-dot) .preview-empty { color: rgba(196,168,130,0.08); }
 </style>
