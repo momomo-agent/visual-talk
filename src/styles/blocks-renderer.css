@@ -191,3 +191,8 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 .br-spacer-small { height: 4px; }
 .br-spacer-medium { height: 12px; }
 .br-spacer-large { height: 24px; }
+
+/* Legacy components inside blocks-renderer:
+   blocks-renderer already provides 16px padding, so zero out
+   the left/right padding on components that have their own. */
+.blocks-renderer .map-info { padding-left: 0; padding-right: 0; }
