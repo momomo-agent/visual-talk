@@ -90,6 +90,8 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 - code: {"type":"code","code":"const x = 1","language":"js"}
 - divider: {"type":"divider"} — horizontal rule
 - progress: {"type":"progress","value":65,"label":"Completion"}
+- steps: {"type":"steps","title":"Day 1","items":[{"time":"09:00","title":"西湖","detail":"断桥残雪→白堤→苏堤"},{"time":"12:00","title":"楼外楼","detail":"西湖醋鱼"}]}
+  Timeline/itinerary view with vertical line + dots. Perfect for travel plans, schedules, step-by-step processes. Each item has time (optional), title, detail (optional).
 - spacer: {"type":"spacer","size":"small"} — small/medium/large
 - chart: {"type":"chart","chartType":"bar","items":[{"label":"A","value":42}],"title":"Revenue"}
   chartType: "bar" (horizontal), "column" (vertical), "pie", "donut", or "line"
