@@ -129,19 +129,22 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 /* Quote */
 .br-quote {
   margin: 0;
-  padding: 8px 14px;
-  border-left: 3px solid rgba(200,170,120,0.4);
-  font-style: italic;
-  color: #555;
-  font-size: 13px;
-  line-height: 1.5;
+  padding: 12px 4px;
+  border-left: none;
+  font-style: normal;
+  color: #2a2a2a;
+  font-size: 16px;
+  line-height: 1.65;
+  text-align: center;
+  letter-spacing: -0.2px;
 }
 .br-quote p { margin: 0; }
 .br-quote footer {
-  margin-top: 6px;
+  margin-top: 10px;
   font-style: normal;
-  font-size: 11px;
-  color: #888;
+  font-size: 12px;
+  color: #999;
+  letter-spacing: 0.5px;
 }
 
 /* Code */
@@ -192,7 +195,10 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 .br-spacer-medium { height: 12px; }
 .br-spacer-large { height: 24px; }
 
-/* Kill double padding: legacy components inside BlocksRenderer already have
-   win-body padding, but BlocksRenderer itself has 16px padding too.
-   Zero out their internal win-body when nested. */
-.blocks-renderer .win-body { padding: 0; }
+/* Kill double padding: legacy components inside BlocksRenderer have their own
+   win-body with 16px padding, but BlocksRenderer itself has 16px padding too.
+   Only zero out the OUTER padding of legacy wrappers, not their internal spacing. */
+.blocks-renderer > .win-body { padding: 0; }
+.blocks-renderer > .table-block { padding: 0; }
+.blocks-renderer > .diagram-block { padding: 0; }
+/* Map info keeps its padding — it's internal, not a wrapper */
