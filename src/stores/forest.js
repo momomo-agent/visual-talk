@@ -157,19 +157,56 @@ export const useForestStore = defineStore('forest', () => {
     const data = JSON.parse(JSON.stringify(serializeTimeline()))
     trees[activeTreeId.value].updatedAt = Date.now()
 
-    // Snapshot last 3 visible cards for gallery preview
-    const canvasStore = useCanvasStore()
-    const allCards = Array.from(canvasStore.cards.entries())
-    const last3 = allCards.slice(-3).map(([id, c]) => ({
-      id, x: c.x, y: c.y, w: c.w,
-      type: c.type || 'blocks',
-      data: JSON.parse(JSON.stringify(c.data || {})),
-    }))
-    trees[activeTreeId.value].lastCards = last3
+    // Snapshot cards from last 3 rounds (push ops) for gallery preview
+    const timeline = useTimelineStore()
+    const lastCards = getLastRoundsCards(timeline, data, 3)
+    trees[activeTreeId.value].lastCards = lastCards
 
     if (store) {
       await store.set('tree:' + activeTreeId.value, data)
     }
+  }
+
+  // Extract cards created in the last N rounds (push operations)
+  function getLastRoundsCards(timeline, serialized, rounds) {
+    // Walk the path from root to active tip
+    const nodesMap = serialized.nodes || {}
+    const tipId = serialized.activeTip
+    if (!tipId) return []
+
+    // Build path from tip to root
+    const path = []
+    let cur = tipId
+    while (cur != null) {
+      const n = nodesMap[cur]
+      if (!n) break
+      path.unshift(n)
+      cur = n.parentId
+    }
+
+    // Find last N nodes that have a 'push' operation
+    const pushNodes = path.filter(n =>
+      n.operations?.some(op => op.op === 'push')
+    )
+    const lastN = pushNodes.slice(-rounds)
+
+    // Collect all 'create' ops from these nodes
+    const cards = []
+    for (const node of lastN) {
+      for (const op of (node.operations || [])) {
+        if (op.op === 'create' && op.card) {
+          cards.push({
+            id: op.card.id,
+            x: op.card.x ?? 10,
+            y: op.card.y ?? 10,
+            w: op.card.w || 25,
+            type: op.card.type || 'blocks',
+            data: JSON.parse(JSON.stringify(op.card.data || {})),
+          })
+        }
+      }
+    }
+    return cards
   }
 
   async function loadTree(treeId) {
