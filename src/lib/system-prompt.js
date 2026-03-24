@@ -104,6 +104,11 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   Use \\n for newlines inside the JSON string. Keep diagrams focused: 3-8 nodes ideal.
 - map: {"type":"map","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4","title":"路线地图"}
   Interactive map with markers and route lines. center/markers/route use [lat, lng].
+  **Two modes — choose by intent:**
+  - **Context map** (wide, w:40-45): Shows "where" — location reference alongside info cards. Flat and panoramic.
+  - **Exploration map** (square, w:25-30): The map IS the content — invites pan/zoom. Give it vertical room.
+  **Always draw routes** when the topic involves travel, itinerary, directions, or multiple locations in sequence. Connect the dots — a map with scattered markers but no route feels incomplete. Use the "route" field with an array of [lat,lng] waypoints.
+  Maps and images render edge-to-edge (no card padding) automatically — they fill the card like a photo in a frame.
 - audio: {"type":"audio","title":"Song","artist":"Artist","album":"Album","url":"audio-url","duration":"3:45","tags":["Genre"],"kind":"music"}
   For music, podcasts, sound. kind: "music" (default), "podcast", "sound".
   Audio is a pure player — no cover art. Duration as "M:SS" or seconds. Put search_music previewUrl in the "url" field for real playback.
