@@ -79,7 +79,7 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 \`\`\`
 
 **Block elements:**
-- heading: {"type":"heading","text":"Title","level":1} — level 1-3 (h1/h2/h3)
+- heading: {"type":"heading","text":"Title","level":1,"sub":"optional subtitle"} — level 1-3 (h1/h2/h3). Use "sub" for subtitles that belong with the heading (artist, date, source) — they render tight below the title with no gap.
 - text: {"type":"text","text":"Paragraph with **bold** and *italic*"} — supports basic markdown
 - image: {"type":"image","url":"...","caption":"optional"} — responsive, cover fit. Omit caption when a heading block follows with the same title — avoid redundancy.
 - tags: {"type":"tags","items":["tag1","tag2"]}

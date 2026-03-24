@@ -106,6 +106,7 @@ body.theme-mercury {
 /* Blocks renderer */
 .theme-mercury .br-heading { color: #1a1a1a; }
 .theme-mercury h3.br-heading { color: #777; }
+.theme-mercury .br-sub { color: #999; }
 .theme-mercury .br-text { color: #555; }
 .theme-mercury .br-text code { background: rgba(0,0,0,0.04); }
 .theme-mercury .br-tag { background: rgba(0,0,0,0.04); color: #777; }

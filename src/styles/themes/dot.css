@@ -127,6 +127,7 @@ body.theme-dot {
 /* Blocks renderer */
 .theme-dot .br-heading { color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
 .theme-dot h3.br-heading { color: #888; font-family: 'Inter', sans-serif; }
+.theme-dot .br-sub { color: #aaa; }
 .theme-dot .br-text { color: #444; }
 .theme-dot .br-text code { background: rgba(196,149,106,0.06); color: #6a5040; }
 .theme-dot .br-tag { background: rgba(196,149,106,0.08); color: #8a7560; }

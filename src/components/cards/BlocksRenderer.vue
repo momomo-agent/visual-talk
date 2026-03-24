@@ -2,12 +2,14 @@
   <div class="blocks-renderer">
     <template v-for="(block, i) in blocks" :key="i">
       <!-- heading -->
-      <component
-        v-if="block.type === 'heading'"
-        :is="headingTag(block.level)"
-        class="br-heading"
-        v-html="renderMarkdown(block.text)"
-      />
+      <div v-if="block.type === 'heading'" class="br-heading-group">
+        <component
+          :is="headingTag(block.level)"
+          class="br-heading"
+          v-html="renderMarkdown(block.text)"
+        />
+        <p v-if="block.sub" class="br-sub" v-html="renderMarkdown(block.sub)" />
+      </div>
 
       <!-- text -->
       <p v-else-if="block.type === 'text'" class="br-text" v-html="renderMarkdown(block.text)" />
