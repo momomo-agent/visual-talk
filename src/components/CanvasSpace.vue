@@ -207,22 +207,29 @@ async function enterGallery() {
   }
 
   otherTopics.value = topics
+
+  // Step 1: Set canvas to fullscreen position BEFORE enabling gallery mode
+  // This ensures the canvas starts at full size when galleryMode becomes true
+  currentCanvasPos.value = {
+    left: 0,
+    top: 0,
+    width: window.innerWidth,
+    scale: 1,
+  }
+
   galleryMode.value = true
 
-  // First frame: set --vp-ratio and --thumb-scale BEFORE measuring
+  // Step 2: Wait for gallery DOM to render
   await nextTick()
   updateThumbScale()
-  
-  // Wait for layout to settle with correct aspect-ratio
   await nextTick()
   await new Promise(r => requestAnimationFrame(r))
 
-  // Now measure ghost position
+  // Step 3: Measure ghost position and animate TO it
   const ghost = document.querySelector('.gallery-preview-ghost')
   if (ghost) {
     const rect = ghost.getBoundingClientRect()
     const vw = window.innerWidth
-    // Set position — canvas-space will transition from fullscreen to here
     currentCanvasPos.value = {
       left: rect.left,
       top: rect.top,
@@ -233,14 +240,21 @@ async function enterGallery() {
 }
 
 function exitGallery() {
-  currentCanvasPos.value = null
-  galleryMode.value = false
-  otherTopics.value = []
-  itemRefs.clear()
-  // Reset parallax
-  if (spaceRef.value) {
-    spaceRef.value.style = ''
+  // Animate canvas back to fullscreen first
+  currentCanvasPos.value = {
+    left: 0,
+    top: 0,
+    width: window.innerWidth,
+    scale: 1,
   }
+  // After transition completes, close gallery
+  setTimeout(() => {
+    currentCanvasPos.value = null
+    galleryMode.value = false
+    otherTopics.value = []
+    itemRefs.clear()
+    if (spaceRef.value) spaceRef.value.style = ''
+  }, 400)
 }
 
 function onCurrentClick() {
