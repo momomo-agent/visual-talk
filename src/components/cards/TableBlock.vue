@@ -1,5 +1,5 @@
 <template>
-  <div class="win-body table-block">
+  <div class="table-block">
     <h3 v-if="data.title">{{ data.title }}</h3>
     <div class="table-scroll">
       <table>

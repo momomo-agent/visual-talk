@@ -168,11 +168,18 @@ const currentTransformStyle = computed(() => {
 async function enterGallery() {
   await forest.saveCurrentTree()
 
-  // Build other topics from lastCards (sync, no IndexedDB)
+  // Build other topics
   const topics = []
   for (const t of forest.treeList) {
     if (t.isActive) continue
-    const topicCards = (t.lastCards || []).map(c => reactive({
+
+    // Use lastCards if available, fallback to getTreePreview
+    let rawCards = t.lastCards || []
+    if (rawCards.length === 0 && forest.getTreePreview) {
+      rawCards = await forest.getTreePreview(t.id)
+    }
+
+    const topicCards = rawCards.map(c => reactive({
       id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
       z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
       selected: false, pointerEvents: 'none', entranceDelay: 0,
@@ -202,15 +209,20 @@ async function enterGallery() {
   otherTopics.value = topics
   galleryMode.value = true
 
+  // First frame: set --vp-ratio and --thumb-scale BEFORE measuring
   await nextTick()
   updateThumbScale()
+  
+  // Wait for layout to settle with correct aspect-ratio
   await nextTick()
+  await new Promise(r => requestAnimationFrame(r))
 
-  // Measure ghost position for current canvas
+  // Now measure ghost position
   const ghost = document.querySelector('.gallery-preview-ghost')
   if (ghost) {
     const rect = ghost.getBoundingClientRect()
     const vw = window.innerWidth
+    // Set position — canvas-space will transition from fullscreen to here
     currentCanvasPos.value = {
       left: rect.left,
       top: rect.top,
