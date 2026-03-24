@@ -122,7 +122,7 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
   line-height: 1.6;
 }
 .br-list li { margin-bottom: 2px; }
-.br-todo { list-style: none; padding-left: 0; }
+.br-todo { list-style: none; padding-left: 0 !important; margin: 0; }
 .br-todo li { display: flex; align-items: center; gap: 6px; }
 .br-todo input[type="checkbox"] { accent-color: #b08040; }
 

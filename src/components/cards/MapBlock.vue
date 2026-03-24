@@ -254,7 +254,7 @@ watch(() => props.data, () => {
   background: #f5f0e8;
 }
 
-.map-info {
+.map-block .map-info {
   padding: 8px 12px 6px;
 }
 
