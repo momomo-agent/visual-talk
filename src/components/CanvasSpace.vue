@@ -151,6 +151,10 @@ function arraysEqual(a, b) {
 function exitGallery() {
   galleryMode.value = false
   galleryTopics.value = []
+  // Reset parallax transform so it doesn't stay cleared
+  if (spaceRef.value) {
+    spaceRef.value.style.transform = ''
+  }
 }
 
 async function onTopicClick(treeId) {
@@ -197,13 +201,16 @@ function updatePreviewScale() {
   nextTick(() => {
     const container = galleryScrollRef.value
     if (!container) return
-    // Grid item width ≈ (container width - padding - gaps) / cols
     const cw = container.clientWidth
     const padX = 96 // 48*2
     const gaps = (COLS - 1) * 24
     const itemW = (Math.min(cw, 1200) - padX - gaps) / COLS
-    const scale = itemW / 1280
+    // Scale based on actual viewport width (canvas uses 100vw)
+    const vw = window.innerWidth || 1280
+    const vh = window.innerHeight || 800
+    const scale = itemW / vw
     container.style.setProperty('--preview-scale', scale.toFixed(4))
+    container.style.setProperty('--viewport-ratio', `${vw} / ${vh}`)
   })
 }
 
@@ -351,7 +358,7 @@ onUnmounted(() => {
 
 .gallery-preview {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: var(--viewport-ratio, 16 / 10);
   overflow: hidden;
   border-radius: 12px;
   background: rgba(0,0,0,0.04);
@@ -372,8 +379,8 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
-  width: 1280px;
-  height: 800px;
+  width: 100vw;
+  height: 100vh;
   transform: scale(var(--preview-scale, 0.25));
   transform-origin: top left;
   pointer-events: none;
