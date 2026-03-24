@@ -2,7 +2,7 @@
   <div
     ref="blockRef"
     class="v-block"
-    :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing, 'bleed': isBleed }"
+    :class="{ selected: card.selected, 'glow-breathe': card.selected && glowBreathing }"
     :style="cardStyle"
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
@@ -94,21 +94,6 @@ const typeLabel = computed(() => {
   return typeLabels[props.card.type] || props.card.type
 })
 const blockComponent = computed(() => componentMap[props.card.type] || null)
-
-// Auto-detect bleed mode: single image/map/video block = no padding
-const isBleed = computed(() => {
-  const blocks = props.card.data?.blocks
-  if (!blocks || blocks.length === 0) return false
-  // Filter out non-visual blocks (headings used as captions don't count)
-  const visualTypes = new Set(['image', 'map', 'video', 'embed'])
-  const visual = blocks.filter(b => visualTypes.has(b.type))
-  const nonVisual = blocks.filter(b => !visualTypes.has(b.type))
-  // Bleed if all blocks are visual, or single visual with only a heading caption
-  if (blocks.length === 1 && visualTypes.has(blocks[0].type)) return true
-  if (visual.length === 1 && nonVisual.every(b => b.type === 'heading')) return true
-  // Legacy single-type cards
-  return ['map', 'media', 'embed'].includes(props.card.type) && !props.card.data?.blocks
-})
 
 // MediaBlock needs the type prop to distinguish media vs embed
 const extraProps = computed(() => {
