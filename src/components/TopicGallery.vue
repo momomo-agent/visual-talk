@@ -277,9 +277,9 @@ function formatTime(ts) {
 
 .topic-preview-canvas {
   position: absolute;
-  width: 1280px;
-  height: 800px;
-  transform: scale(0.175);
+  width: 1000px;
+  height: 600px;
+  transform: scale(0.22);
   transform-origin: top left;
   pointer-events: none;
 }
@@ -290,11 +290,24 @@ function formatTime(ts) {
   animation: none !important;
   pointer-events: none !important;
   cursor: default !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  font-size: 10px !important;
 }
 
 /* Hide card elements that don't make sense at tiny scale */
 .topic-preview-canvas .win-bar {
   display: none !important;
+}
+
+/* Compact blocks inside preview */
+.topic-preview-canvas .win-body {
+  padding: 6px !important;
+}
+
+.topic-preview-canvas .blocks-renderer {
+  gap: 3px !important;
+  padding: 6px !important;
 }
 
 .preview-empty {
