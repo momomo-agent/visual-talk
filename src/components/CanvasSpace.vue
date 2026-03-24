@@ -92,9 +92,9 @@ const galleryMode = ref(false)
 const otherTopics = ref([])
 
 // Layout constants
-const SCALE = 0.28
-const GAP = 30 // px between topics
-const COLS_MAX = 4
+const SCALE = 0.24
+const GAP = 24 // px between topics
+const COLS_MAX = 3
 
 function enterGallery() {
   galleryMode.value = true
@@ -153,14 +153,16 @@ const canvasH = computed(() => typeof window !== 'undefined' ? window.innerHeigh
 const itemW = computed(() => canvasW.value * SCALE)
 const itemH = computed(() => canvasH.value * SCALE)
 const totalW = computed(() => cols.value * itemW.value + (cols.value - 1) * GAP)
+const rows = computed(() => Math.ceil(totalItems.value / cols.value))
+const totalH = computed(() => rows.value * (itemH.value + 28) + (rows.value - 1) * GAP) // 28 for label
 const startX = computed(() => (canvasW.value - totalW.value) / 2)
-const startY = computed(() => canvasH.value * 0.3)
+const startY = computed(() => Math.max(40, (canvasH.value - totalH.value) / 2))
 
 function getItemPos(index) {
   const col = index % cols.value
   const row = Math.floor(index / cols.value)
   const x = startX.value + col * (itemW.value + GAP)
-  const y = startY.value + row * (itemH.value + GAP + 30) // 30 for label
+  const y = startY.value + row * (itemH.value + GAP + 28) // 28 for label
   return { x, y }
 }
 
