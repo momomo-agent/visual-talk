@@ -295,7 +295,6 @@ function updatePreviewScale() {
     const vh = window.innerHeight || 800
     const scale = itemW / vw
     container.style.setProperty('--preview-scale', scale.toFixed(4))
-    container.style.setProperty('--viewport-ratio', `${vw} / ${vh}`)
   })
 }
 
@@ -463,7 +462,7 @@ onUnmounted(() => {
 
 .gallery-preview {
   position: relative;
-  aspect-ratio: var(--viewport-ratio, 16 / 10);
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 12px;
   background: rgba(0,0,0,0.04);
