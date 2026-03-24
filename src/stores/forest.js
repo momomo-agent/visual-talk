@@ -315,6 +315,7 @@ export const useForestStore = defineStore('forest', () => {
             w: op.card.w,
             opacity: 1,
             type: op.card.type || op.card.data?.type || 'card',
+            data: op.card.data || {},
           })
         } else if (op.op === 'remove' && op.cardId != null) {
           cards.delete(op.cardId)

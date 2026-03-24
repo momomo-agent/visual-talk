@@ -14,28 +14,19 @@
             :class="{ active: tree.isActive }"
             @click="selectTree(tree.id)"
           >
-            <!-- Mini canvas preview -->
-            <div class="topic-preview">
-              <div
-                v-for="card in tree.preview"
-                :key="card.id"
-                class="preview-card"
-                :style="{
-                  left: card.x + '%',
-                  top: card.y + '%',
-                  width: (card.w || 25) + '%',
-                  opacity: 1,
-                }"
-              >
-                <!-- Tiny representation of card content -->
-                <div class="preview-card-body">
-                  <div class="preview-line preview-line-title"></div>
-                  <div class="preview-line"></div>
-                  <div v-if="card.type === 'chart' || card.type === 'media'" class="preview-line preview-line-block"></div>
-                  <div class="preview-line preview-line-short"></div>
-                </div>
+            <!-- Real canvas scaled down -->
+            <div class="topic-preview-clip">
+              <div class="topic-preview-canvas">
+                <BlockCard
+                  v-for="card in tree.preview"
+                  :key="card.id"
+                  :card="card"
+                  @toggle-select="() => {}"
+                  @toggle-dock="() => {}"
+                  @update-position="() => {}"
+                  @drag-end="() => {}"
+                />
               </div>
-              <div v-if="!tree.preview.length" class="preview-empty">空</div>
             </div>
             <!-- Meta -->
             <div class="topic-meta">
@@ -52,7 +43,7 @@
           </div>
           <!-- New topic card -->
           <div class="topic-card topic-card-new" @click="createNew">
-            <div class="topic-preview new-preview">
+            <div class="topic-preview-clip new-preview">
               <span class="new-icon">+</span>
             </div>
             <div class="topic-meta">
@@ -66,9 +57,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, reactive } from 'vue'
 import { useForestStore } from '../stores/forest.js'
 import { useTimelineStore } from '../stores/timeline.js'
+import BlockCard from './BlockCard.vue'
 
 const props = defineProps({ open: Boolean })
 const emit = defineEmits(['close'])
@@ -94,13 +86,15 @@ watch(() => props.open, async (isOpen) => {
         try {
           const cards = timeline.computeCanvas(tip)
           if (cards && cards.size > 0) {
-            result[t.id] = Array.from(cards.values()).slice(0, 12).map(c => ({
-              id: c.id,
-              x: c.x ?? 10,
-              y: c.y ?? 10,
-              w: c.w,
-              opacity: 1, // preview ignores depth
-              type: c.type || c.data?.type || 'card',
+            result[t.id] = Array.from(cards.values()).map(c => reactive({
+              ...c,
+              opacity: 1,
+              scale: 1,
+              blur: 0,
+              selected: false,
+              pointerEvents: 'none',
+              entranceDelay: 0,
+              _isDocked: false,
             }))
             continue
           }
@@ -109,8 +103,26 @@ watch(() => props.open, async (isOpen) => {
       // Fallback: extract from timeline operations directly
       result[t.id] = extractPreviewFromTimeline()
     } else {
-      // Non-active: load from IndexedDB
-      result[t.id] = await forest.getTreePreview(t.id)
+      // Non-active: load from IndexedDB (lightweight preview)
+      const rawCards = await forest.getTreePreview(t.id)
+      result[t.id] = rawCards.map(c => reactive({
+        id: c.id,
+        x: c.x ?? 10,
+        y: c.y ?? 10,
+        w: c.w || 25,
+        z: 0,
+        scale: 1,
+        opacity: 1,
+        blur: 0,
+        zIndex: 100,
+        selected: false,
+        pointerEvents: 'none',
+        entranceDelay: 0,
+        _isDocked: false,
+        type: c.type || 'blocks',
+        contentKey: c.id,
+        data: c.data || { key: String(c.id), blocks: [{ type: 'text', text: '...' }] },
+      }))
     }
   }
   previews.value = result
@@ -254,46 +266,35 @@ function formatTime(ts) {
   box-shadow: 0 0 0 1px var(--accent, rgba(196,168,130,0.15));
 }
 
-/* ── Preview area ── */
-.topic-preview {
+/* ── Preview area — real canvas scaled down ── */
+.topic-preview-clip {
   position: relative;
-  height: 130px;
+  height: 140px;
   overflow: hidden;
-  background: var(--canvas-bg, rgba(10,10,8,0.5));
   border-bottom: 1px solid var(--card-border, rgba(196,168,130,0.04));
+  border-radius: var(--card-radius, 14px) var(--card-radius, 14px) 0 0;
 }
 
-.preview-card {
+.topic-preview-canvas {
   position: absolute;
-  background: rgba(196,168,130,0.08);
-  border: 1px solid rgba(196,168,130,0.06);
-  border-radius: 4px;
-  padding: 4px 5px;
+  width: 1280px;
+  height: 800px;
+  transform: scale(0.175);
+  transform-origin: top left;
   pointer-events: none;
 }
 
-.preview-card-body {
-  display: flex; flex-direction: column; gap: 2px;
+/* Override card styles inside preview — no transitions, no hover effects */
+.topic-preview-canvas .v-block {
+  transition: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
 }
 
-.preview-line {
-  height: 3px; border-radius: 1px;
-  background: rgba(196,168,130,0.15);
-  width: 80%;
-}
-
-.preview-line-title {
-  width: 60%;
-  height: 4px;
-  background: rgba(196,168,130,0.25);
-}
-
-.preview-line-short { width: 45%; }
-
-.preview-line-block {
-  height: 10px; width: 100%;
-  background: rgba(196,168,130,0.08);
-  border-radius: 2px;
+/* Hide card elements that don't make sense at tiny scale */
+.topic-preview-canvas .win-bar {
+  display: none !important;
 }
 
 .preview-empty {
@@ -395,19 +396,11 @@ function formatTime(ts) {
   border-color: transparent;
 }
 
-.theme-mercury .topic-preview {
+.theme-mercury .topic-preview-clip {
   background: #f4f4f5;
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
-.theme-mercury .preview-card {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(0,0,0,0.03);
-}
-
-.theme-mercury .preview-line { background: rgba(0,0,0,0.08); }
-.theme-mercury .preview-line-title { background: rgba(0,0,0,0.14); }
-.theme-mercury .preview-line-block { background: rgba(0,0,0,0.04); }
 .theme-mercury .preview-empty { color: rgba(0,0,0,0.08); }
 
 .theme-mercury .topic-name { color: #333; }
@@ -464,19 +457,11 @@ function formatTime(ts) {
   box-shadow: 0 0 0 1px rgba(180,140,100,0.15), 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.theme-dot .topic-preview {
+.theme-dot .topic-preview-clip {
   background: rgba(240,230,220,0.3);
   border-bottom: 1px solid rgba(180,140,100,0.06);
 }
 
-.theme-dot .preview-card {
-  background: rgba(180,140,100,0.08);
-  border-color: rgba(180,140,100,0.06);
-}
-
-.theme-dot .preview-line { background: rgba(180,140,100,0.12); }
-.theme-dot .preview-line-title { background: rgba(180,140,100,0.2); }
-.theme-dot .preview-line-block { background: rgba(180,140,100,0.06); }
 .theme-dot .preview-empty { color: rgba(180,140,100,0.12); }
 
 .theme-dot .topic-name { color: #5a4a3a; }
