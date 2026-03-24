@@ -19,16 +19,23 @@
               <div
                 v-for="card in tree.preview"
                 :key="card.id"
-                class="preview-block"
+                class="preview-card"
                 :style="{
                   left: card.x + '%',
                   top: card.y + '%',
                   width: (card.w || 25) + '%',
-                  opacity: Math.max(0.3, card.opacity || 1),
+                  opacity: Math.max(0.4, card.opacity || 1),
                 }"
               >
-                <div class="preview-block-inner" :class="'preview-type-' + (card.type || 'card')"></div>
+                <!-- Tiny representation of card content -->
+                <div class="preview-card-body">
+                  <div class="preview-line preview-line-title"></div>
+                  <div class="preview-line"></div>
+                  <div v-if="card.type === 'chart' || card.type === 'media'" class="preview-line preview-line-block"></div>
+                  <div class="preview-line preview-line-short"></div>
+                </div>
               </div>
+              <div v-if="!tree.preview.length" class="preview-empty">空</div>
             </div>
             <!-- Meta -->
             <div class="topic-meta">
@@ -78,29 +85,74 @@ watch(() => props.open, async (isOpen) => {
   // Save current tree before showing gallery
   await forest.saveCurrentTree()
 
+  const result = {}
   for (const t of forest.treeList) {
     if (t.isActive) {
       // Active tree: compute from live timeline
       const tip = timeline.activeTip
       if (tip != null) {
-        const cards = timeline.computeCanvas(tip)
-        if (cards) {
-          previews.value[t.id] = Array.from(cards.values()).slice(0, 12).map(c => ({
-            id: c.id,
-            x: c.x ?? 10,
-            y: c.y ?? 10,
-            w: c.w,
-            opacity: c.opacity,
-            type: c.type || c.data?.type || 'card',
-          }))
-        }
+        try {
+          const cards = timeline.computeCanvas(tip)
+          if (cards && cards.size > 0) {
+            result[t.id] = Array.from(cards.values()).slice(0, 12).map(c => ({
+              id: c.id,
+              x: c.x ?? 10,
+              y: c.y ?? 10,
+              w: c.w,
+              opacity: c.opacity,
+              type: c.type || c.data?.type || 'card',
+            }))
+            continue
+          }
+        } catch (e) { /* fallback below */ }
       }
+      // Fallback: extract from timeline operations directly
+      result[t.id] = extractPreviewFromTimeline()
     } else {
       // Non-active: load from IndexedDB
-      previews.value[t.id] = await forest.getTreePreview(t.id)
+      result[t.id] = await forest.getTreePreview(t.id)
     }
   }
+  previews.value = result
 })
+
+// Fallback: extract card positions from timeline operations
+function extractPreviewFromTimeline() {
+  const cards = []
+  const tip = timeline.activeTip
+  if (tip == null) return cards
+
+  // Walk all nodes from the store
+  const nodes = timeline.nodes
+  if (!nodes) return cards
+
+  // Get path from root to tip
+  const path = []
+  let cur = tip
+  while (cur != null) {
+    const n = nodes.get ? nodes.get(cur) : nodes[cur]
+    if (!n) break
+    path.unshift(n)
+    cur = n.parentId
+  }
+
+  for (const node of path) {
+    if (!node.operations) continue
+    for (const op of node.operations) {
+      if (op.op === 'create' && op.card) {
+        cards.push({
+          id: op.card.id,
+          x: op.card.x ?? 10,
+          y: op.card.y ?? 10,
+          w: op.card.w,
+          opacity: 1,
+          type: op.card.type || op.card.data?.type || 'card',
+        })
+      }
+    }
+  }
+  return cards.slice(-12)
+}
 
 const trees = computed(() => {
   return forest.treeList.map(t => ({
@@ -205,39 +257,49 @@ function formatTime(ts) {
 /* ── Preview area ── */
 .topic-preview {
   position: relative;
-  height: 120px;
+  height: 130px;
   overflow: hidden;
-  background: var(--canvas-bg, rgba(10,10,8,0.4));
+  background: var(--canvas-bg, rgba(10,10,8,0.5));
   border-bottom: 1px solid var(--card-border, rgba(196,168,130,0.04));
 }
 
-.preview-block {
+.preview-card {
   position: absolute;
+  background: rgba(196,168,130,0.08);
+  border: 1px solid rgba(196,168,130,0.06);
+  border-radius: 4px;
+  padding: 4px 5px;
   pointer-events: none;
 }
 
-.preview-block-inner {
-  width: 100%; height: 8px;
+.preview-card-body {
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.preview-line {
+  height: 3px; border-radius: 1px;
+  background: rgba(196,168,130,0.15);
+  width: 80%;
+}
+
+.preview-line-title {
+  width: 60%;
+  height: 4px;
+  background: rgba(196,168,130,0.25);
+}
+
+.preview-line-short { width: 45%; }
+
+.preview-line-block {
+  height: 10px; width: 100%;
+  background: rgba(196,168,130,0.08);
   border-radius: 2px;
-  background: var(--text-secondary, rgba(196,168,130,0.15));
 }
 
-/* Different block types get slightly different preview shapes */
-.preview-type-media .preview-block-inner,
-.preview-type-image .preview-block-inner {
-  height: 20px;
-  background: var(--text-secondary, rgba(196,168,130,0.1));
-  border-radius: 3px;
-}
-
-.preview-type-chart .preview-block-inner {
-  height: 16px;
-  background: var(--accent, rgba(196,168,130,0.12));
-}
-
-.preview-type-metric .preview-block-inner {
-  height: 12px; width: 60%;
-  background: var(--accent, rgba(196,168,130,0.18));
+.preview-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(196,168,130,0.1); font-size: 12px; letter-spacing: 2px;
 }
 
 /* ── New topic card ── */
