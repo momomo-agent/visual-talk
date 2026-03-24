@@ -351,9 +351,14 @@ export const useForestStore = defineStore('forest', () => {
       cur = n.parentId
     }
 
-    // Replay create ops to get card positions (ignore depth for preview)
+    // Get cards from last 3 rounds (push nodes)
+    const pushNodes = path.filter(n =>
+      n.operations?.some(op => op.op === 'push')
+    )
+    const last3 = pushNodes.slice(-3)
+
     const cards = new Map()
-    for (const node of path) {
+    for (const node of last3) {
       if (!node.operations) continue
       for (const op of node.operations) {
         if (op.op === 'create' && op.card) {
@@ -366,13 +371,11 @@ export const useForestStore = defineStore('forest', () => {
             type: op.card.type || op.card.data?.type || 'card',
             data: op.card.data || {},
           })
-        } else if (op.op === 'remove' && op.cardId != null) {
-          cards.delete(op.cardId)
         }
       }
     }
 
-    const preview = Array.from(cards.values()).slice(-12)
+    const preview = Array.from(cards.values())
     previewCache[treeId] = preview
     return preview
   }

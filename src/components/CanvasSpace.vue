@@ -173,10 +173,13 @@ async function enterGallery() {
   for (const t of forest.treeList) {
     if (t.isActive) continue
 
-    // Use lastCards if available, fallback to getTreePreview
-    let rawCards = t.lastCards || []
-    if (rawCards.length === 0 && forest.getTreePreview) {
+    // Always use getTreePreview for accurate last-3-rounds data
+    let rawCards = []
+    if (forest.getTreePreview) {
       rawCards = await forest.getTreePreview(t.id)
+    }
+    if (rawCards.length === 0) {
+      rawCards = t.lastCards || []
     }
 
     const topicCards = rawCards.map(c => reactive({
@@ -251,6 +254,7 @@ function exitGallery() {
   setTimeout(() => {
     currentCanvasPos.value = null
     galleryMode.value = false
+    zoomingId.value = null
     otherTopics.value = []
     itemRefs.clear()
     if (spaceRef.value) spaceRef.value.style = ''
@@ -258,6 +262,8 @@ function exitGallery() {
 }
 
 function onCurrentClick() {
+  // Fade out other items + overlay, then zoom current back to fullscreen
+  zoomingId.value = '__current__'  // triggers .zooming class to fade others
   exitGallery()
 }
 
