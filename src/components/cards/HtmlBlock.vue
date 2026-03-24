@@ -3,7 +3,7 @@
     <iframe
       ref="iframeRef"
       :srcdoc="data.html || data.code || ''"
-      sandbox="allow-scripts"
+      sandbox="allow-scripts allow-same-origin"
       class="html-iframe"
       :style="{ height: (data.height || 300) + 'px' }"
       @load="onLoad"
