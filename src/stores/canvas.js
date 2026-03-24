@@ -178,11 +178,19 @@ export const useCanvasStore = defineStore('canvas', () => {
     if (card.selected) {
       card.selected = false
       selectedIds.value.delete(id)
+      // Restore to depth-based state, but only if depth is defined
       if (card.depth != null) {
         let maxDepth = 0
         cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
         const d = maxDepth - (card.depth || 0)
         applyDepth(card, d)
+      } else {
+        // No depth info — just restore normal appearance
+        card.z = card.intraZ || 0
+        card.scale = 1
+        card.opacity = 1
+        card.zIndex = 100
+        card.blur = 0
       }
     } else {
       card.selected = true
@@ -202,8 +210,16 @@ export const useCanvasStore = defineStore('canvas', () => {
       const card = cards.get(id)
       if (card) {
         card.selected = false
-        const d = maxDepth - (card.depth || 0)
-        applyDepth(card, d)
+        if (card.depth != null) {
+          const d = maxDepth - (card.depth || 0)
+          applyDepth(card, d)
+        } else {
+          card.z = card.intraZ || 0
+          card.scale = 1
+          card.opacity = 1
+          card.zIndex = 100
+          card.blur = 0
+        }
       }
     })
     selectedIds.value.clear()
