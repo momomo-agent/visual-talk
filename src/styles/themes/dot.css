@@ -1,33 +1,34 @@
 /* ── Dot Theme ──
-   Inspired by new.computer Dot — paper, ink, warmth.
-   Serif titles, clean white, warm accent. Typography is the design.
+   Inspired by new.computer Dot — soft gradient BACKGROUND, white frosted cards.
+   The background carries the warmth; cards are clean, white, translucent.
    Fonts: Inter + Lora loaded in index.html */
 
 body.theme-dot {
-  background: #fefefe;
+  background: linear-gradient(160deg, #faf5f0 0%, #f3e8e0 25%, #e8d8d0 50%, #d8c8c0 100%);
   color: #444;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
 /* ── Canvas ── */
 .theme-dot .canvas {
-  background: #fefefe;
+  background: linear-gradient(160deg, #faf5f0 0%, #f3e8e0 25%, #e8d8d0 50%, #d8c8c0 100%);
 }
 .theme-dot .greeting {
-  color: rgba(0,0,0,0.04);
+  color: rgba(255,255,255,0.35);
   letter-spacing: 10px;
   font-family: 'Lora', 'Georgia', serif;
   font-weight: 400;
   font-style: italic;
 }
 
-/* ── Cards ── */
+/* ── Cards — white frosted glass, no gradient ── */
 .theme-dot .v-block {
-  background: linear-gradient(145deg, #fff 0%, #faf5f0 60%, #f5ede5 100%);
-  backdrop-filter: none;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: none;
-  border-radius: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
 }
 .theme-dot .v-block:hover {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
@@ -161,20 +162,21 @@ body.theme-dot {
 
 /* ── Input bar ── */
 .theme-dot .input-bar input {
-  background: transparent;
-  backdrop-filter: none;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: none;
-  border-bottom: 1px solid #f0ece6;
-  border-radius: 0;
+  border-radius: 16px;
   color: #333;
   font-family: 'Lora', 'Georgia', serif;
   font-size: 16px;
-  padding: 14px 4px;
-  box-shadow: none;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .theme-dot .input-bar input:focus {
-  border-bottom-color: #c4956a;
-  background: transparent;
+  background: rgba(255,255,255,0.85);
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 .theme-dot .input-bar input::placeholder {
   color: rgba(0,0,0,0.15);
@@ -182,15 +184,17 @@ body.theme-dot {
 }
 
 .theme-dot .mic-btn {
-  background: transparent;
-  backdrop-filter: none;
-  border: 1px solid #f0ece6;
-  color: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: none;
+  border-radius: 16px;
+  color: rgba(0,0,0,0.25);
 }
 .theme-dot .mic-btn:hover {
-  background: rgba(196,149,106,0.06);
-  border-color: #e8e2d8;
-  color: rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.85);
+  border: none;
+  color: rgba(0,0,0,0.4);
 }
 .theme-dot .mic-btn.recording {
   background: rgba(196,149,106,0.1);
@@ -206,10 +210,12 @@ body.theme-dot {
 }
 
 /* ── Config panel ── */
-.theme-dot .config-overlay { background: rgba(254,254,254,0.75); backdrop-filter: blur(4px); }
+.theme-dot .config-overlay { background: rgba(232,216,208,0.6); backdrop-filter: blur(8px); }
 .theme-dot .config-box, .theme-dot .prompt-box {
-  background: #fff;
-  border-color: #f0ece6;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255,255,255,0.5);
 }
 .theme-dot .config-box label { color: rgba(0,0,0,0.3); }
 .theme-dot .config-box input, .theme-dot .config-box select {
