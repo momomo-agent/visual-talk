@@ -22,9 +22,10 @@
       :class="{ fading: log.fading }"
     >{{ log.text }}</div>
   </div>
-  <button class="gear-btn" style="right: 40px" @click="handleNewChat" title="新对话">+</button>
+  <button class="gear-btn" style="right: 40px" @click="galleryOpen = true" title="话题">☰</button>
   <button class="gear-btn" @click="configOpen = true">⚙</button>
   <ConfigPanel v-model:open="configOpen" />
+  <TopicGallery :open="galleryOpen" @close="galleryOpen = false" />
 </template>
 
 <script setup>
@@ -34,6 +35,7 @@ import SpeechBubble from './components/SpeechBubble.vue'
 import ThinkingDots from './components/ThinkingDots.vue'
 import InputBar from './components/InputBar.vue'
 import ConfigPanel from './components/ConfigPanel.vue'
+import TopicGallery from './components/TopicGallery.vue'
 import { useSend } from './composables/useSend.js'
 import { useTTS } from './composables/useTTS.js'
 import { useSTT } from './composables/useSTT.js'
@@ -44,6 +46,7 @@ import { useTimelineStore } from './stores/timeline.js'
 import { useForestStore } from './stores/forest.js'
 
 const configOpen = ref(false)
+const galleryOpen = ref(false)
 const inputBar = ref(null)
 const configStore = useConfigStore()
 const timeline = useTimelineStore()

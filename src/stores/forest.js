@@ -277,6 +277,64 @@ export const useForestStore = defineStore('forest', () => {
 
   const hasMultipleTrees = computed(() => order.value.length > 1)
 
+  // Preview cache for non-active trees
+  const previewCache = reactive({})
+
+  async function getTreePreview(treeId) {
+    if (previewCache[treeId]) return previewCache[treeId]
+    if (!store) return []
+
+    const data = await store.get('tree:' + treeId)
+    if (!data?.nodes) return []
+
+    // Find the activeTip node and extract card positions from operations
+    const tipId = data.activeTip
+    if (tipId == null) return []
+
+    // Walk from root to tip, collect 'create' operations for preview
+    const nodesMap = data.nodes
+    const path = []
+    let cur = tipId
+    while (cur != null) {
+      const n = nodesMap[cur] || nodesMap[String(cur)]
+      if (!n) break
+      path.unshift(n)
+      cur = n.parentId
+    }
+
+    // Replay create ops to get card positions
+    const cards = new Map()
+    let depth = 0
+    for (const node of path) {
+      if (!node.operations) continue
+      const hasPush = node.operations.some(op => op.op === 'push')
+      if (hasPush) depth++
+      for (const op of node.operations) {
+        if (op.op === 'create' && op.card) {
+          cards.set(op.card.id || Math.random(), {
+            id: op.card.id,
+            x: op.card.x ?? 10,
+            y: op.card.y ?? 10,
+            w: op.card.w,
+            opacity: depth === 0 ? 1 : Math.max(0, 1 - depth * 0.45),
+            type: op.card.type || op.card.data?.type || 'card',
+          })
+        } else if (op.op === 'remove' && op.cardId != null) {
+          cards.delete(op.cardId)
+        }
+      }
+    }
+
+    const preview = Array.from(cards.values()).slice(-12)
+    previewCache[treeId] = preview
+    return preview
+  }
+
+  // Invalidate preview cache when switching trees
+  function invalidatePreview(treeId) {
+    delete previewCache[treeId]
+  }
+
   return {
     // State
     trees,
@@ -295,5 +353,7 @@ export const useForestStore = defineStore('forest', () => {
     clearAll,
     saveCurrentTree,
     scheduleSave,
+    getTreePreview,
+    invalidatePreview,
   }
 })
