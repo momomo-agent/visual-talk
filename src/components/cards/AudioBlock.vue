@@ -1,33 +1,20 @@
 <template>
   <div class="audio-block" :class="{ playing: isPlaying }">
-    <!-- Cover art — only show when image loads successfully, fallback icon otherwise -->
-    <div class="audio-cover" :class="{ 'no-image': !imageLoaded }" @click="togglePlay">
-      <img
-        v-if="data.image"
-        v-show="imageLoaded"
-        :src="data.image"
-        :data-original-src="data.image"
-        referrerpolicy="no-referrer"
-        @load="imageLoaded = true"
-        @error="onImageError"
-      />
-      <div v-if="!imageLoaded" class="audio-cover-fallback">
-        <span>{{ coverIcon }}</span>
+    <!-- Compact player: play button + info + progress -->
+    <div class="audio-player">
+      <button class="audio-play-btn" @click="togglePlay">
+        <span>{{ isPlaying ? '⏸' : '▶' }}</span>
+      </button>
+      <div class="audio-meta">
+        <div class="audio-title">{{ data.title }}</div>
+        <div v-if="data.artist" class="audio-artist">
+          {{ data.artist }}<span v-if="data.album"> · {{ data.album }}</span>
+        </div>
       </div>
-      <div class="play-overlay">
-        <span class="play-icon">{{ isPlaying ? '⏸' : '▶' }}</span>
-      </div>
-    </div>
-
-    <!-- Info -->
-    <div class="audio-info">
-      <div class="audio-title">{{ data.title }}</div>
-      <div v-if="data.artist" class="audio-artist">{{ data.artist }}</div>
-      <div v-if="data.album" class="audio-album">{{ data.album }}</div>
     </div>
 
     <!-- Progress bar -->
-    <div v-if="data.duration || data.progress != null" class="audio-progress-wrap">
+    <div v-if="data.duration || data.progress != null || hasAudio" class="audio-progress-wrap">
       <div class="audio-progress-track" @click="seekTo">
         <div class="audio-progress-bar" :style="{ width: progressPercent + '%' }"></div>
         <div class="audio-progress-knob" :style="{ left: progressPercent + '%' }"></div>
@@ -47,26 +34,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { handleImageError as _handleImageError } from '../../lib/imageProxy.js'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   data: { type: Object, required: true },
 })
 
-const hasImage = ref(!!props.data.image)
-const imageLoaded = ref(false)
 const isPlaying = ref(false)
 const currentTime = ref(0)
+const hasAudio = ref(false)
 let audioEl = null
 
-const coverIcon = computed(() => {
-  const kind = props.data.kind || 'music'
-  return kind === 'podcast' ? '🎙' : kind === 'sound' ? '🔊' : '♪'
-})
-
 const totalDuration = computed(() => {
-  // Use actual audio duration if available
   if (audioEl && audioEl.duration && isFinite(audioEl.duration)) return audioEl.duration
   if (typeof props.data.duration === 'number') return props.data.duration
   if (typeof props.data.duration === 'string') {
@@ -74,7 +53,6 @@ const totalDuration = computed(() => {
     if (parts.length === 2) return parts[0] * 60 + parts[1]
     if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
   }
-  // Convert ms to seconds (iTunes returns trackTimeMillis)
   if (typeof props.data.durationMs === 'number') return props.data.durationMs / 1000
   return 0
 })
@@ -92,11 +70,11 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// Real audio playback
 const audioUrl = computed(() => props.data.url || props.data.previewUrl || props.data.src || null)
 
 onMounted(() => {
   if (audioUrl.value) {
+    hasAudio.value = true
     audioEl = new Audio(audioUrl.value)
     audioEl.addEventListener('timeupdate', () => {
       if (!audioEl) return
@@ -126,7 +104,6 @@ function togglePlay() {
       })
     }
   } else {
-    // No audio URL — simulate
     isPlaying.value = !isPlaying.value
   }
 }
@@ -141,11 +118,6 @@ function seekTo(e) {
     audioEl.currentTime = newTime
   }
   currentTime.value = newTime
-}
-
-function onImageError(e) {
-  hasImage.value = false
-  _handleImageError(e)
 }
 
 onUnmounted(() => {

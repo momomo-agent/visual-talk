@@ -104,13 +104,14 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   Use \\n for newlines inside the JSON string. Keep diagrams focused: 3-8 nodes ideal.
 - map: {"type":"map","center":[39.9,116.4],"zoom":12,"markers":[{"lat":39.9,"lng":116.4,"label":"天安门","color":"#e8a849"}],"route":[[39.9,116.4],[40.4,116.5]],"routeColor":"#8bacd4","title":"路线地图"}
   Interactive map with markers and route lines. center/markers/route use [lat, lng].
-- audio: {"type":"audio","title":"Song","artist":"Artist","album":"Album","image":"cover-url","url":"audio-url","duration":"3:45","tags":["Genre"],"kind":"music"}
+- audio: {"type":"audio","title":"Song","artist":"Artist","album":"Album","url":"audio-url","duration":"3:45","tags":["Genre"],"kind":"music"}
   For music, podcasts, sound. kind: "music" (default), "podcast", "sound".
-  Cover art (image) is essential. Duration as "M:SS" or seconds. Put search_music previewUrl in the "url" field for real playback.
+  Audio is a pure player — no cover art. Duration as "M:SS" or seconds. Put search_music previewUrl in the "url" field for real playback.
+  To show album art, add a separate image block before the audio block — they compose naturally:
+  ✅ blocks:[{"type":"image","url":"cover.jpg"},{"type":"audio","title":"Song","artist":"Artist","url":"..."}]
+  ✅ blocks:[{"type":"audio","title":"Song","artist":"Artist","url":"..."}] (no cover, just player)
+  ❌ blocks:[{"type":"audio","title":"Song","image":"cover.jpg",...}] (audio has no image field)
   Music is a mood-setting object — it lives alongside conversation like a record on the desk.
-  ⚠️ **One card per song/album.** The audio block already shows cover art, title, artist, album, tags — it IS the complete music card. NEVER put an image block and an audio block together in the same blocks array — the audio block's built-in cover art is all you need. NEVER create a separate blocks card with the same album cover alongside an audio card. If you want to add commentary about the music, put it in the speech text, not in a duplicate card.
-  ✅ Correct: blocks:[{"type":"audio","title":"Song","image":"cover.jpg",...}]
-  ❌ Wrong: blocks:[{"type":"image","url":"cover.jpg"},{"type":"audio","title":"Song","image":"cover.jpg",...}]
 - video: {"type":"video","url":"video-url","poster":"thumbnail-url","caption":"Description"}
   Native video player with controls.
 - embed: {"type":"embed","url":"https://youtube.com/...","caption":"optional"}
