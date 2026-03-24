@@ -3,6 +3,20 @@
     <div class="config-container">
       <div class="config-box">
 
+      <!-- ═══ Theme ═══ -->
+      <fieldset class="config-section">
+        <legend>🎨 主题</legend>
+        <div class="voice-picker">
+          <button
+            v-for="t in themes"
+            :key="t.id"
+            class="voice-chip theme-chip"
+            :class="{ active: config.theme === t.id }"
+            @click="config.theme = t.id"
+          >{{ t.label }}</button>
+        </div>
+      </fieldset>
+
       <!-- ═══ LLM ═══ -->
       <fieldset class="config-section">
         <legend>🧠 语言模型</legend>
@@ -97,20 +111,6 @@
             </div>
           </div>
         </template>
-      </fieldset>
-
-      <!-- ═══ Theme ═══ -->
-      <fieldset class="config-section">
-        <legend>🎨 主题</legend>
-        <div class="voice-picker">
-          <button
-            v-for="t in themes"
-            :key="t.id"
-            class="voice-chip theme-chip"
-            :class="{ active: config.theme === t.id }"
-            @click="config.theme = t.id"
-          >{{ t.label }}</button>
-        </div>
       </fieldset>
 
       <!-- ═══ Display ═══ -->
