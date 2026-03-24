@@ -148,6 +148,48 @@ async function enterGallery() {
 
   galleryTopics.value = sorted
   galleryMode.value = true
+
+  // Animate: current topic's preview zooms FROM fullscreen TO grid position
+  await nextTick()
+  updatePreviewScale()
+  await nextTick()
+
+  const activeId = activeTreeId.value
+  const activeEl = galleryItemRefs.get(activeId)
+  const previewEl = activeEl?.querySelector?.('.gallery-preview')
+  if (previewEl) {
+    const rect = previewEl.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    // Reverse zoom: from fullscreen to current rect
+    const scaleX = vw / rect.width
+    const scaleY = vh / rect.height
+    const scale = Math.max(scaleX, scaleY)
+    const tx = (vw / 2) - (rect.left + rect.width / 2)
+    const ty = (vh / 2) - (rect.top + rect.height / 2)
+
+    // Set initial state: fullscreen
+    previewEl.style.transition = 'none'
+    previewEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+    previewEl.style.zIndex = '200'
+    previewEl.style.borderRadius = '0'
+
+    // Force layout
+    previewEl.offsetHeight
+
+    // Animate back to grid position
+    previewEl.style.transition = 'transform 0.45s cubic-bezier(.22,1,.36,1), border-radius 0.3s'
+    previewEl.style.transform = ''
+    previewEl.style.borderRadius = ''
+
+    // Cleanup after animation
+    setTimeout(() => {
+      previewEl.style.transition = ''
+      previewEl.style.transform = ''
+      previewEl.style.zIndex = ''
+      previewEl.style.borderRadius = ''
+    }, 500)
+  }
 }
 
 function arraysEqual(a, b) {
@@ -388,8 +430,8 @@ onUnmounted(() => {
 }
 
 @keyframes gallery-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: blur(24px); }
 }
 
 .gallery-scroll::-webkit-scrollbar {
@@ -403,6 +445,20 @@ onUnmounted(() => {
 /* ── Gallery item ── */
 .gallery-item {
   cursor: pointer;
+  animation: item-fade-in 0.35s ease both;
+}
+
+.gallery-item:nth-child(1) { animation-delay: 0s; }
+.gallery-item:nth-child(2) { animation-delay: 0.04s; }
+.gallery-item:nth-child(3) { animation-delay: 0.08s; }
+.gallery-item:nth-child(4) { animation-delay: 0.12s; }
+.gallery-item:nth-child(5) { animation-delay: 0.16s; }
+.gallery-item:nth-child(6) { animation-delay: 0.2s; }
+.gallery-item:nth-child(n+7) { animation-delay: 0.24s; }
+
+@keyframes item-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .gallery-preview {
