@@ -55,6 +55,14 @@
 
 .v-block .win-body { padding: 16px; }
 
+/* Bleed mode: edge-to-edge content (images, maps, videos) */
+.v-block.bleed .win-body,
+.v-block.bleed .blocks-renderer { padding: 0; gap: 0; }
+.v-block.bleed { overflow: hidden; }
+.v-block.bleed img { border-radius: 0; }
+.v-block.bleed .map-block { border-radius: 0; }
+.v-block.bleed .map-container { border-radius: 0; }
+
 /* Block content — dark text on light card */
 .v-block h2 { color: #4a3520; font-size: 16px; font-weight: 500; margin: 0 0 6px; letter-spacing: -0.3px; }
 .v-block h3 { color: #6a5030; font-size: 13px; font-weight: 500; margin: 0 0 8px; }
