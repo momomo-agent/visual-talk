@@ -93,6 +93,7 @@
         <figcaption v-if="block.caption">{{ block.caption }}</figcaption>
       </div>
       <MediaBlock v-else-if="block.type === 'embed'" :data="{ url: block.url, caption: block.caption }" type="embed" />
+      <HtmlBlock v-else-if="block.type === 'html'" :data="block" />
     </template>
   </div>
 </template>
@@ -105,6 +106,7 @@ import DiagramBlock from './DiagramBlock.vue'
 import MapBlock from './MapBlock.vue'
 import AudioBlock from './AudioBlock.vue'
 import MediaBlock from './MediaBlock.vue'
+import HtmlBlock from './HtmlBlock.vue'
 
 defineProps({
   blocks: { type: Array, required: true },

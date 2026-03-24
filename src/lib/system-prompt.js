@@ -116,6 +116,8 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   Native video player with controls.
 - embed: {"type":"embed","url":"https://youtube.com/...","caption":"optional"}
   Supports YouTube, Bilibili, Google Maps, and generic link previews.
+- html: {"type":"html","html":"<html>...</html>","height":300,"caption":"optional"}
+  Live HTML sandbox — renders your code in a sandboxed iframe. Use for interactive demos, animations, visualizations, or any self-contained HTML+CSS+JS creation. Write complete HTML (including <style> and <script> tags). The iframe is sandboxed (allow-scripts only, no network access). Height defaults to 300px. This is your creative playground — when you want to SHOW something working, not just describe it.
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 

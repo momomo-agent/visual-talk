@@ -52,6 +52,7 @@ import MapBlock from './cards/MapBlock.vue'
 import DiagramBlock from './cards/DiagramBlock.vue'
 import AudioBlock from './cards/AudioBlock.vue'
 import ProfileBlock from './cards/ProfileBlock.vue'
+import HtmlBlock from './cards/HtmlBlock.vue'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -65,7 +66,7 @@ const typeLabels = {
   card: 'card', metric: 'data', steps: 'timeline', columns: 'compare',
   callout: 'quote', code: 'code', markdown: 'note', media: 'media',
   chart: 'chart', list: 'list', embed: 'embed', table: 'table',
-  diagram: 'diagram', audio: 'audio', profile: 'profile',
+  diagram: 'diagram', audio: 'audio', profile: 'profile', html: 'demo',
 }
 
 const componentMap = {
@@ -85,6 +86,7 @@ const componentMap = {
   diagram: DiagramBlock,
   audio: AudioBlock,
   profile: ProfileBlock,
+  html: HtmlBlock,
 }
 
 const typeLabel = computed(() => {
