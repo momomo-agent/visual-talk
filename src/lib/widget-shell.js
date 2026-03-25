@@ -143,6 +143,20 @@ body.light {
   --color-border-info: #378ADD;
   color: #1a1a1a;
 }
+/* Force readable text on light backgrounds — override LLM-hardcoded white/light text.
+   This uses !important specifically to beat inline styles that LLMs often generate
+   with hardcoded light colors (color:#fff, color:#e0e0e0, color:white). */
+body.light * {
+  color: inherit !important;
+}
+body.light button {
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-secondary) !important;
+}
+body.light input, body.light select, body.light textarea {
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-tertiary) !important;
+}
 @keyframes _fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
