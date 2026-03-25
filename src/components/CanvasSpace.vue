@@ -1,5 +1,5 @@
 <template>
-  <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick">
+  <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick" @dblclick="handleBgDblClick">
     <!-- All topic canvases -->
     <div
       v-for="topic in allTopics"
@@ -421,6 +421,12 @@ function handleBgClick(e) {
   if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
   clearSelection()
   emit('click-canvas')
+}
+
+function handleBgDblClick(e) {
+  if (galleryMode.value) return
+  if (e.target.closest('.v-block') || e.target.closest('.input-bar')) return
+  enterGallery()
 }
 
 function onToggleDock(id) { timeline.toggleDock(id) }
