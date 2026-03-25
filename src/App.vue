@@ -56,7 +56,7 @@ function newTopic() {
 
 function toggleGallery() {
   if (canvasSpace.value?.galleryMode) {
-    canvasSpace.value.galleryMode = false
+    canvasSpace.value.exitGallery()
   } else {
     canvasSpace.value?.enterGallery()
   }

@@ -6,17 +6,7 @@
   background: radial-gradient(ellipse at 40% 40%, #1e1812 0%, #111 60%, #0a0a08 100%);
 }
 
-.canvas-space {
-  position: absolute; inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(.23,1,.32,1);
-  pointer-events: none;
-}
-
-/* Navigation state — no container animation needed, cards handle Z movement */
-.canvas-space.nav-zoom {
-  /* marker class for card transition speed override */
-}
+/* topic-canvas styles are in CanvasSpace.vue <style> */
 
 .greeting {
   position: absolute; top: 50%; left: 50%;
@@ -26,5 +16,3 @@
   transition: opacity 0.8s;
 }
 .greeting.hidden { opacity: 0; pointer-events: none; }
-
-/* No separate docked zone — docked cards live inside canvas-space */

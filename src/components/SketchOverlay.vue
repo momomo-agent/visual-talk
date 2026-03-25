@@ -391,7 +391,7 @@ onMounted(() => {
       delete measuredDims[key]
     }
     // Listen for transitionend on the canvas to re-measure when cards settle
-    const canvas = document.querySelector('.canvas-space')
+    const canvas = document.querySelector('.topic-canvas.topic-active')
     if (canvas) {
       const onSettle = () => {
         canvas.removeEventListener('transitionend', onSettle)

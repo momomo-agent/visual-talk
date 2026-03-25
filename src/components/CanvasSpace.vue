@@ -1,73 +1,57 @@
 <template>
   <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick">
-    <!-- Live canvas — always present, transform-ed in gallery mode -->
+    <!-- All topic canvases -->
     <div
-      class="canvas-space"
-      ref="spaceRef"
-      :class="{ 'nav-zoom': isNavigating, 'gallery-current': galleryMode }"
-      :style="galleryMode ? currentTransformStyle : undefined"
-      @click="galleryMode ? onCurrentClick() : null"
+      v-for="topic in allTopics"
+      :key="topic.id"
+      class="topic-canvas"
+      :class="{
+        'topic-active': topic.id === activeTreeId,
+        'topic-gallery': galleryMode,
+        'topic-zooming': zoomingId === topic.id,
+        'topic-current-zooming': zoomingId === '__current__' && topic.id === activeTreeId,
+      }"
+      :style="galleryMode ? getTopicStyle(topic.id) : (topic.id === activeTreeId ? activeCanvasStyle : { display: 'none' })"
+      :ref="el => setTopicRef(topic.id, el)"
+      @click="galleryMode ? onTopicClick(topic.id) : null"
     >
       <BlockCard
-        v-for="[id, card] in allCards"
-        :key="id"
-        :ref="el => setCardRef(id, el)"
+        v-for="[cardId, card] in getTopicCards(topic.id)"
+        :key="cardId"
+        :ref="el => topic.id === activeTreeId ? setCardRef(cardId, el) : null"
         :card="card"
-        :class="{ 'is-docked': dockedIds.has(id) }"
-        @toggle-select="(e) => galleryMode ? null : toggleSelect(id, e)"
-        @toggle-dock="() => galleryMode ? null : onToggleDock(id)"
-        @update-position="(x, y) => galleryMode ? null : updateCardPosition(id, x, y)"
+        :class="{ 'is-docked': topic.id === activeTreeId && dockedIds.has(cardId) }"
+        @toggle-select="(e) => galleryMode ? null : toggleSelect(cardId, e)"
+        @toggle-dock="() => galleryMode ? null : onToggleDock(cardId)"
+        @update-position="(x, y) => galleryMode ? null : updateCardPosition(cardId, x, y)"
         @drag-end="(x, y) => galleryMode ? null : onDragEnd(card, x, y)"
       />
-      <SketchOverlay v-if="!galleryMode" />
+      <SketchOverlay v-if="topic.id === activeTreeId && !galleryMode" />
     </div>
 
-    <!-- Gallery: overlay with other topics -->
+    <!-- Gallery overlay (just the background + controls, no duplicate cards) -->
     <Transition name="gallery-fade">
-      <div v-if="galleryMode" class="gallery-overlay" :class="{ zooming: zoomingId }" @click.self="exitGallery">
+      <div v-if="galleryMode" class="gallery-overlay" :class="{ zooming: !!zoomingId }" @click.self="exitGallery">
         <button class="gallery-close-btn" @click="exitGallery">×</button>
-
-        <!-- Other topics grid -->
-        <div class="gallery-grid" :style="gridStyle">
-          <!-- Slot for current topic (empty — real canvas is behind) -->
-          <div class="gallery-item gallery-item-current" :class="{ active: true }" @click="exitGallery">
-            <div class="gallery-preview gallery-preview-ghost"></div>
-            <div class="gallery-label">{{ currentTopicName }}</div>
-          </div>
-
-          <!-- Other topics -->
-          <div
-            v-for="topic in otherTopics"
-            :key="topic.id"
-            class="gallery-item"
-            :class="{ 'zoom-target': zoomingId === topic.id }"
-            :ref="el => setItemRef(topic.id, el)"
-            @click="onOtherClick(topic.id)"
-          >
-            <div class="gallery-preview">
-              <div class="gallery-thumb" :style="thumbStyle">
-                <BlockCard
-                  v-for="card in topic.cards"
-                  :key="card.id"
-                  :card="card"
-                  @toggle-select="() => {}"
-                  @toggle-dock="() => {}"
-                  @update-position="() => {}"
-                  @drag-end="() => {}"
-                />
-              </div>
-              <div v-if="topic.cards.length === 0" class="preview-empty">空</div>
-              <button
-                v-if="otherTopics.length > 0"
-                class="gallery-delete"
-                @click.stop="deleteTopic(topic.id)"
-              >×</button>
-            </div>
-            <div class="gallery-label">{{ topic.name }}</div>
-          </div>
-        </div>
       </div>
     </Transition>
+
+    <!-- Gallery labels layer (above overlay, below canvases) -->
+    <div v-if="galleryMode" class="gallery-labels" :class="{ zooming: !!zoomingId }">
+      <div
+        v-for="(topic, i) in allTopicsSorted"
+        :key="topic.id"
+        class="gallery-label-item"
+        :style="getLabelStyle(i)"
+      >
+        <div class="gallery-label">{{ topic.name || '新对话' }}</div>
+        <button
+          v-if="topic.id !== activeTreeId && allTopicsSorted.length > 1"
+          class="gallery-delete"
+          @click.stop="deleteTopic(topic.id)"
+        >×</button>
+      </div>
+    </div>
 
     <div class="greeting" :class="{ hidden: !greetingVisible || galleryMode }">visual talk</div>
   </div>
@@ -91,62 +75,96 @@ const { toggleSelect, clearSelection, updateCardPosition } = canvas
 const { activeTreeId } = storeToRefs(forest)
 
 // ════════════════════════════════════════════
-//  Gallery (Mission Control) Mode
+//  Gallery (Mission Control) — Unified Architecture
+//
+//  All topics render real BlockCards in their own container.
+//  Gallery mode = CSS Grid + transform:scale().
+//  No duplicate rendering. What you see IS the real thing.
 // ════════════════════════════════════════════
 
 const galleryMode = ref(false)
-const otherTopics = ref([])
 const zoomingId = ref(null)
-const itemRefs = new Map()
-let lastSortOrder = null
+const topicRefs = new Map()
+const otherTopicCards = ref(new Map()) // treeId -> reactive card array
 
-function setItemRef(id, el) {
-  if (el) itemRefs.set(id, el)
-  else itemRefs.delete(id)
+function setTopicRef(id, el) {
+  if (el) topicRefs.set(id, el)
+  else topicRefs.delete(id)
 }
 
-const currentTopicName = computed(() => {
-  const t = forest.treeList.find(t => t.isActive)
-  return t?.name || '新对话'
+// All topics: active + others
+const allTopics = computed(() => {
+  return forest.treeList.map(t => ({
+    id: t.id,
+    name: t.name || '新对话',
+    isActive: t.isActive,
+    updatedAt: t.updatedAt || 0,
+  }))
 })
+
+// Sorted for gallery display: current first, then by updatedAt
+let lastSortOrder = null
+const allTopicsSorted = computed(() => {
+  if (!galleryMode.value) return allTopics.value
+  const current = allTopics.value.find(t => t.id === activeTreeId.value)
+  const others = allTopics.value.filter(t => t.id !== activeTreeId.value)
+  
+  // Stable sort
+  const ids = others.map(t => t.id)
+  if (lastSortOrder && arrEq([...ids].sort(), [...lastSortOrder].sort())) {
+    const m = new Map(lastSortOrder.map((id, i) => [id, i]))
+    others.sort((a, b) => (m.get(a.id) ?? 999) - (m.get(b.id) ?? 999))
+  } else {
+    others.sort((a, b) => b.updatedAt - a.updatedAt)
+    lastSortOrder = others.map(t => t.id)
+  }
+  
+  return current ? [current, ...others] : others
+})
+
+// Get cards for a topic
+function getTopicCards(topicId) {
+  if (topicId === activeTreeId.value) {
+    // Active topic: use real canvas store cards
+    return allCards.value
+  }
+  // Other topics: use loaded preview cards
+  const topicCards = otherTopicCards.value.get(topicId)
+  if (!topicCards) return []
+  return topicCards.map(c => [c.id, c])
+}
 
 // ── Grid layout ──
 const COLS = 3
-const gridStyle = computed(() => ({
-  display: 'grid',
-  gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-  gap: '24px',
-  padding: '60px 48px 48px',
-  maxWidth: '1200px',
-  margin: '0 auto',
-}))
+const GRID_GAP = 24
+const GRID_PAD_X = 48
+const GRID_PAD_TOP = 60
+const GRID_PAD_BOT = 48
+const GRID_MAX_W = 1200
 
-// Thumb style: vw×vh scaled down to fit preview
-const thumbStyle = computed(() => {
+function getGridMetrics() {
   const vw = window.innerWidth || 1280
   const vh = window.innerHeight || 800
-  // Preview box width ≈ (1200 - 96 - 48) / 3 = 352px approx
-  // Actual scale set by container; we just provide the virtual size
-  return {
-    width: vw + 'px',
-    height: vh + 'px',
-    transform: `scale(var(--thumb-scale, 0.25))`,
-    transformOrigin: 'top left',
-    position: 'absolute',
-    top: '0',
-    left: '0',
-    pointerEvents: 'none',
-  }
-})
+  const gridW = Math.min(GRID_MAX_W, vw - GRID_PAD_X * 2)
+  const cellW = (gridW - GRID_GAP * (COLS - 1)) / COLS
+  const cellH = cellW * (vh / vw) // maintain viewport aspect ratio
+  const gridLeft = (vw - gridW) / 2
+  return { vw, vh, gridW, cellW, cellH, gridLeft }
+}
 
-// Current canvas position in gallery grid
-const currentCanvasPos = ref(null) // { left, top, width, scale }
-
-const currentTransformStyle = computed(() => {
-  if (!galleryMode.value || !currentCanvasPos.value) return undefined
-  const { left, top, width, scale } = currentCanvasPos.value
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+function getTopicStyle(topicId) {
+  if (!galleryMode.value) return { display: 'none' }
+  
+  const { vw, vh, cellW, cellH, gridLeft } = getGridMetrics()
+  const idx = allTopicsSorted.value.findIndex(t => t.id === topicId)
+  if (idx < 0) return { display: 'none' }
+  
+  const col = idx % COLS
+  const row = Math.floor(idx / COLS)
+  const left = gridLeft + col * (cellW + GRID_GAP)
+  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30) // 30px for label
+  const scale = cellW / vw
+  
   return {
     position: 'fixed',
     left: left + 'px',
@@ -155,25 +173,45 @@ const currentTransformStyle = computed(() => {
     height: vh + 'px',
     transform: `scale(${scale})`,
     transformOrigin: 'top left',
-    transition: 'all 0.45s cubic-bezier(.22,1,.36,1)',
-    zIndex: '101',
+    zIndex: zoomingId.value === topicId ? '200' : '101',
     pointerEvents: 'auto',
     cursor: 'pointer',
     borderRadius: (12 / scale) + 'px',
     overflow: 'hidden',
+    transition: 'transform 0.45s cubic-bezier(.22,1,.36,1), left 0.45s cubic-bezier(.22,1,.36,1), top 0.45s cubic-bezier(.22,1,.36,1), opacity 0.35s ease',
+    opacity: (zoomingId.value && zoomingId.value !== topicId && zoomingId.value !== '__current__') ? '0' : '1',
   }
-})
+}
+
+function getLabelStyle(idx) {
+  const { cellW, cellH, gridLeft } = getGridMetrics()
+  const col = idx % COLS
+  const row = Math.floor(idx / COLS)
+  const left = gridLeft + col * (cellW + GRID_GAP)
+  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30) + cellH + 6
+  
+  return {
+    position: 'fixed',
+    left: left + 'px',
+    top: top + 'px',
+    width: cellW + 'px',
+    zIndex: '102',
+    transition: 'opacity 0.3s',
+    opacity: zoomingId.value ? '0' : '1',
+  }
+}
+
+// Active canvas style (normal mode — no gallery)
+const activeCanvasStyle = computed(() => undefined) // uses CSS defaults
 
 // ── Enter / Exit ──
 async function enterGallery() {
   await forest.saveCurrentTree()
 
-  // Build other topics
-  const topics = []
+  // Load other topics' cards
+  const cardMap = new Map()
   for (const t of forest.treeList) {
     if (t.isActive) continue
-
-    // Always use getTreePreview for accurate last-3-rounds data
     let rawCards = []
     if (forest.getTreePreview) {
       rawCards = await forest.getTreePreview(t.id)
@@ -181,7 +219,7 @@ async function enterGallery() {
     if (rawCards.length === 0) {
       rawCards = t.lastCards || []
     }
-
+    
     const topicCards = rawCards.map(c => reactive({
       id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
       z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
@@ -190,140 +228,49 @@ async function enterGallery() {
       contentKey: String(c.id),
       data: c.data || { key: String(c.id), blocks: [{ type: 'text', text: '...' }] },
     }))
-    topics.push({
-      id: t.id,
-      name: t.name || '新对话',
-      updatedAt: t.updatedAt || 0,
-      cards: topicCards,
-    })
+    cardMap.set(t.id, topicCards)
   }
-
-  // Sort by updatedAt desc, but stable on re-enter
-  topics.sort((a, b) => b.updatedAt - a.updatedAt)
-  const ids = topics.map(t => t.id)
-  if (lastSortOrder && arrEq(ids.sort(), [...lastSortOrder].sort())) {
-    const m = new Map(lastSortOrder.map((id, i) => [id, i]))
-    topics.sort((a, b) => (m.get(a.id) ?? 999) - (m.get(b.id) ?? 999))
-  } else {
-    topics.sort((a, b) => b.updatedAt - a.updatedAt)
-    lastSortOrder = topics.map(t => t.id)
-  }
-
-  otherTopics.value = topics
-
-  // Step 1: Set canvas to fullscreen position BEFORE enabling gallery mode
-  // This ensures the canvas starts at full size when galleryMode becomes true
-  currentCanvasPos.value = {
-    left: 0,
-    top: 0,
-    width: window.innerWidth,
-    scale: 1,
-  }
-
+  otherTopicCards.value = cardMap
+  
   galleryMode.value = true
-
-  // Step 2: Wait for gallery DOM to render
-  await nextTick()
-  updateThumbScale()
-  await nextTick()
-  await new Promise(r => requestAnimationFrame(r))
-
-  // Step 3: Measure ghost position and animate TO it
-  const ghost = document.querySelector('.gallery-preview-ghost')
-  if (ghost) {
-    const rect = ghost.getBoundingClientRect()
-    const vw = window.innerWidth
-    currentCanvasPos.value = {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      scale: rect.width / vw,
-    }
-  }
 }
 
 function exitGallery() {
-  // Animate canvas back to fullscreen first
-  currentCanvasPos.value = {
-    left: 0,
-    top: 0,
-    width: window.innerWidth,
-    scale: 1,
-  }
-  // After transition completes, close gallery
-  setTimeout(() => {
-    currentCanvasPos.value = null
-    galleryMode.value = false
-    zoomingId.value = null
-    otherTopics.value = []
-    itemRefs.clear()
-    if (spaceRef.value) spaceRef.value.style = ''
-  }, 400)
-}
-
-function onCurrentClick() {
-  // Fade out gallery overlay while zooming current canvas back to fullscreen
   zoomingId.value = '__current__'
-  // Start canvas zoom back to fullscreen
-  currentCanvasPos.value = {
-    left: 0,
-    top: 0,
-    width: window.innerWidth,
-    scale: 1,
-  }
-  // Close gallery after animation
+  
+  // Animate current topic to fullscreen
+  // The getTopicStyle will return opacity:1 for current, 0 for others when zoomingId is set
   setTimeout(() => {
-    currentCanvasPos.value = null
     galleryMode.value = false
     zoomingId.value = null
-    otherTopics.value = []
-    itemRefs.clear()
-    if (spaceRef.value) spaceRef.value.style = ''
+    otherTopicCards.value = new Map()
+    lastSortOrder = null
   }, 450)
 }
 
-async function onOtherClick(treeId) {
-  // Zoom animation on clicked item
-  const el = itemRefs.get(treeId)?.querySelector?.('.gallery-preview')
-  if (el) {
-    const rect = el.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const scale = Math.max(vw / rect.width, vh / rect.height)
-    const tx = (vw / 2) - (rect.left + rect.width / 2)
-    const ty = (vh / 2) - (rect.top + rect.height / 2)
-
-    el.style.transition = 'transform 0.4s cubic-bezier(.22,1,.36,1)'
-    el.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
-    el.style.zIndex = '200'
-    el.style.borderRadius = '0'
-    zoomingId.value = treeId
-
-    await new Promise(r => setTimeout(r, 350))
+function onTopicClick(topicId) {
+  if (topicId === activeTreeId.value) {
+    exitGallery()
+    return
   }
-
-  galleryMode.value = false
-  zoomingId.value = null
-  otherTopics.value = []
-  itemRefs.clear()
-  if (spaceRef.value) spaceRef.value.style = ''
-
-  // Suppress entrance animations during tree switch
-  if (spaceRef.value) spaceRef.value.classList.add('no-animate')
-  await forest.switchTree(treeId)
-  await nextTick()
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (spaceRef.value) spaceRef.value.classList.remove('no-animate')
-    })
-  })
+  
+  // Zoom into other topic
+  zoomingId.value = topicId
+  
+  setTimeout(async () => {
+    galleryMode.value = false
+    zoomingId.value = null
+    otherTopicCards.value = new Map()
+    lastSortOrder = null
+    
+    await forest.switchTree(topicId)
+  }, 400)
 }
 
 async function deleteTopic(treeId) {
-  otherTopics.value = otherTopics.value.filter(t => t.id !== treeId)
-  lastSortOrder = otherTopics.value.map(t => t.id)
+  otherTopicCards.value.delete(treeId)
   await forest.deleteTree(treeId)
-  if (otherTopics.value.length === 0 && forest.treeList.length <= 1) exitGallery()
+  if (forest.treeList.length <= 1) exitGallery()
 }
 
 function arrEq(a, b) {
@@ -332,25 +279,7 @@ function arrEq(a, b) {
   return true
 }
 
-// Thumb scale — match preview box width to vw
-function updateThumbScale() {
-  const items = document.querySelectorAll('.gallery-preview:not(.gallery-preview-ghost)')
-  if (!items.length) return
-  const w = items[0].clientWidth
-  const vw = window.innerWidth || 1280
-  const scale = w / vw
-  document.documentElement.style.setProperty('--thumb-scale', scale.toFixed(4))
-  // Also set vp-ratio
-  const vh = window.innerHeight || 800
-  document.documentElement.style.setProperty('--vp-ratio', `${vw} / ${vh}`)
-}
-
-watch(galleryMode, (v) => {
-  if (v) window.addEventListener('resize', updateThumbScale)
-  else window.removeEventListener('resize', updateThumbScale)
-})
-
-defineExpose({ enterGallery, galleryMode })
+defineExpose({ enterGallery, exitGallery, galleryMode })
 
 // ════════════════════════════════════════════
 //  Card Logic (unchanged)
@@ -415,7 +344,7 @@ const allCards = computed(() => {
 watch(dockedSnapshots, () => nextTick(() => recalcDockSlots()), { deep: true })
 watch(cards, () => nextTick(() => recalcDockSlots()), { deep: true })
 
-const spaceRef = ref(null)
+const spaceRef = ref(null) // Keep for mouse parallax on active canvas
 const emit = defineEmits(['click-canvas'])
 
 function handleBgClick(e) {
@@ -434,10 +363,12 @@ function onDragEnd(card, x, y) {
 }
 
 function onMouseMove(e) {
-  if (!spaceRef.value || galleryMode.value) return
+  if (galleryMode.value) return
+  const activeEl = topicRefs.get(activeTreeId.value)
+  if (!activeEl) return
   const rx = (e.clientY / window.innerHeight - 0.5) * -8
   const ry = (e.clientX / window.innerWidth - 0.5) * 8
-  spaceRef.value.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
+  activeEl.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`
 }
 
 function onKeyDown(e) {
@@ -451,152 +382,113 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('resize', updateThumbScale)
 })
 </script>
 
 <style>
 /* ════════════════════════════════════════════
-   Gallery Overlay
+   Topic Canvas — each topic gets its own container
+   ════════════════════════════════════════════ */
+
+.topic-canvas {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(.23,1,.32,1);
+  pointer-events: none;
+}
+
+.topic-canvas.topic-gallery {
+  /* Gallery mode overrides are in inline styles */
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+}
+
+.topic-canvas.topic-gallery .v-block {
+  pointer-events: none !important;
+  cursor: pointer !important;
+}
+
+.topic-canvas.topic-gallery .win-bar { display: none !important; }
+.topic-canvas.topic-gallery .sketch-overlay { display: none !important; }
+
+/* Zooming topic scales up to fullscreen */
+.topic-canvas.topic-zooming {
+  transform: scale(1) !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 200 !important;
+  border-radius: 0 !important;
+  transition: transform 0.4s cubic-bezier(.22,1,.36,1), left 0.4s cubic-bezier(.22,1,.36,1), top 0.4s cubic-bezier(.22,1,.36,1), border-radius 0.3s !important;
+}
+
+/* ════════════════════════════════════════════
+   Gallery Overlay — just background blur
    ════════════════════════════════════════════ */
 
 .gallery-overlay {
   position: fixed;
   inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: 100;
+  z-index: 99;
   background: rgba(220,221,224,0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
 
-.gallery-overlay::-webkit-scrollbar { width: 6px; }
-.gallery-overlay::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.1); border-radius: 3px;
+.gallery-overlay.zooming {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+  transition: background 0.4s ease, backdrop-filter 0.3s;
 }
 
 /* Fade transition */
 .gallery-fade-enter-active { transition: opacity 0.3s, backdrop-filter 0.3s; }
-.gallery-fade-leave-active { transition: opacity 0.2s; }
+.gallery-fade-leave-active { transition: opacity 0.3s; }
 .gallery-fade-enter-from { opacity: 0; }
 .gallery-fade-leave-to { opacity: 0; }
 
-/* ── Gallery current (real canvas in grid) ── */
-.canvas-space.gallery-current {
-  pointer-events: auto;
-  cursor: pointer;
-}
+/* ════════════════════════════════════════════
+   Gallery Labels
+   ════════════════════════════════════════════ */
 
-.canvas-space.gallery-current .v-block {
-  pointer-events: none !important;
-  cursor: pointer !important;
-}
-
-.canvas-space.gallery-current .v-block .win-bar { display: none !important; }
-
-/* ── Grid Items ── */
-.gallery-item {
-  cursor: pointer;
-  animation: item-up 0.35s ease both;
-}
-.gallery-item:nth-child(1) { animation-delay: 0s; }
-.gallery-item:nth-child(2) { animation-delay: 0.04s; }
-.gallery-item:nth-child(3) { animation-delay: 0.08s; }
-.gallery-item:nth-child(4) { animation-delay: 0.12s; }
-.gallery-item:nth-child(5) { animation-delay: 0.16s; }
-.gallery-item:nth-child(6) { animation-delay: 0.2s; }
-.gallery-item:nth-child(n+7) { animation-delay: 0.24s; }
-
-@keyframes item-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.gallery-preview {
-  position: relative;
-  aspect-ratio: var(--vp-ratio, 16 / 9);
-  overflow: hidden;
-  border-radius: 12px;
-  background: rgba(0,0,0,0.04);
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-
-.gallery-preview-ghost {
-  /* Invisible placeholder — real canvas sits behind here */
-  background: transparent;
-  border: 2px solid rgba(0,0,0,0.06);
-}
-
-.gallery-item:hover .gallery-preview {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
-
-.gallery-item.active .gallery-preview {
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.12);
-}
-
-/* Thumb — scaled canvas */
-.gallery-thumb {
-  position: absolute;
-  top: 0; left: 0;
+.gallery-labels {
+  position: fixed;
+  inset: 0;
+  z-index: 102;
   pointer-events: none;
 }
 
-.gallery-thumb .v-block {
-  transition: none !important;
-  animation: none !important;
-  pointer-events: none !important;
-  min-width: 0 !important;
-  max-width: none !important;
+.gallery-labels.zooming { opacity: 0; transition: opacity 0.25s; }
+
+.gallery-label-item {
+  pointer-events: auto;
+  position: relative;
 }
 
-/* Suppress entrance animations during tree switch from gallery */
-.no-animate .v-block {
-  transition: none !important;
-  animation: none !important;
-}
-
-.gallery-thumb .win-bar { display: none !important; }
-.gallery-thumb .win-body { padding: 6px !important; }
-.gallery-thumb .blocks-renderer {
-  gap: 3px !important;
-  padding: 6px !important;
-}
-
-/* Label */
 .gallery-label {
   font-size: 13px;
   font-weight: 500;
   color: rgba(0,0,0,0.5);
   text-align: center;
-  padding: 8px 4px 0;
+  padding: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Delete */
 .gallery-delete {
-  position: absolute; top: 8px; right: 8px;
-  width: 24px; height: 24px;
+  position: absolute; top: -2px; right: 4px;
+  width: 20px; height: 20px;
   border: none; border-radius: 50%;
-  background: rgba(0,0,0,0.2); color: rgba(255,255,255,0.8);
-  font-size: 14px; cursor: pointer;
+  background: rgba(0,0,0,0.15); color: rgba(255,255,255,0.8);
+  font-size: 12px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.15s, background 0.15s;
-  z-index: 2;
 }
-.gallery-item:hover .gallery-delete { opacity: 1; }
+.gallery-label-item:hover .gallery-delete { opacity: 1; }
 .gallery-delete:hover { background: rgba(200,60,60,0.6); color: #fff; }
-
-/* Empty */
-.preview-empty {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(0,0,0,0.06); font-size: 14px; letter-spacing: 4px;
-}
 
 /* Close */
 .gallery-close-btn {
@@ -610,38 +502,17 @@ onUnmounted(() => {
 }
 .gallery-close-btn:hover { background: rgba(0,0,0,0.1); color: rgba(0,0,0,0.6); }
 
-/* Zoom out animation */
-.gallery-overlay.zooming {
-  background: transparent;
-  backdrop-filter: none;
-  pointer-events: none;
-  transition: background 0.4s ease, backdrop-filter 0.3s;
-}
-.gallery-overlay.zooming .gallery-item:not(.zoom-target) { opacity: 0; transition: opacity 0.35s ease; }
-.gallery-overlay.zooming .gallery-close-btn { opacity: 0; transition: opacity 0.25s; }
-.gallery-overlay.zooming .gallery-label { opacity: 0; transition: opacity 0.25s; }
-.gallery-overlay.zooming .zoom-target .gallery-preview { overflow: visible; }
-.gallery-overlay.zooming .gallery-item-current { opacity: 0; transition: opacity 0.3s ease; }
-
-/* ═══ Mercury ═══ */
+/* ═══ Theme: Mercury ═══ */
 .theme-mercury .gallery-overlay { background: rgba(220,221,224,0.92); }
-.theme-mercury .gallery-preview { background: rgba(0,0,0,0.035); }
-.theme-mercury .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
 .theme-mercury .gallery-label { color: rgba(0,0,0,0.45); }
 
-/* ═══ Dot ═══ */
+/* ═══ Theme: Dot ═══ */
 .theme-dot .gallery-overlay { background: rgba(240,230,220,0.92); }
-.theme-dot .gallery-preview { background: rgba(0,0,0,0.025); }
-.theme-dot .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(180,140,100,0.2); }
 .theme-dot .gallery-label { color: rgba(100,80,60,0.45); }
 
-/* ═══ Basic (dark) ═══ */
+/* ═══ Theme: Basic (dark) ═══ */
 body:not(.theme-mercury):not(.theme-dot) .gallery-overlay { background: rgba(10,10,8,0.9); }
-body:not(.theme-mercury):not(.theme-dot) .gallery-preview { background: rgba(255,255,255,0.04); }
-body:not(.theme-mercury):not(.theme-dot) .gallery-item.active .gallery-preview { box-shadow: 0 0 0 3px rgba(196,168,130,0.2); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-label { color: rgba(196,168,130,0.45); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-delete { background: rgba(255,255,255,0.1); }
-body:not(.theme-mercury):not(.theme-dot) .preview-empty { color: rgba(196,168,130,0.08); }
-body:not(.theme-mercury):not(.theme-dot) .gallery-preview-ghost { border-color: rgba(196,168,130,0.08); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-close-btn { background: rgba(255,255,255,0.06); color: rgba(196,168,130,0.3); }
 </style>
