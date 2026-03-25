@@ -93,10 +93,7 @@ body {
   margin: 0; padding: 1rem;
   font-family: system-ui, -apple-system, sans-serif;
   background: transparent;
-  color: var(--color-text-primary);
   overflow: hidden;
-}
-:root {
   --p: #e0e0e0; --s: #a0a0a0; --t: #707070; --bg2: #2a2a2a; --b: #404040;
   --color-text-primary: #e0e0e0;
   --color-text-secondary: #a0a0a0;
@@ -122,6 +119,7 @@ body {
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
   --border-radius-xl: 16px;
+  color: var(--color-text-primary);
 }
 /* Light mode — applied when parent sends theme:light */
 body.light {
