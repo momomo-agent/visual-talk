@@ -85,7 +85,8 @@ const { activeTreeId } = storeToRefs(forest)
 const galleryMode = ref(false)
 const zoomingId = ref(null)
 const topicRefs = new Map()
-const otherTopicCards = ref(new Map()) // treeId -> reactive card array
+const otherTopicCards = ref(new Map())
+const galleryScrollY = ref(0) // treeId -> reactive card array
 
 function setTopicRef(id, el) {
   if (el) topicRefs.set(id, el)
@@ -162,7 +163,8 @@ function getTopicStyle(topicId) {
   const col = idx % COLS
   const row = Math.floor(idx / COLS)
   const left = gridLeft + col * (cellW + GRID_GAP)
-  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30)
+  const rawTop = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30)
+  const top = rawTop - galleryScrollY.value
   const scale = cellW / vw
   
   const isZooming = zoomingId.value === topicId || (zoomingId.value === '__current__' && topicId === activeTreeId.value)
@@ -233,7 +235,7 @@ function getLabelStyle(idx) {
   const col = idx % COLS
   const row = Math.floor(idx / COLS)
   const left = gridLeft + col * (cellW + GRID_GAP)
-  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30) + cellH + 6
+  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30) + cellH + 6 - galleryScrollY.value
   
   return {
     position: 'fixed',
@@ -288,6 +290,7 @@ async function enterGallery() {
   
   // Phase 1: Set galleryMode but start at fullscreen position
   enterPhase.value = 'start'
+  galleryScrollY.value = 0
   galleryMode.value = true
   
   await nextTick()
@@ -441,13 +444,33 @@ function onKeyDown(e) {
   if (e.key === 'Escape' && galleryMode.value) exitGallery()
 }
 
+// ── Gallery scroll ──
+function getMaxScroll() {
+  const count = allTopicsSorted.value.length
+  if (count === 0) return 0
+  const { cellH } = getGridMetrics()
+  const rows = Math.ceil(count / COLS)
+  const contentH = GRID_PAD_TOP + rows * (cellH + GRID_GAP + 30) + GRID_PAD_BOT
+  const vh = window.innerHeight || 800
+  return Math.max(0, contentH - vh)
+}
+
+function onWheel(e) {
+  if (!galleryMode.value || zoomingId.value) return
+  e.preventDefault()
+  const maxScroll = getMaxScroll()
+  galleryScrollY.value = Math.min(maxScroll, Math.max(0, galleryScrollY.value + e.deltaY))
+}
+
 onMounted(() => {
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('wheel', onWheel, { passive: false })
 })
 onUnmounted(() => {
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('wheel', onWheel)
 })
 </script>
 
