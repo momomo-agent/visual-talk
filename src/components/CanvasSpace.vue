@@ -162,8 +162,53 @@ function getTopicStyle(topicId) {
   const col = idx % COLS
   const row = Math.floor(idx / COLS)
   const left = gridLeft + col * (cellW + GRID_GAP)
-  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30) // 30px for label
+  const top = GRID_PAD_TOP + row * (cellH + GRID_GAP + 30)
   const scale = cellW / vw
+  
+  const isZooming = zoomingId.value === topicId || (zoomingId.value === '__current__' && topicId === activeTreeId.value)
+  const isFadingOut = zoomingId.value && !isZooming
+  const isCurrent = topicId === activeTreeId.value
+  
+  // Enter animation: current topic starts fullscreen, then shrinks to grid
+  const isEnterStart = enterPhase.value === 'start' && isCurrent
+  
+  if (isZooming || isEnterStart) {
+    // Fullscreen position
+    return {
+      position: 'fixed',
+      left: '0px',
+      top: '0px',
+      width: vw + 'px',
+      height: vh + 'px',
+      transform: 'scale(1)',
+      transformOrigin: 'top left',
+      zIndex: '200',
+      pointerEvents: 'none',
+      borderRadius: '0px',
+      overflow: 'hidden',
+      transition: isEnterStart ? 'none' : 'transform 0.45s cubic-bezier(.22,1,.36,1), left 0.45s cubic-bezier(.22,1,.36,1), top 0.45s cubic-bezier(.22,1,.36,1), border-radius 0.3s',
+      opacity: '1',
+    }
+  }
+  
+  // Other topics during enter start: hidden (will fade in during 'animating' phase)
+  if (enterPhase.value === 'start' && !isCurrent) {
+    return {
+      position: 'fixed',
+      left: left + 'px',
+      top: top + 'px',
+      width: vw + 'px',
+      height: vh + 'px',
+      transform: `scale(${scale})`,
+      transformOrigin: 'top left',
+      zIndex: '101',
+      pointerEvents: 'none',
+      borderRadius: (12 / scale) + 'px',
+      overflow: 'hidden',
+      transition: 'none',
+      opacity: '0',
+    }
+  }
   
   return {
     position: 'fixed',
@@ -173,13 +218,13 @@ function getTopicStyle(topicId) {
     height: vh + 'px',
     transform: `scale(${scale})`,
     transformOrigin: 'top left',
-    zIndex: zoomingId.value === topicId ? '200' : '101',
+    zIndex: '101',
     pointerEvents: 'auto',
     cursor: 'pointer',
     borderRadius: (12 / scale) + 'px',
     overflow: 'hidden',
     transition: 'transform 0.45s cubic-bezier(.22,1,.36,1), left 0.45s cubic-bezier(.22,1,.36,1), top 0.45s cubic-bezier(.22,1,.36,1), opacity 0.35s ease',
-    opacity: (zoomingId.value && zoomingId.value !== topicId && zoomingId.value !== '__current__') ? '0' : '1',
+    opacity: isFadingOut ? '0' : '1',
   }
 }
 
@@ -205,6 +250,8 @@ function getLabelStyle(idx) {
 const activeCanvasStyle = computed(() => undefined) // uses CSS defaults
 
 // ── Enter / Exit ──
+const enterPhase = ref(null) // null | 'start' | 'animating'
+
 async function enterGallery() {
   await forest.saveCurrentTree()
 
@@ -232,17 +279,25 @@ async function enterGallery() {
   }
   otherTopicCards.value = cardMap
   
+  // Phase 1: Set galleryMode but start at fullscreen position
+  enterPhase.value = 'start'
   galleryMode.value = true
+  
+  await nextTick()
+  await new Promise(r => requestAnimationFrame(r))
+  
+  // Phase 2: Animate to grid position
+  enterPhase.value = 'animating'
 }
 
 function exitGallery() {
   zoomingId.value = '__current__'
+  enterPhase.value = null
   
-  // Animate current topic to fullscreen
-  // The getTopicStyle will return opacity:1 for current, 0 for others when zoomingId is set
   setTimeout(() => {
     galleryMode.value = false
     zoomingId.value = null
+    enterPhase.value = null
     otherTopicCards.value = new Map()
     lastSortOrder = null
   }, 450)
@@ -260,6 +315,7 @@ function onTopicClick(topicId) {
   setTimeout(async () => {
     galleryMode.value = false
     zoomingId.value = null
+    enterPhase.value = null
     otherTopicCards.value = new Map()
     lastSortOrder = null
     
@@ -413,15 +469,7 @@ onUnmounted(() => {
 .topic-canvas.topic-gallery .win-bar { display: none !important; }
 .topic-canvas.topic-gallery .sketch-overlay { display: none !important; }
 
-/* Zooming topic scales up to fullscreen */
-.topic-canvas.topic-zooming {
-  transform: scale(1) !important;
-  left: 0 !important;
-  top: 0 !important;
-  z-index: 200 !important;
-  border-radius: 0 !important;
-  transition: transform 0.4s cubic-bezier(.22,1,.36,1), left 0.4s cubic-bezier(.22,1,.36,1), top 0.4s cubic-bezier(.22,1,.36,1), border-radius 0.3s !important;
-}
+/* topic-canvas.topic-zooming is handled by inline styles in getTopicStyle */
 
 /* ════════════════════════════════════════════
    Gallery Overlay — just background blur
