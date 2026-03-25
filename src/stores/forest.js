@@ -160,6 +160,19 @@ export const useForestStore = defineStore('forest', () => {
     // Snapshot cards from last 3 rounds (push ops) for gallery preview
     const timeline = useTimelineStore()
     const lastCards = getLastRoundsCards(timeline, data, 3)
+    
+    // Enrich with current depth values from canvas store
+    const canvas = useCanvasStore()
+    for (const card of lastCards) {
+      const live = canvas.cards.get(card.id)
+      if (live) {
+        card.z = live.z ?? 0
+        card.scale = live.scale ?? 1
+        card.opacity = live.opacity ?? 1
+        card.blur = live.blur ?? 0
+        card.zIndex = live.zIndex ?? 100
+      }
+    }
     trees[activeTreeId.value].lastCards = lastCards
 
     if (store) {

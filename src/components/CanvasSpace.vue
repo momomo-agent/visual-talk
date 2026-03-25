@@ -275,7 +275,8 @@ async function enterGallery() {
     
     const topicCards = rawCards.map(c => reactive({
       id: c.id, x: c.x ?? 10, y: c.y ?? 10, w: c.w || 25,
-      z: 0, scale: 1, opacity: 1, blur: 0, zIndex: 100,
+      z: c.z ?? 0, scale: c.scale ?? 1, opacity: c.opacity ?? 1,
+      blur: c.blur ?? 0, zIndex: c.zIndex ?? 100,
       selected: false, pointerEvents: 'none', entranceDelay: 0,
       _isDocked: false, type: c.type || 'blocks',
       contentKey: String(c.id),
