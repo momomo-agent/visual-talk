@@ -179,7 +179,10 @@ window._setContent = function(html) {
   _reportHeight();
 };
 
+window._scriptsRan = false;
 window._runScripts = function() {
+  if (window._scriptsRan) return;
+  window._scriptsRan = true;
   document.querySelectorAll('#root script').forEach(function(old) {
     var s = document.createElement('script');
     if (old.src) { s.src = old.src; } else { s.textContent = old.textContent; }
