@@ -8,7 +8,7 @@
       :style="{ height: iframeHeight + 'px' }"
       @load="onIframeLoad"
     />
-    <div v-if="streaming" class="widget-shimmer" />
+    <div v-if="streaming && !finalized" class="widget-shimmer" />
     <div v-if="data.caption" class="html-caption">{{ data.caption }}</div>
   </div>
 </template>
@@ -27,6 +27,7 @@ const props = defineProps({
 const iframeRef = ref(null)
 const iframeReady = ref(false)
 const iframeHeight = ref(props.data.height || 400)
+const finalized = ref(false)
 let pendingCode = null
 let updateTimer = null
 let firstHeight = true
@@ -53,6 +54,7 @@ function onIframeLoad() {
 function sendContent(html, finalize = false) {
   const iframe = iframeRef.value
   if (!iframe?.contentWindow) return
+  if (finalize) finalized.value = true
 
   try {
     iframe.contentWindow.postMessage({
