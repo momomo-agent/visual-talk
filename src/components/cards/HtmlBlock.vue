@@ -16,6 +16,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { WIDGET_SHELL_HTML } from '../../lib/widget-shell.js'
+import { sanitizeForStreaming } from '../../lib/widget-sanitize.js'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -52,17 +53,6 @@ function sendContent(html, finalize = false) {
   } catch {
     // Sandbox may block
   }
-}
-
-// Strip unclosed script tags during streaming
-function sanitizeForStreaming(html) {
-  const scriptOpen = '<' + 'script'
-  const scriptClose = '</' + 'script>'
-  const lastOpen = html.lastIndexOf(scriptOpen)
-  if (lastOpen === -1) return html
-  const lastClose = html.lastIndexOf(scriptClose)
-  if (lastClose > lastOpen) return html
-  return html.substring(0, lastOpen)
 }
 
 function getCode() {
