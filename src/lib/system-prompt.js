@@ -130,7 +130,8 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   - No emoji — use CSS shapes or SVG paths. No gradients/shadows/blur (flash during streaming). Use solid flat fills.
   - Prefer inline style="..." over <style> blocks — inputs/controls must look correct mid-stream.
   - Round every displayed number (Math.round, .toFixed). No tabs/carousels/display:none during streaming.
-  - PREFER html blocks for explanatory content when a pure text description isn't enough. Diagrams, flowcharts, interactive explainers, data vis — all better as html blocks than as text.
+  - When the user asks for something interactive (calculator, explainer, visualizer), put EVERYTHING in one html block inside one card. Don't split it into multiple explanation cards — the widget IS the explanation. One card, one html block, done.
+  - The widget background is transparent — it inherits the card's background. Use CSS variables for all colors so it adapts to light/dark themes.
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 

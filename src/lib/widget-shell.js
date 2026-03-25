@@ -93,7 +93,7 @@ body {
   margin: 0; padding: 1rem;
   font-family: system-ui, -apple-system, sans-serif;
   background: transparent;
-  color: #e0e0e0;
+  color: var(--color-text-primary);
   overflow: hidden;
 }
 :root {
@@ -122,6 +122,28 @@ body {
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
   --border-radius-xl: 16px;
+}
+/* Light mode — applied when parent sends theme:light */
+body.light {
+  --p: #1a1a1a; --s: #666; --t: #999; --bg2: #f5f5f5; --b: #e0e0e0;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666;
+  --color-text-tertiary: #999;
+  --color-text-info: #185FA5;
+  --color-text-danger: #A32D2D;
+  --color-text-success: #3B6D11;
+  --color-text-warning: #854F0B;
+  --color-background-secondary: #f5f5f5;
+  --color-background-tertiary: #e8e8e8;
+  --color-background-info: #E6F1FB;
+  --color-background-danger: #FCEBEB;
+  --color-background-success: #EAF3DE;
+  --color-background-warning: #FAEEDA;
+  --color-border-primary: rgba(0,0,0,0.4);
+  --color-border-secondary: rgba(0,0,0,0.2);
+  --color-border-tertiary: rgba(0,0,0,0.1);
+  --color-border-info: #378ADD;
+  color: #1a1a1a;
 }
 @keyframes _fadeIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -198,6 +220,9 @@ window.addEventListener('message', function(e) {
   if (e.data.type === 'widget:finalize') {
     window._setContent(e.data.html);
     window._runScripts();
+  }
+  if (e.data.type === 'widget:theme') {
+    document.body.className = e.data.theme === 'light' ? 'light' : '';
   }
 });
 <\/script>

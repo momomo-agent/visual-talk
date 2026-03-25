@@ -15,6 +15,7 @@
 
 <script setup>
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useConfigStore } from '../../stores/config.js'
 import { WIDGET_SHELL_HTML } from '../../lib/widget-shell.js'
 import { sanitizeForStreaming } from '../../lib/widget-sanitize.js'
 
@@ -57,6 +58,16 @@ function sendContent(html, finalize = false) {
 
 function getCode() {
   return props.data.html || props.data.code || ''
+}
+
+function sendTheme() {
+  const iframe = iframeRef.value
+  if (!iframe?.contentWindow) return
+  const config = useConfigStore()
+  const theme = config.theme === 'mercury' || config.theme === 'dot' ? 'light' : 'dark'
+  try {
+    iframe.contentWindow.postMessage({ type: 'widget:theme', theme }, '*')
+  } catch {}
 }
 
 // Watch for code changes (streaming updates)
@@ -111,6 +122,8 @@ function onMessage(e) {
   }
   if (e.data?.type === 'widget:ready') {
     iframeReady.value = true
+    // Send current theme
+    sendTheme()
     if (pendingCode) {
       sendContent(pendingCode, !props.streaming)
       pendingCode = null
