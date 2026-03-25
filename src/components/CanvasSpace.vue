@@ -86,7 +86,9 @@ const galleryMode = ref(false)
 const zoomingId = ref(null)
 const topicRefs = new Map()
 const otherTopicCards = ref(new Map())
-const galleryScrollY = ref(0) // treeId -> reactive card array
+const galleryScrollY = ref(0)
+const isScrolling = ref(false)
+let scrollTimer = null // treeId -> reactive card array
 
 function setTopicRef(id, el) {
   if (el) topicRefs.set(id, el)
@@ -212,6 +214,8 @@ function getTopicStyle(topicId) {
     }
   }
   
+  const scrollTransition = isScrolling.value ? 'none' : 'transform 0.45s cubic-bezier(.22,1,.36,1), left 0.45s cubic-bezier(.22,1,.36,1), top 0.45s cubic-bezier(.22,1,.36,1), opacity 0.35s ease'
+  
   return {
     position: 'fixed',
     left: left + 'px',
@@ -225,7 +229,7 @@ function getTopicStyle(topicId) {
     cursor: 'pointer',
     borderRadius: (12 / scale) + 'px',
     overflow: 'hidden',
-    transition: 'transform 0.45s cubic-bezier(.22,1,.36,1), left 0.45s cubic-bezier(.22,1,.36,1), top 0.45s cubic-bezier(.22,1,.36,1), opacity 0.35s ease',
+    transition: scrollTransition,
     opacity: isFadingOut ? '0' : '1',
   }
 }
@@ -243,7 +247,7 @@ function getLabelStyle(idx) {
     top: top + 'px',
     width: cellW + 'px',
     zIndex: '102',
-    transition: 'opacity 0.3s',
+    transition: isScrolling.value ? 'none' : 'opacity 0.3s',
     opacity: zoomingId.value ? '0' : '1',
   }
 }
@@ -466,6 +470,11 @@ function onWheel(e) {
   e.preventDefault()
   const maxScroll = getMaxScroll()
   galleryScrollY.value = Math.min(maxScroll, Math.max(0, galleryScrollY.value + e.deltaY))
+  
+  // Disable CSS transitions during scroll for instant response
+  isScrolling.value = true
+  clearTimeout(scrollTimer)
+  scrollTimer = setTimeout(() => { isScrolling.value = false }, 120)
 }
 
 onMounted(() => {
@@ -498,15 +507,13 @@ onUnmounted(() => {
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+  /* Flatten 3D — translateZ on cards would look wrong when scaled down */
+  transform-style: flat;
 }
 
 .topic-canvas.topic-gallery .v-block {
   pointer-events: none !important;
   cursor: pointer !important;
-  /* Override depth-based values — all cards should be fully visible in gallery */
-  opacity: 1 !important;
-  filter: none !important;
-  transform: translateZ(0) scale(1) !important;
 }
 
 .topic-canvas.topic-gallery .win-bar { display: none !important; }
