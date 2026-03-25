@@ -262,9 +262,24 @@ function exitGallery() {
 }
 
 function onCurrentClick() {
-  // Fade out other items + overlay, then zoom current back to fullscreen
-  zoomingId.value = '__current__'  // triggers .zooming class to fade others
-  exitGallery()
+  // Fade out gallery overlay while zooming current canvas back to fullscreen
+  zoomingId.value = '__current__'
+  // Start canvas zoom back to fullscreen
+  currentCanvasPos.value = {
+    left: 0,
+    top: 0,
+    width: window.innerWidth,
+    scale: 1,
+  }
+  // Close gallery after animation
+  setTimeout(() => {
+    currentCanvasPos.value = null
+    galleryMode.value = false
+    zoomingId.value = null
+    otherTopics.value = []
+    itemRefs.clear()
+    if (spaceRef.value) spaceRef.value.style = ''
+  }, 450)
 }
 
 async function onOtherClick(treeId) {
@@ -293,7 +308,15 @@ async function onOtherClick(treeId) {
   itemRefs.clear()
   if (spaceRef.value) spaceRef.value.style = ''
 
+  // Suppress entrance animations during tree switch
+  if (spaceRef.value) spaceRef.value.classList.add('no-animate')
   await forest.switchTree(treeId)
+  await nextTick()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (spaceRef.value) spaceRef.value.classList.remove('no-animate')
+    })
+  })
 }
 
 async function deleteTopic(treeId) {
@@ -529,6 +552,12 @@ onUnmounted(() => {
   max-width: none !important;
 }
 
+/* Suppress entrance animations during tree switch from gallery */
+.no-animate .v-block {
+  transition: none !important;
+  animation: none !important;
+}
+
 .gallery-thumb .win-bar { display: none !important; }
 .gallery-thumb .win-body { padding: 6px !important; }
 .gallery-thumb .blocks-renderer {
@@ -586,12 +615,13 @@ onUnmounted(() => {
   background: transparent;
   backdrop-filter: none;
   pointer-events: none;
+  transition: background 0.4s ease, backdrop-filter 0.3s;
 }
-.gallery-overlay.zooming .gallery-item:not(.zoom-target) { opacity: 0; transition: opacity 0.2s; }
-.gallery-overlay.zooming .gallery-close-btn { opacity: 0; transition: opacity 0.15s; }
-.gallery-overlay.zooming .gallery-label { opacity: 0; transition: opacity 0.15s; }
+.gallery-overlay.zooming .gallery-item:not(.zoom-target) { opacity: 0; transition: opacity 0.35s ease; }
+.gallery-overlay.zooming .gallery-close-btn { opacity: 0; transition: opacity 0.25s; }
+.gallery-overlay.zooming .gallery-label { opacity: 0; transition: opacity 0.25s; }
 .gallery-overlay.zooming .zoom-target .gallery-preview { overflow: visible; }
-.gallery-overlay.zooming .gallery-item-current { opacity: 0; transition: opacity 0.15s; }
+.gallery-overlay.zooming .gallery-item-current { opacity: 0; transition: opacity 0.3s ease; }
 
 /* ═══ Mercury ═══ */
 .theme-mercury .gallery-overlay { background: rgba(220,221,224,0.92); }
