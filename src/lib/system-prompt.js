@@ -131,7 +131,8 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   - Prefer inline style="..." over <style> blocks — inputs/controls must look correct mid-stream.
   - Round every displayed number (Math.round, .toFixed). No tabs/carousels/display:none during streaming.
   - When the user asks for something interactive (calculator, explainer, visualizer), put EVERYTHING in one html block inside one card. Don't split it into multiple explanation cards — the widget IS the explanation. One card, one html block, done.
-  - The widget background is transparent — it inherits the card's background. Use CSS variables for all colors so it adapts to light/dark themes.
+  - The widget background is transparent — it inherits the card's background. NEVER hardcode colors like color:#fff or color:#000 or color:white — ALWAYS use CSS variables (var(--color-text-primary), var(--color-text-secondary), var(--color-background-secondary), var(--color-border-tertiary)). The widget must work on both light and dark backgrounds.
+  - For calculators: use a simple state machine, not eval(). Track display value, operator, and operand explicitly. eval() is blocked by CSP.
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 

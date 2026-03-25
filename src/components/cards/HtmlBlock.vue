@@ -31,7 +31,15 @@ let pendingCode = null
 let updateTimer = null
 let firstHeight = true
 
-const shellHTML = computed(() => WIDGET_SHELL_HTML)
+const shellHTML = computed(() => {
+  const config = useConfigStore()
+  const isLight = config.theme === 'mercury' || config.theme === 'dot'
+  // Inject theme class into body tag of shell HTML
+  if (isLight) {
+    return WIDGET_SHELL_HTML.replace('<body>', '<body class="light">')
+  }
+  return WIDGET_SHELL_HTML
+})
 
 function onIframeLoad() {
   // Fallback ready signal
