@@ -279,6 +279,13 @@ async function enterGallery() {
   }
   otherTopicCards.value = cardMap
   
+  // Phase 1: Reset 3D rotation on current canvas with animation
+  const activeEl = topicRefs.get(activeTreeId.value)
+  if (activeEl) {
+    activeEl.style.transition = 'transform 0.4s ease'
+    activeEl.style.transform = 'rotateX(0deg) rotateY(0deg)'
+  }
+  
   // Phase 1: Set galleryMode but start at fullscreen position
   enterPhase.value = 'start'
   galleryMode.value = true
@@ -300,6 +307,9 @@ function exitGallery() {
     enterPhase.value = null
     otherTopicCards.value = new Map()
     lastSortOrder = null
+    // Clear any inline styles so normal CSS takes over
+    const activeEl = topicRefs.get(activeTreeId.value)
+    if (activeEl) activeEl.style = ''
   }, 450)
 }
 
@@ -464,6 +474,10 @@ onUnmounted(() => {
 .topic-canvas.topic-gallery .v-block {
   pointer-events: none !important;
   cursor: pointer !important;
+  /* Override depth-based values — all cards should be fully visible in gallery */
+  opacity: 1 !important;
+  filter: none !important;
+  transform: translateZ(0) scale(1) !important;
 }
 
 .topic-canvas.topic-gallery .win-bar { display: none !important; }
