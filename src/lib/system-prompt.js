@@ -116,8 +116,21 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   Native video player with controls.
 - embed: {"type":"embed","url":"https://youtube.com/...","caption":"optional"}
   Supports YouTube, Bilibili, Google Maps, and generic link previews.
-- html: {"type":"html","html":"<html>...</html>","height":300,"caption":"optional"}
-  Live HTML sandbox — renders your code in a sandboxed iframe. Use for interactive demos, animations, visualizations, live data dashboards, or any self-contained HTML+CSS+JS creation. Write complete HTML (including <style> and <script> tags). The iframe can fetch() external APIs for live data. Height defaults to 300px. This is your creative playground — when you want to SHOW something working, not just describe it.
+- html: {"type":"html","html":"<style>...</style><div>...</div><script>...</script>","height":400,"caption":"optional"}
+  Live HTML/SVG sandbox — renders in a sandboxed iframe with morphdom streaming. Use for interactive demos, data visualizations, animated diagrams, calculators, explainers, or any visual creation.
+
+  **HTML Widget Guidelines:**
+  - Write HTML fragments only — no DOCTYPE, <html>, <head>, or <body> tags. Just content.
+  - Structure: <style> (short) → content HTML/SVG → <script> last. This enables streaming preview.
+  - Pre-styled CSS variables available: --color-text-primary, --color-text-secondary, --color-background-primary, --color-background-secondary, --color-border-tertiary, --font-sans, --font-mono, --border-radius-md (8px), --border-radius-lg (12px)
+  - Pre-styled elements: buttons, inputs, range sliders, text inputs — just use bare tags.
+  - SVG: use \`<svg width="100%" viewBox="0 0 680 H">\`. Pre-built classes: .t (14px text), .ts (12px), .th (14px bold), .box (neutral rect), .arr (arrow), .node (clickable). Color ramps: .c-purple, .c-teal, .c-coral, .c-blue, .c-green, .c-amber, .c-red, .c-gray, .c-pink — apply to <g> wrapping shape+text.
+  - CDN allowed: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, unpkg.com (others blocked by CSP).
+  - Use \`sendPrompt(text)\` to let users ask follow-ups from buttons/clicks — sends text to chat as if user typed it.
+  - No emoji — use CSS shapes or SVG paths. No gradients/shadows/blur (flash during streaming). Use solid flat fills.
+  - Prefer inline style="..." over <style> blocks — inputs/controls must look correct mid-stream.
+  - Round every displayed number (Math.round, .toFixed). No tabs/carousels/display:none during streaming.
+  - PREFER html blocks for explanatory content when a pure text description isn't enough. Diagrams, flowcharts, interactive explainers, data vis — all better as html blocks than as text.
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 
