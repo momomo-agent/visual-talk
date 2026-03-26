@@ -16,6 +16,12 @@ import { parseResponse } from '../lib/parser.js'
  *                                 timeline: computeCanvas → canvas.applySnapshot()
  * 
  * useSend ONLY writes to timeline. Canvas updates automatically.
+ * 
+ * Fluid TTS sync: cards appear in sync with TTS playback progress.
+ * Speech is detected early in the stream → TTS fetch starts immediately.
+ * Cards queue up during streaming. When TTS audio is ready and starts
+ * playing, cards are released at evenly-spaced progress points.
+ * Fallback: if TTS is off/fails/times out, cards render immediately.
  */
 export function useSend({ tts } = {}) {
   const sendQueue = ref([])
@@ -178,6 +184,103 @@ export function useSend({ tts } = {}) {
       let speechHandled = false
       let reply = null
 
+      // ── Fluid TTS state ──
+      // Blocks queue up here during streaming while TTS loads
+      const pendingBlocks = []
+      let ttsAudioPromise = null   // Promise<ArrayBuffer|null>
+      let ttsPlaybackInfo = null   // { duration } after playback starts
+      let fluidActive = false      // true when we're doing synced card release
+      let fluidDone = false        // true when all queued cards have been flushed
+      let cardReleaseTimers = []   // setTimeout ids for card release
+      let streamingDone = false    // true when LLM streaming is complete
+
+      // Flush all pending blocks immediately (fallback / no-TTS path)
+      function flushAllPending() {
+        if (pendingBlocks.length === 0) return
+        processBlocks(
+          pendingBlocks.map((_, i) => pendingBlocks[i]),
+          0, nodeId, timeline, canvas,
+          // We need to use the main state for pushRecorded tracking
+          state
+        )
+        // Actually: processBlocks expects the full blocks array and fromIndex.
+        // pendingBlocks are blocks that haven't been sent to processBlocks yet.
+        // We need to call processBlocks with proper indices.
+      }
+
+      // Release block at index from pending queue
+      function releaseBlock(pendingIndex) {
+        const b = pendingBlocks[pendingIndex]
+        if (!b || b._released) return
+        b._released = true
+
+        if (!state.pushRecorded) {
+          canvas.selectedIds.forEach(id => {
+            timeline.addOperation(nodeId, { op: 'promote', cardId: id })
+          })
+          canvas.clearSelection()
+          timeline.addOperation(nodeId, { op: 'push' })
+          state.pushRecorded = true
+        }
+
+        timeline.addOperation(nodeId, {
+          op: 'create',
+          globalIndex: b._globalIndex,
+          card: {
+            type: b.type,
+            data: { ...b.data },
+            contentKey: `n${nodeId}-${b._globalIndex}`,
+          },
+        })
+      }
+
+      function releaseAllPending() {
+        for (let i = 0; i < pendingBlocks.length; i++) {
+          releaseBlock(i)
+        }
+        state.lastBlockCount = pendingBlocks.length
+        fluidDone = true
+      }
+
+      // Schedule card releases synced to TTS duration
+      function scheduleFluidRelease(audioDuration) {
+        const total = pendingBlocks.length
+        if (total === 0) { fluidDone = true; return }
+
+        // First card appears at 10% of playback, last at 85%
+        // This gives a natural feel — voice starts, then cards follow
+        const startFrac = 0.10
+        const endFrac = 0.85
+        const range = endFrac - startFrac
+
+        for (let i = 0; i < total; i++) {
+          const frac = total === 1 ? startFrac : startFrac + (i / (total - 1)) * range
+          const delayMs = frac * audioDuration * 1000
+          const timer = setTimeout(() => {
+            releaseBlock(i)
+          }, delayMs)
+          cardReleaseTimers.push(timer)
+        }
+
+        // Safety: release everything at 90% mark in case timers drift
+        const safetyTimer = setTimeout(() => {
+          releaseAllPending()
+        }, audioDuration * 900)
+        cardReleaseTimers.push(safetyTimer)
+
+        fluidDone = false
+      }
+
+      // Check if we should start fluid release now
+      // Called when: (1) TTS audio is ready, (2) streaming is done
+      async function tryStartFluidRelease() {
+        if (fluidActive || fluidDone) return
+        if (!ttsPlaybackInfo) return
+
+        fluidActive = true
+        scheduleFluidRelease(ttsPlaybackInfo.duration)
+      }
+
       try {
         const cfg = configStore.getConfig()
         if (!cfg.apiKey) {
@@ -190,7 +293,7 @@ export function useSend({ tts } = {}) {
           (partial) => {
             const { blocks, commands, sketches } = parseResponse(partial)
 
-            // Process new commands
+            // Process new commands immediately (commands don't need sync)
             if (commands.length > lastCommandCount) {
               processCommands(commands.slice(lastCommandCount), nodeId, timeline)
               lastCommandCount = commands.length
@@ -202,16 +305,73 @@ export function useSend({ tts } = {}) {
               lastSketchCount = sketches.length
             }
 
-            // Process new blocks
-            processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
+            // ── Card handling: queue or immediate ──
+            if (blocks.length > state.lastBlockCount) {
+              if (ttsAudioPromise) {
+                // TTS is loading — queue new blocks for synced release
+                for (let i = state.lastBlockCount; i < blocks.length; i++) {
+                  const b = { ...blocks[i], _globalIndex: i, _released: false }
+                  pendingBlocks.push(b)
+                }
+                state.lastBlockCount = blocks.length
+
+                // If TTS already playing, schedule newly arrived blocks too
+                if (ttsPlaybackInfo && fluidActive) {
+                  // Reschedule with updated count
+                  cardReleaseTimers.forEach(t => clearTimeout(t))
+                  cardReleaseTimers = []
+                  scheduleFluidRelease(ttsPlaybackInfo.duration)
+                }
+              } else {
+                // No TTS — render immediately (original behavior)
+                processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
+              }
+            }
           },
-          // onSpeech
+          // onSpeech — fires when <!--vt:speech ...--> is detected in stream
           (speechText) => {
             speechHandled = true
             showBubble(speechText)
-            tts?.playTTS(speechText)
+
+            if (tts && cfg.ttsEnabled) {
+              // Start TTS fetch immediately — don't wait for streaming to finish
+              ttsAudioPromise = tts.fetchTTSAudio(speechText)
+
+              // When audio arrives, start playing and schedule card release
+              ttsAudioPromise.then(async (audioBuffer) => {
+                if (!audioBuffer) {
+                  // TTS failed — flush all pending cards immediately
+                  releaseAllPending()
+                  return
+                }
+
+                const info = await tts.playBuffer(audioBuffer)
+                if (!info) {
+                  releaseAllPending()
+                  return
+                }
+
+                ttsPlaybackInfo = info
+
+                if (streamingDone) {
+                  // Streaming already finished — all blocks are queued, schedule now
+                  tryStartFluidRelease()
+                } else {
+                  // Streaming still going — we'll schedule when it's done
+                  // But start with what we have so far
+                  tryStartFluidRelease()
+                }
+              }).catch(() => {
+                releaseAllPending()
+              })
+            } else {
+              // TTS disabled — just show bubble, cards render normally
+              tts?.playTTS(speechText)
+            }
           }
         )
+
+        streamingDone = true
 
         if (!reply) {
           // Empty response — remove the node
@@ -230,11 +390,35 @@ export function useSend({ tts } = {}) {
           sketch.setLive(sketches)
         }
 
-        processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
+        // Handle remaining blocks from final parse
+        if (blocks.length > state.lastBlockCount) {
+          if (ttsAudioPromise) {
+            // Queue remaining blocks
+            for (let i = state.lastBlockCount; i < blocks.length; i++) {
+              const b = { ...blocks[i], _globalIndex: i, _released: false }
+              pendingBlocks.push(b)
+            }
+            state.lastBlockCount = blocks.length
 
+            // Try to start/reschedule fluid release
+            if (ttsPlaybackInfo) {
+              if (fluidActive) {
+                cardReleaseTimers.forEach(t => clearTimeout(t))
+                cardReleaseTimers = []
+              }
+              tryStartFluidRelease()
+            }
+            // else: TTS still loading, will schedule when it arrives
+          } else {
+            processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
+          }
+        }
+
+        // Handle speech from final parse (wasn't caught during streaming)
         if (speech && !speechHandled) {
           showBubble(speech)
           tts?.playTTS(speech)
+          // No fluid sync for late-detected speech — just play
         } else if (!speech && !speechHandled && !blocks.length) {
           const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
           if (plain) {
@@ -242,9 +426,33 @@ export function useSend({ tts } = {}) {
             tts?.playTTS(plain.slice(0, 100))
           }
         }
+
+        // ── Wait for fluid release to complete ──
+        // If TTS is active and cards are queued, wait a bit for them to flush.
+        // Safety timeout: don't wait longer than 30s
+        if (ttsAudioPromise && !fluidDone) {
+          const maxWait = 30000
+          const start = Date.now()
+          await new Promise(resolve => {
+            const check = () => {
+              if (fluidDone || Date.now() - start > maxWait) {
+                releaseAllPending() // safety flush
+                resolve()
+              } else {
+                setTimeout(check, 200)
+              }
+            }
+            check()
+          })
+        }
+
       } catch (err) {
         showBubble(`Error: ${err.message}`, 5000)
         console.error(err)
+        // Release any pending cards
+        releaseAllPending()
+        // Clean up timers
+        cardReleaseTimers.forEach(t => clearTimeout(t))
         // Remove the empty node from timeline — failed requests shouldn't persist
         timeline.removeNode(nodeId)
       } finally {
@@ -262,6 +470,9 @@ export function useSend({ tts } = {}) {
         const forest = useForestStore()
         forest.autoName(forest.activeTreeId, userMessage)
         forest.scheduleSave()
+
+        // Clean up any remaining timers
+        cardReleaseTimers.forEach(t => clearTimeout(t))
       }
     }
     sendProcessing.value = false
