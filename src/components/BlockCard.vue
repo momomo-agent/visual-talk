@@ -7,7 +7,6 @@
     :data-content-key="card.contentKey || card.data?.key || ''"
     :data-block-key="card.data?.key || ''"
     @click.stop="onClick"
-    @dblclick.stop="onDblClick"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -61,7 +60,7 @@ const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock'])
+const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock', 'drag-move'])
 
 const canvas = useCanvasStore()
 const { isStreaming } = storeToRefs(canvas)
@@ -202,14 +201,15 @@ function onMouseDown(e) {
       const cw = el?.parentElement?.offsetWidth || window.innerWidth
       const ch = el?.parentElement?.offsetHeight || window.innerHeight
       emit('update-position', origLeft + (dx / cw) * 100, origTop + (dy / ch) * 100)
+      emit('drag-move', e2.clientX, e2.clientY)
     }
   }
 
-  const onUp = () => {
+  const onUp = (e3) => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
     if (isDragging) {
-      emit('drag-end', props.card.x, props.card.y)
+      emit('drag-end', props.card.x, props.card.y, e3.clientX)
     }
     setTimeout(() => { isDragging = false; dragging.value = false }, 10)
   }
