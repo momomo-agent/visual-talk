@@ -21,6 +21,7 @@
     <BlocksRenderer
       v-if="card.data?.blocks"
       :blocks="card.data.blocks"
+      :streaming="isStreaming"
     />
 
     <!-- Legacy mode: fixed type → component mapping -->
@@ -35,6 +36,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useCanvasStore } from '../stores/canvas.js'
 import { Z_HOVER } from '../lib/z-layers.js'
 import BlocksRenderer from './cards/BlocksRenderer.vue'
 import CardBlock from './cards/CardBlock.vue'
@@ -59,6 +62,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle-select', 'update-position', 'drag-end', 'toggle-dock'])
+
+const canvas = useCanvasStore()
+const { isStreaming } = storeToRefs(canvas)
 const blockRef = ref(null)
 const glowBreathing = ref(false)
 

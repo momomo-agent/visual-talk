@@ -96,7 +96,7 @@
         <figcaption v-if="block.caption">{{ block.caption }}</figcaption>
       </div>
       <MediaBlock v-else-if="block.type === 'embed'" :data="{ url: block.url, caption: block.caption }" type="embed" />
-      <HtmlBlock v-else-if="block.type === 'html'" :data="block" />
+      <HtmlBlock v-else-if="block.type === 'html'" :data="block" :streaming="streaming" />
     </template>
   </div>
 </template>
@@ -114,6 +114,7 @@ import HtmlBlock from './HtmlBlock.vue'
 
 defineProps({
   blocks: { type: Array, required: true },
+  streaming: { type: Boolean, default: false },
 })
 
 function headingTag(level) {

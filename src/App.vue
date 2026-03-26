@@ -74,6 +74,10 @@ onMounted(async () => {
   useSketchStore().initWatcher()
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
+  // Listen for sendPrompt from widget iframes
+  window.addEventListener('widget-prompt', (e) => {
+    if (e.detail) handleSend(e.detail)
+  })
 })
 
 // Voice enabled: TTS has baseUrl or webSpeech is on
