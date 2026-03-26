@@ -193,7 +193,7 @@ export function useSend({ tts } = {}) {
       let fluidDone = false        // true when all queued cards have been flushed
       let cardReleaseTimers = []   // setTimeout ids for card release
       let streamingDone = false    // true when LLM streaming is complete
-      let currentSpeechText = ''   // speech text for breath point calculation
+      let latestSpeechSegments = [] // parsed speechSegments from interleaved output
 
       // Flush all pending blocks immediately (fallback / no-TTS path)
       function flushAllPending() {
@@ -244,92 +244,87 @@ export function useSend({ tts } = {}) {
       }
 
       /**
-       * Compute card release time points based on sentence boundaries.
+       * Compute card release times using semantic speech-card association.
        * 
-       * Idea: speech text is split at sentence-ending punctuation (。！？，；、…).
-       * Each boundary becomes a "breath point" — a natural moment for a card
-       * to appear. Cards are distributed across these breath points.
+       * speechSegments from parser tells us which cards belong to which speech.
+       * We concatenate all speech texts → TTS plays that as one audio.
+       * Each segment's character position in the concatenated text maps to
+       * a time fraction → cards for that segment appear at that time.
        * 
-       * If there are more cards than sentences, multiple cards share a breath point.
-       * If there are more sentences than cards, cards land on evenly-spaced sentences.
-       * 
-       * Time is estimated by character position ratio — not perfect, but TTS
-       * speaks at roughly constant speed so the error is <0.5s typically.
+       * Cards appear at the START of their associated speech segment,
+       * so the card shows up as the AI begins saying those words.
        */
-      function computeBreathPoints(speechText, totalCards, audioDuration) {
-        if (!speechText || totalCards === 0) return []
-
-        // Find sentence boundaries (Chinese + English punctuation)
-        const breakPoints = []
-        const breakChars = /[。！？；…!?;]/
-        for (let i = 0; i < speechText.length; i++) {
-          if (breakChars.test(speechText[i])) {
-            breakPoints.push(i)
+      function computeSemanticTimings(segments, totalCards, audioDuration) {
+        if (!segments || segments.length === 0 || totalCards === 0) {
+          // Fallback: even distribution
+          const timings = []
+          for (let i = 0; i < totalCards; i++) {
+            timings.push(((i + 0.5) / totalCards) * 0.85 * audioDuration * 1000)
           }
+          return timings
         }
 
-        // If no punctuation found, fall back to comma-level breaks
-        if (breakPoints.length === 0) {
-          for (let i = 0; i < speechText.length; i++) {
-            if (/[，、,]/.test(speechText[i])) {
-              breakPoints.push(i)
+        // Build concatenated speech and track segment boundaries
+        let fullText = ''
+        const segBounds = [] // { startChar, endChar, blockIndices }
+        for (const seg of segments) {
+          const start = fullText.length
+          fullText += seg.text
+          segBounds.push({
+            startChar: start,
+            endChar: fullText.length,
+            blockIndices: seg.blockIndices || [],
+          })
+        }
+
+        const totalChars = fullText.length || 1
+
+        // Map each pending block index to a time
+        // blockIndex in pendingBlocks matches the global block index
+        const timings = new Array(totalCards).fill(null)
+        const assigned = new Set()
+
+        for (const bound of segBounds) {
+          // Time fraction = where this segment starts in the audio
+          const timeFrac = bound.startChar / totalChars
+          const timeMs = Math.max(0.03, Math.min(0.92, timeFrac)) * audioDuration * 1000
+
+          for (const blockIdx of bound.blockIndices) {
+            // Find this block in pendingBlocks
+            const pendingIdx = pendingBlocks.findIndex(b => b._globalIndex === blockIdx)
+            if (pendingIdx >= 0 && pendingIdx < totalCards) {
+              timings[pendingIdx] = timeMs
+              assigned.add(pendingIdx)
             }
           }
         }
 
-        // If still nothing, use evenly-spaced character positions
-        if (breakPoints.length === 0) {
-          for (let i = 1; i <= totalCards; i++) {
-            const frac = i / (totalCards + 1)
-            breakPoints.push(Math.floor(frac * speechText.length))
-          }
+        // Any unassigned cards (not associated with any speech) — distribute evenly
+        // in the remaining time after the last assigned card
+        const unassigned = []
+        for (let i = 0; i < totalCards; i++) {
+          if (!assigned.has(i)) unassigned.push(i)
         }
-
-        const totalChars = speechText.length
-
-        // Distribute cards across breath points
-        // Pick `totalCards` evenly-spaced indices from breakPoints
-        const timeFractions = []
-        if (totalCards === 1) {
-          // Single card: first breath point
-          const bp = breakPoints[0]
-          timeFractions.push(bp / totalChars)
-        } else if (breakPoints.length <= totalCards) {
-          // More cards than sentences — put cards at every breath point,
-          // then distribute remaining cards evenly in the last segment
-          breakPoints.forEach(bp => {
-            timeFractions.push(bp / totalChars)
+        if (unassigned.length > 0) {
+          const lastAssignedTime = Math.max(...timings.filter(t => t !== null), 0)
+          const remainingMs = audioDuration * 1000 * 0.9 - lastAssignedTime
+          unassigned.forEach((idx, i) => {
+            timings[idx] = lastAssignedTime + ((i + 1) / (unassigned.length + 1)) * remainingMs
           })
-          // Fill remaining with even spacing after last break
-          const lastBp = breakPoints[breakPoints.length - 1]
-          const remaining = totalCards - breakPoints.length
-          for (let i = 1; i <= remaining; i++) {
-            const frac = lastBp / totalChars + (i / (remaining + 1)) * (1 - lastBp / totalChars)
-            timeFractions.push(frac)
-          }
-        } else {
-          // More sentences than cards — pick evenly-spaced breath points
-          for (let i = 0; i < totalCards; i++) {
-            const bpIndex = Math.round((i / (totalCards - 1)) * (breakPoints.length - 1))
-            timeFractions.push(breakPoints[bpIndex] / totalChars)
-          }
         }
 
-        // Convert fractions to milliseconds, clamped to 5%-90% of duration
-        return timeFractions
-          .sort((a, b) => a - b)
-          .map(frac => Math.max(0.05, Math.min(0.90, frac)) * audioDuration * 1000)
+        return timings
       }
 
-      // Schedule card releases synced to TTS duration using sentence breath points
+      // Schedule card releases synced to TTS using semantic speech-card mapping
       function scheduleFluidRelease(audioDuration) {
         const total = pendingBlocks.length
         if (total === 0) { fluidDone = true; return }
 
-        const delays = computeBreathPoints(currentSpeechText, total, audioDuration)
+        const timings = computeSemanticTimings(latestSpeechSegments, total, audioDuration)
 
         for (let i = 0; i < total; i++) {
-          const delayMs = delays[i] ?? (((i + 1) / (total + 1)) * audioDuration * 1000)
+          const delayMs = timings[i] ?? (((i + 1) / (total + 1)) * audioDuration * 1000)
           const timer = setTimeout(() => {
             releaseBlock(i)
           }, delayMs)
@@ -365,7 +360,17 @@ export function useSend({ tts } = {}) {
         reply = await callLLM(prompt,
           // onToken — streaming callback
           (partial) => {
-            const { blocks, commands, sketches } = parseResponse(partial)
+            const { blocks, commands, sketches, speechSegments } = parseResponse(partial)
+
+            // Track latest speech segments for timing
+            if (speechSegments.length > 0) {
+              latestSpeechSegments = speechSegments
+              // Show the first speech segment as bubble immediately
+              if (!speechHandled && speechSegments[0]?.text) {
+                speechHandled = true
+                showBubble(speechSegments[0].text)
+              }
+            }
 
             // Process new commands immediately (commands don't need sync)
             if (commands.length > lastCommandCount) {
@@ -381,68 +386,24 @@ export function useSend({ tts } = {}) {
 
             // ── Card handling: queue or immediate ──
             if (blocks.length > state.lastBlockCount) {
-              if (ttsAudioPromise) {
-                // TTS is loading — queue new blocks for synced release
+              if (cfg.ttsEnabled && tts && speechSegments.length > 0) {
+                // TTS mode — queue new blocks for synced release
                 for (let i = state.lastBlockCount; i < blocks.length; i++) {
                   const b = { ...blocks[i], _globalIndex: i, _released: false }
                   pendingBlocks.push(b)
                 }
                 state.lastBlockCount = blocks.length
-
-                // If TTS already playing, schedule newly arrived blocks too
-                if (ttsPlaybackInfo && fluidActive) {
-                  // Reschedule with updated count
-                  cardReleaseTimers.forEach(t => clearTimeout(t))
-                  cardReleaseTimers = []
-                  scheduleFluidRelease(ttsPlaybackInfo.duration)
-                }
               } else {
                 // No TTS — render immediately (original behavior)
                 processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
               }
             }
           },
-          // onSpeech — fires when <!--vt:speech ...--> is detected in stream
+          // onSpeech — fires when first <!--vt:speech ...--> is detected
+          // We no longer start TTS here — we wait for streaming to finish
+          // so we have ALL speech segments for concatenated TTS
           (speechText) => {
-            speechHandled = true
-            currentSpeechText = speechText
-            showBubble(speechText)
-
-            if (tts && cfg.ttsEnabled) {
-              // Start TTS fetch immediately — don't wait for streaming to finish
-              ttsAudioPromise = tts.fetchTTSAudio(speechText)
-
-              // When audio arrives, start playing and schedule card release
-              ttsAudioPromise.then(async (audioBuffer) => {
-                if (!audioBuffer) {
-                  // TTS failed — flush all pending cards immediately
-                  releaseAllPending()
-                  return
-                }
-
-                const info = await tts.playBuffer(audioBuffer)
-                if (!info) {
-                  releaseAllPending()
-                  return
-                }
-
-                ttsPlaybackInfo = info
-
-                if (streamingDone) {
-                  // Streaming already finished — all blocks are queued, schedule now
-                  tryStartFluidRelease()
-                } else {
-                  // Streaming still going — we'll schedule when it's done
-                  // But start with what we have so far
-                  tryStartFluidRelease()
-                }
-              }).catch(() => {
-                releaseAllPending()
-              })
-            } else {
-              // TTS disabled — just show bubble, cards render normally
-              tts?.playTTS(speechText)
-            }
+            // Already handled in onToken via speechSegments
           }
         )
 
@@ -454,8 +415,12 @@ export function useSend({ tts } = {}) {
           continue
         }
 
-        // Final pass — catch any remaining blocks/commands
-        const { speech, blocks, commands, sketches } = parseResponse(reply)
+        // Final pass — catch any remaining blocks/commands/speechSegments
+        const { speech, blocks, commands, sketches, speechSegments } = parseResponse(reply)
+
+        if (speechSegments.length > 0) {
+          latestSpeechSegments = speechSegments
+        }
 
         if (commands.length > lastCommandCount) {
           processCommands(commands.slice(lastCommandCount), nodeId, timeline)
@@ -467,45 +432,66 @@ export function useSend({ tts } = {}) {
 
         // Handle remaining blocks from final parse
         if (blocks.length > state.lastBlockCount) {
-          if (ttsAudioPromise) {
-            // Queue remaining blocks
+          if (latestSpeechSegments.length > 0 && tts && cfg.ttsEnabled) {
+            // Queue remaining blocks for fluid release
             for (let i = state.lastBlockCount; i < blocks.length; i++) {
               const b = { ...blocks[i], _globalIndex: i, _released: false }
               pendingBlocks.push(b)
             }
             state.lastBlockCount = blocks.length
-
-            // Try to start/reschedule fluid release
-            if (ttsPlaybackInfo) {
-              if (fluidActive) {
-                cardReleaseTimers.forEach(t => clearTimeout(t))
-                cardReleaseTimers = []
-              }
-              tryStartFluidRelease()
-            }
-            // else: TTS still loading, will schedule when it arrives
           } else {
             processBlocks(blocks, state.lastBlockCount, nodeId, timeline, canvas, state)
           }
         }
 
-        // Handle speech from final parse (wasn't caught during streaming)
-        if (speech && !speechHandled) {
-          showBubble(speech)
-          tts?.playTTS(speech)
-          // No fluid sync for late-detected speech — just play
-        } else if (!speech && !speechHandled && !blocks.length) {
-          const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
-          if (plain) {
-            showBubble(plain.slice(0, 100))
-            tts?.playTTS(plain.slice(0, 100))
+        // ── Now start TTS with ALL speech segments concatenated ──
+        if (latestSpeechSegments.length > 0 && tts && cfg.ttsEnabled && pendingBlocks.length > 0) {
+          // Concatenate all speech segments for one TTS call
+          const fullSpeechText = latestSpeechSegments.map(s => s.text).join(' ')
+
+          if (!speechHandled) {
+            showBubble(latestSpeechSegments[0].text)
+            speechHandled = true
+          }
+
+          try {
+            const audioBuffer = await tts.fetchTTSAudio(fullSpeechText)
+            if (!audioBuffer) {
+              releaseAllPending()
+            } else {
+              const info = await tts.playBuffer(audioBuffer)
+              if (!info) {
+                releaseAllPending()
+              } else {
+                ttsPlaybackInfo = info
+                tryStartFluidRelease()
+              }
+            }
+          } catch {
+            releaseAllPending()
+          }
+        } else if (latestSpeechSegments.length > 0 && tts && cfg.ttsEnabled && pendingBlocks.length === 0) {
+          // Speech but no cards to sync — just play TTS
+          const fullSpeechText = latestSpeechSegments.map(s => s.text).join(' ')
+          if (!speechHandled) showBubble(latestSpeechSegments[0].text)
+          tts.playTTS(fullSpeechText)
+          speechHandled = true
+        } else if (!speechHandled) {
+          // Fallback: single speech or plain text
+          if (speech) {
+            showBubble(speech)
+            tts?.playTTS(speech)
+          } else if (!blocks.length) {
+            const plain = reply.replace(/<!--vt:\w+\s+[\s\S]*?-->/g, '').trim()
+            if (plain) {
+              showBubble(plain.slice(0, 100))
+              tts?.playTTS(plain.slice(0, 100))
+            }
           }
         }
 
         // ── Wait for fluid release to complete ──
-        // If TTS is active and cards are queued, wait a bit for them to flush.
-        // Safety timeout: don't wait longer than 30s
-        if (ttsAudioPromise && !fluidDone) {
+        if (pendingBlocks.some(b => !b._released) && !fluidDone) {
           const maxWait = 30000
           const start = Date.now()
           await new Promise(resolve => {

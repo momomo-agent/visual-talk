@@ -1,26 +1,53 @@
 export function parseResponse(text) {
-  // Extract speech — raw text (not JSON), terminated by -->
-  // Speech content is short natural language, won't contain -->
+  // Legacy single speech — first match (kept for backward compat)
   const speechMatch = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
   const speech = speechMatch ? speechMatch[1].trim() : null
   const blocks = []
   const commands = []
   const sketches = []
 
-  // Find all <!--vt:xxx markers and extract their JSON payload.
-  // Can't use simple non-greedy regex because JSON values may contain -->
-  // (e.g. HTML comments inside widget code). Instead, find each marker
-  // and use bracket-counting to find where the JSON object ends.
+  // ── Speech segments: track interleaved speech + card associations ──
+  // Each segment: { text: "...", charPos: N, blockIndices: [0, 1, ...] }
+  const speechSegments = []
+
+  // Collect ALL markers in order (including speech) to track interleaving
+  const allMarkers = []
   const markerRegex = /<!--vt:(\w+)\s+/g
   let m
   while ((m = markerRegex.exec(text)) !== null) {
-    const type = m[1]
-    const jsonStart = m.index + m[0].length
+    allMarkers.push({ type: m[1], index: m.index, contentStart: m.index + m[0].length })
+  }
 
-    if (type === 'speech') continue
+  let currentSpeechSegment = null
+
+  for (const marker of allMarkers) {
+    const { type, contentStart } = marker
+
+    if (type === 'speech') {
+      // Extract speech text (raw text, terminated by -->)
+      const endMatch = text.indexOf('-->', contentStart)
+      if (endMatch === -1) {
+        // Still streaming — partial speech
+        currentSpeechSegment = {
+          text: text.slice(contentStart).trim(),
+          charPos: marker.index,
+          blockIndices: [],
+        }
+      } else {
+        currentSpeechSegment = {
+          text: text.slice(contentStart, endMatch).trim(),
+          charPos: marker.index,
+          blockIndices: [],
+        }
+      }
+      if (currentSpeechSegment.text) {
+        speechSegments.push(currentSpeechSegment)
+      }
+      continue
+    }
 
     // Find the JSON object by counting braces
-    const jsonStr = extractJSON(text, jsonStart)
+    const jsonStr = extractJSON(text, contentStart)
     if (!jsonStr) continue
 
     if (type === 'move') {
@@ -73,10 +100,17 @@ export function parseResponse(text) {
       if (normalizedType === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0) && (!data.blocks || data.blocks.length === 0)) {
         continue
       }
+      const blockIndex = blocks.length
       blocks.push({ type: normalizedType, data })
+
+      // Associate this block with the current speech segment
+      if (currentSpeechSegment) {
+        currentSpeechSegment.blockIndices.push(blockIndex)
+      }
     } catch {}
   }
-  return { speech, blocks, commands, sketches }
+
+  return { speech, blocks, commands, sketches, speechSegments }
 }
 
 // Extract a JSON object starting at `pos` in `text` by counting braces.
