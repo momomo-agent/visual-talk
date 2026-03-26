@@ -144,11 +144,8 @@ body.light {
   color: #1a1a1a;
 }
 /* Force readable text on light backgrounds — override LLM-hardcoded white/light text.
-   This uses !important specifically to beat inline styles that LLMs often generate
-   with hardcoded light colors (color:#fff, color:#e0e0e0, color:white). */
-body.light * {
-  color: inherit !important;
-}
+   Uses !important on form elements which LLMs commonly style with hardcoded colors.
+   General text inherits from body (color:#1a1a1a) naturally. */
 body.light button {
   color: var(--color-text-primary) !important;
   border-color: var(--color-border-secondary) !important;
@@ -157,6 +154,15 @@ body.light input, body.light select, body.light textarea {
   color: var(--color-text-primary) !important;
   border-color: var(--color-border-tertiary) !important;
 }
+body.light input:focus, body.light select:focus, body.light textarea:focus {
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+}
+/* SVG light mode — adjust ramps for light backgrounds */
+body.light svg .t, body.light svg .th { fill: var(--p); }
+body.light svg .ts { fill: var(--s); }
+body.light svg .box { fill: var(--bg2); stroke: var(--b); }
+body.light svg .arr { stroke: var(--t); }
+body.light svg .leader { stroke: var(--t); }
 @keyframes _fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }

@@ -1,5 +1,8 @@
 export function parseResponse(text) {
-  const speech = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+  // Extract speech — raw text (not JSON), terminated by -->
+  // Speech content is short natural language, won't contain -->
+  const speechMatch = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
+  const speech = speechMatch ? speechMatch[1].trim() : null
   const blocks = []
   const commands = []
   const sketches = []
@@ -73,7 +76,7 @@ export function parseResponse(text) {
       blocks.push({ type: normalizedType, data })
     } catch {}
   }
-  return { speech: speech ? speech[1].trim() : null, blocks, commands, sketches }
+  return { speech, blocks, commands, sketches }
 }
 
 // Extract a JSON object starting at `pos` in `text` by counting braces.

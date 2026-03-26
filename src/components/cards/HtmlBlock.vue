@@ -24,6 +24,7 @@ const props = defineProps({
   streaming: { type: Boolean, default: false },
 })
 
+const config = useConfigStore()
 const iframeRef = ref(null)
 const iframeReady = ref(false)
 const iframeHeight = ref(props.data.height || 400)
@@ -32,11 +33,10 @@ let pendingCode = null
 let updateTimer = null
 let firstHeight = true
 
+const isLightTheme = computed(() => config.theme === 'mercury' || config.theme === 'dot')
+
 const shellHTML = computed(() => {
-  const config = useConfigStore()
-  const isLight = config.theme === 'mercury' || config.theme === 'dot'
-  // Inject theme class into body tag of shell HTML
-  if (isLight) {
+  if (isLightTheme.value) {
     return WIDGET_SHELL_HTML.replace('<body>', '<body class="light">')
   }
   return WIDGET_SHELL_HTML
@@ -73,8 +73,7 @@ function getCode() {
 function sendTheme() {
   const iframe = iframeRef.value
   if (!iframe?.contentWindow) return
-  const config = useConfigStore()
-  const theme = config.theme === 'mercury' || config.theme === 'dot' ? 'light' : 'dark'
+  const theme = isLightTheme.value ? 'light' : 'dark'
   try {
     iframe.contentWindow.postMessage({ type: 'widget:theme', theme }, '*')
   } catch {}
@@ -177,7 +176,7 @@ onUnmounted(() => {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 40px;
-  background: linear-gradient(transparent, rgba(26,24,18,0.6));
+  background: linear-gradient(transparent, var(--card-bg, rgba(26,24,18,0.6)));
   pointer-events: none;
   animation: shimmer 1.5s ease-in-out infinite;
 }
