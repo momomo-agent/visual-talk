@@ -508,8 +508,9 @@ onUnmounted(() => {
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 2px 20px rgba(0,0,0,0.08);
-  /* Flatten 3D — translateZ on cards would look wrong when scaled down */
-  transform-style: flat;
+  /* Keep 3D but with distant perspective — subtle depth without cards poking out */
+  transform-style: preserve-3d;
+  perspective: 4000px;
 }
 
 .topic-canvas.topic-gallery .v-block {

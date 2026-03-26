@@ -178,7 +178,8 @@ body {
   max-height: 80vh; overflow-y: auto;
 }
 .config-container {
-  display: flex; gap: 16px; align-items: flex-start;
+  display: flex; gap: 16px; align-items: stretch;
+  background: rgba(28,24,18,0.95); border-radius: 12px; overflow: hidden;
 }
 .config-overlay.open .config-box, .config-overlay.open .prompt-box { transform: scale(1); }
 .config-box .field { margin-bottom: 12px; }
