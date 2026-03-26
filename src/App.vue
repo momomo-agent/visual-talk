@@ -1,11 +1,13 @@
 <template>
-  <CanvasSpace @click-canvas="blurInput" />
+  <CanvasSpace ref="canvasSpace" @click-canvas="blurInput" />
   <SpeechBubble
+    :class="{ 'ui-hidden': isGalleryOpen }"
     :text="isScrollingTimeline ? timelineBubbleText : bubbleText"
     :visible="isScrollingTimeline ? timelineBubbleVisible : bubbleVisible"
   />
-  <ThinkingDots :visible="isThinking" />
+  <ThinkingDots :visible="isThinking && !isGalleryOpen" />
   <InputBar
+    :class="{ 'ui-hidden': isGalleryOpen }"
     ref="inputBar"
     :recording="stt.state.isRecording"
     :mic-active="spaceDown"
@@ -14,7 +16,7 @@
     @mic-down="startRecording"
     @mic-up="stopRecording"
   />
-  <div class="tool-log">
+  <div :class="{ 'ui-hidden': isGalleryOpen }" class="tool-log">
     <div
       v-for="log in toolLogs"
       :key="log.id"
@@ -22,8 +24,9 @@
       :class="{ fading: log.fading }"
     >{{ log.text }}</div>
   </div>
-  <button class="gear-btn" style="right: 40px" @click="handleNewChat" title="新对话">+</button>
-  <button class="gear-btn" @click="configOpen = true">⚙</button>
+  <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" style="right: 72px" @click="newTopic" title="新话题">+</button>
+  <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" style="right: 40px" @click="toggleGallery" title="话题">☰</button>
+  <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" @click="configOpen = true">⚙</button>
   <ConfigPanel v-model:open="configOpen" />
 </template>
 
@@ -44,6 +47,20 @@ import { useTimelineStore } from './stores/timeline.js'
 import { useForestStore } from './stores/forest.js'
 
 const configOpen = ref(false)
+const canvasSpace = ref(null)
+const isGalleryOpen = computed(() => canvasSpace.value?.galleryMode ?? false)
+
+function newTopic() {
+  forest.newTree()
+}
+
+function toggleGallery() {
+  if (canvasSpace.value?.galleryMode) {
+    canvasSpace.value.exitGallery()
+  } else {
+    canvasSpace.value?.enterGallery()
+  }
+}
 const inputBar = ref(null)
 const configStore = useConfigStore()
 const timeline = useTimelineStore()
@@ -197,3 +214,18 @@ onUnmounted(() => {
   window.removeEventListener('keyup', handleKeyUp)
 })
 </script>
+
+<style>
+/* Gallery show/hide animation for UI elements */
+.gear-btn,
+.tool-log,
+.input-bar,
+.speech-bubble {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.ui-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(8px);
+}
+</style>

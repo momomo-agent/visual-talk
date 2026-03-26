@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive, computed, watch } from 'vue'
 import { useTimelineStore } from './timeline.js'
 import { useCanvasStore } from './canvas.js'
+import { CanvasState } from '../lib/canvas-state.js'
 
 /**
  * Forest Store — manages multiple conversation trees + persistence.
@@ -157,9 +158,56 @@ export const useForestStore = defineStore('forest', () => {
     const data = JSON.parse(JSON.stringify(serializeTimeline()))
     trees[activeTreeId.value].updatedAt = Date.now()
 
+    // Snapshot cards from last 3 rounds (push ops) for gallery preview
+    const timeline = useTimelineStore()
+    const lastCards = getLastRoundsCards(timeline, data, 3)
+    trees[activeTreeId.value].lastCards = lastCards
+
     if (store) {
       await store.set('tree:' + activeTreeId.value, data)
     }
+  }
+
+  // Extract cards created in the last N rounds (push operations)
+  function getLastRoundsCards(timeline, serialized, rounds) {
+    // Walk the path from root to active tip
+    const nodesMap = serialized.nodes || {}
+    const tipId = serialized.activeTip
+    if (!tipId) return []
+
+    // Build path from tip to root
+    const path = []
+    let cur = tipId
+    while (cur != null) {
+      const n = nodesMap[cur]
+      if (!n) break
+      path.unshift(n)
+      cur = n.parentId
+    }
+
+    // Find last N nodes that have a 'push' operation
+    const pushNodes = path.filter(n =>
+      n.operations?.some(op => op.op === 'push')
+    )
+    const lastN = pushNodes.slice(-rounds)
+
+    // Collect all 'create' ops from these nodes
+    const cards = []
+    for (const node of lastN) {
+      for (const op of (node.operations || [])) {
+        if (op.op === 'create' && op.card) {
+          cards.push({
+            id: op.card.id,
+            x: op.card.x ?? 10,
+            y: op.card.y ?? 10,
+            w: op.card.w || 25,
+            type: op.card.type || 'blocks',
+            data: JSON.parse(JSON.stringify(op.card.data || {})),
+          })
+        }
+      }
+    }
+    return cards
   }
 
   async function loadTree(treeId) {
@@ -189,6 +237,7 @@ export const useForestStore = defineStore('forest', () => {
         trees: Object.fromEntries(
           Object.entries(trees).map(([id, t]) => [id, {
             id: t.id, name: t.name, createdAt: t.createdAt, updatedAt: t.updatedAt,
+            lastCards: t.lastCards || [],
           }])
         ),
       }))
@@ -271,11 +320,76 @@ export const useForestStore = defineStore('forest', () => {
         name: t.name || '新对话',
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
+        lastCards: t.lastCards || [],
         isActive: t.id === activeTreeId.value,
       }))
   })
 
   const hasMultipleTrees = computed(() => order.value.length > 1)
+
+  // Preview cache for non-active trees
+  const previewCache = reactive({})
+
+  async function getTreePreview(treeId) {
+    if (previewCache[treeId]) return previewCache[treeId]
+    if (!store) return []
+
+    const data = await store.get('tree:' + treeId)
+    if (!data?.nodes) return []
+
+    const tipId = data.activeTip
+    if (tipId == null) return []
+
+    // Walk from root to tip
+    const nodesMap = data.nodes
+    const path = []
+    let cur = tipId
+    while (cur != null) {
+      const n = nodesMap[cur] || nodesMap[String(cur)]
+      if (!n) break
+      path.unshift(n)
+      cur = n.parentId
+    }
+
+    // Run CanvasState over the full path — same logic as computeCanvas
+    const state = new CanvasState()
+    for (const node of path) {
+      state.beginNode()
+      state.preScan(node.operations || [])
+      for (const op of (node.operations || [])) state.apply(op)
+      if (node.userOverrides) {
+        for (const [key, pos] of Object.entries(node.userOverrides)) {
+          state.cards.forEach(card => {
+            if ((card.data?.key || '') === key) {
+              card.x = pos.x
+              card.y = pos.y
+            }
+          })
+        }
+      }
+    }
+
+    const preview = Array.from(state.cards.values()).map(c => ({
+      id: c.id,
+      x: c.x ?? 10,
+      y: c.y ?? 10,
+      w: c.w,
+      z: c.z ?? 0,
+      scale: c.scale ?? 1,
+      opacity: c.opacity ?? 1,
+      blur: c.blur ?? 0,
+      zIndex: c.zIndex ?? 100,
+      type: c.type || c.data?.type || 'blocks',
+      data: c.data || {},
+    }))
+    previewCache[treeId] = preview
+    return preview
+  }
+
+  // Invalidate preview cache when switching trees
+  function invalidatePreview(treeId) {
+    delete previewCache[treeId]
+  }
 
   return {
     // State
@@ -295,5 +409,7 @@ export const useForestStore = defineStore('forest', () => {
     clearAll,
     saveCurrentTree,
     scheduleSave,
+    getTreePreview,
+    invalidatePreview,
   }
 })

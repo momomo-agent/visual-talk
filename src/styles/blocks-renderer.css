@@ -122,7 +122,7 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
   line-height: 1.6;
 }
 .br-list li { margin-bottom: 2px; }
-.br-todo { list-style: none; padding-left: 0; }
+.br-todo { list-style: none; padding-left: 0 !important; margin: 0; }
 .br-todo li { display: flex; align-items: center; gap: 6px; }
 .br-todo input[type="checkbox"] { accent-color: #b08040; }
 
@@ -191,3 +191,8 @@ h3.br-heading { font-size: 13px; font-weight: 500; color: #666; text-transform: 
 .br-spacer-small { height: 4px; }
 .br-spacer-medium { height: 12px; }
 .br-spacer-large { height: 24px; }
+
+/* Legacy components inside blocks-renderer:
+   blocks-renderer already provides 16px padding, so zero out
+   the left/right padding on components that have their own. */
+.blocks-renderer .map-info { padding-left: 0; padding-right: 0; }

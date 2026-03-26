@@ -176,6 +176,8 @@ function onDblClick(e) {
 
 function onMouseDown(e) {
   if (e.target.tagName === 'A' || e.target.tagName === 'INPUT' || e.target.tagName === 'IFRAME') return
+  // Don't initiate drag from interactive content (maps, audio players, etc.)
+  if (e.target.closest('.map-block, .audio-block, .map-container, audio, video, canvas, .maplibregl-canvas')) return
   isDragging = false
   startX = e.clientX
   startY = e.clientY
