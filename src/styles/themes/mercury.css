@@ -178,7 +178,6 @@ body.theme-mercury {
 
 /* ── Config panel ── */
 .theme-mercury .config-overlay { background: rgba(180,180,186,0.5); }
-.theme-mercury .config-container { background: #fff; }
 .theme-mercury .config-box, .theme-mercury .prompt-box {
   background: #fff;
   border: none;
