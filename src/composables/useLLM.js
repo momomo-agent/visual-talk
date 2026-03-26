@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
-import { SYSTEM } from '../lib/system-prompt.js'
+import { SYSTEM, getSystemPrompt } from '../lib/system-prompt.js'
 
 // Skills
 import tmdbSkill from '../skills/tmdb.js'
@@ -76,7 +76,8 @@ export function useLLM() {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     })
-    const basePrompt = useConfigStore().customSystemPrompt || SYSTEM
+    const configStore = useConfigStore()
+    const basePrompt = configStore.customSystemPrompt || getSystemPrompt({ widgetsEnabled: configStore.widgetsEnabled })
     const systemPrompt = `${basePrompt}\n\nCurrent time: ${timeStr}`
 
     claw = AgenticClaw.createClaw({

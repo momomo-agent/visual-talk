@@ -26,6 +26,7 @@ export const useConfigStore = defineStore('config', () => {
   const imageApiKey = ref('')
   const imageModel = ref('')
   const theme = ref('mercury')
+  const widgetsEnabled = ref(false)
 
   function load() {
     try {
@@ -52,6 +53,7 @@ export const useConfigStore = defineStore('config', () => {
       if (s.imageApiKey) imageApiKey.value = s.imageApiKey
       if (s.imageModel) imageModel.value = s.imageModel
       if (s.theme) theme.value = s.theme
+      if (s.widgetsEnabled != null) widgetsEnabled.value = !!s.widgetsEnabled
     } catch {}
   }
 
@@ -79,6 +81,7 @@ export const useConfigStore = defineStore('config', () => {
       imageApiKey: imageApiKey.value,
       imageModel: imageModel.value,
       theme: theme.value,
+      widgetsEnabled: widgetsEnabled.value,
     }))
   }
 
@@ -119,7 +122,7 @@ export const useConfigStore = defineStore('config', () => {
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
     ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
-    imageBaseUrl, imageApiKey, imageModel, theme], save)
+    imageBaseUrl, imageApiKey, imageModel, theme, widgetsEnabled], save)
 
   // Apply theme class to body
   watch(theme, (t) => {
@@ -135,6 +138,7 @@ export const useConfigStore = defineStore('config', () => {
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel,
     theme,
+    widgetsEnabled,
     load, save, getConfig,
   }
 })

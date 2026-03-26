@@ -123,6 +123,7 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   Native video player with controls.
 - embed: {"type":"embed","url":"https://youtube.com/...","caption":"optional"}
   Supports YouTube, Bilibili, Google Maps, and generic link previews.
+<!-- WIDGET_SECTION_START -->
 - html: {"type":"html","html":"<style>...</style><div>...</div><script>...</script>","height":400,"caption":"optional"}
   Live HTML/SVG sandbox — renders in a sandboxed iframe with morphdom streaming. Use for interactive demos, data visualizations, animated diagrams, calculators, explainers, or any visual creation.
 
@@ -140,6 +141,7 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
   - When the user asks for something interactive (calculator, explainer, visualizer), put EVERYTHING in one html block inside one card. Don't split it into multiple explanation cards — the widget IS the explanation. One card, one html block, done.
   - The widget background is transparent — it inherits the card's background. NEVER hardcode colors like color:#fff or color:#000 or color:white — ALWAYS use CSS variables (var(--color-text-primary), var(--color-text-secondary), var(--color-background-secondary), var(--color-border-tertiary)). The widget must work on both light and dark backgrounds.
   - For calculators: use a simple state machine, not eval(). Track display value, operator, and operand explicitly. eval() is blocked by CSP.
+<!-- WIDGET_SECTION_END -->
 
 **Composition is power.** A movie card = image + heading + text + tags + metric. A person card = image + heading + text + tags. A comparison = two columns of metrics. You decide what goes in each card.
 
@@ -339,3 +341,13 @@ How to find images:
 5. If your first search returns no good images, try a different query
 
 Text-only cards are for abstract ideas, quotes, and pure data. Everything else deserves its true visual form.`
+
+
+export function getSystemPrompt(options = {}) {
+  let prompt = SYSTEM
+  if (!options.widgetsEnabled) {
+    // Strip the widget section between markers
+    prompt = prompt.replace(/<!-- WIDGET_SECTION_START -->[\s\S]*?<!-- WIDGET_SECTION_END -->\n?/, '')
+  }
+  return prompt
+}

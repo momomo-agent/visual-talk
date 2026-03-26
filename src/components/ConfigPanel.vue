@@ -125,6 +125,10 @@
             <input type="checkbox" v-model="config.sketchEnabled" />
             <span>Sketch 手绘标注</span>
           </label>
+          <label class="toggle">
+            <input type="checkbox" v-model="config.widgetsEnabled" />
+            <span>交互式 Widget</span>
+          </label>
         </div>
         <div class="field" v-if="config.sketchEnabled">
           <label>标注字体</label>
