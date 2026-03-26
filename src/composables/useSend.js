@@ -193,6 +193,7 @@ export function useSend({ tts } = {}) {
       let fluidDone = false        // true when all queued cards have been flushed
       let cardReleaseTimers = []   // setTimeout ids for card release
       let streamingDone = false    // true when LLM streaming is complete
+      let currentSpeechText = ''   // speech text for breath point calculation
 
       // Flush all pending blocks immediately (fallback / no-TTS path)
       function flushAllPending() {
@@ -242,30 +243,103 @@ export function useSend({ tts } = {}) {
         fluidDone = true
       }
 
-      // Schedule card releases synced to TTS duration
+      /**
+       * Compute card release time points based on sentence boundaries.
+       * 
+       * Idea: speech text is split at sentence-ending punctuation (。！？，；、…).
+       * Each boundary becomes a "breath point" — a natural moment for a card
+       * to appear. Cards are distributed across these breath points.
+       * 
+       * If there are more cards than sentences, multiple cards share a breath point.
+       * If there are more sentences than cards, cards land on evenly-spaced sentences.
+       * 
+       * Time is estimated by character position ratio — not perfect, but TTS
+       * speaks at roughly constant speed so the error is <0.5s typically.
+       */
+      function computeBreathPoints(speechText, totalCards, audioDuration) {
+        if (!speechText || totalCards === 0) return []
+
+        // Find sentence boundaries (Chinese + English punctuation)
+        const breakPoints = []
+        const breakChars = /[。！？；…!?;]/
+        for (let i = 0; i < speechText.length; i++) {
+          if (breakChars.test(speechText[i])) {
+            breakPoints.push(i)
+          }
+        }
+
+        // If no punctuation found, fall back to comma-level breaks
+        if (breakPoints.length === 0) {
+          for (let i = 0; i < speechText.length; i++) {
+            if (/[，、,]/.test(speechText[i])) {
+              breakPoints.push(i)
+            }
+          }
+        }
+
+        // If still nothing, use evenly-spaced character positions
+        if (breakPoints.length === 0) {
+          for (let i = 1; i <= totalCards; i++) {
+            const frac = i / (totalCards + 1)
+            breakPoints.push(Math.floor(frac * speechText.length))
+          }
+        }
+
+        const totalChars = speechText.length
+
+        // Distribute cards across breath points
+        // Pick `totalCards` evenly-spaced indices from breakPoints
+        const timeFractions = []
+        if (totalCards === 1) {
+          // Single card: first breath point
+          const bp = breakPoints[0]
+          timeFractions.push(bp / totalChars)
+        } else if (breakPoints.length <= totalCards) {
+          // More cards than sentences — put cards at every breath point,
+          // then distribute remaining cards evenly in the last segment
+          breakPoints.forEach(bp => {
+            timeFractions.push(bp / totalChars)
+          })
+          // Fill remaining with even spacing after last break
+          const lastBp = breakPoints[breakPoints.length - 1]
+          const remaining = totalCards - breakPoints.length
+          for (let i = 1; i <= remaining; i++) {
+            const frac = lastBp / totalChars + (i / (remaining + 1)) * (1 - lastBp / totalChars)
+            timeFractions.push(frac)
+          }
+        } else {
+          // More sentences than cards — pick evenly-spaced breath points
+          for (let i = 0; i < totalCards; i++) {
+            const bpIndex = Math.round((i / (totalCards - 1)) * (breakPoints.length - 1))
+            timeFractions.push(breakPoints[bpIndex] / totalChars)
+          }
+        }
+
+        // Convert fractions to milliseconds, clamped to 5%-90% of duration
+        return timeFractions
+          .sort((a, b) => a - b)
+          .map(frac => Math.max(0.05, Math.min(0.90, frac)) * audioDuration * 1000)
+      }
+
+      // Schedule card releases synced to TTS duration using sentence breath points
       function scheduleFluidRelease(audioDuration) {
         const total = pendingBlocks.length
         if (total === 0) { fluidDone = true; return }
 
-        // First card appears at 10% of playback, last at 85%
-        // This gives a natural feel — voice starts, then cards follow
-        const startFrac = 0.10
-        const endFrac = 0.85
-        const range = endFrac - startFrac
+        const delays = computeBreathPoints(currentSpeechText, total, audioDuration)
 
         for (let i = 0; i < total; i++) {
-          const frac = total === 1 ? startFrac : startFrac + (i / (total - 1)) * range
-          const delayMs = frac * audioDuration * 1000
+          const delayMs = delays[i] ?? (((i + 1) / (total + 1)) * audioDuration * 1000)
           const timer = setTimeout(() => {
             releaseBlock(i)
           }, delayMs)
           cardReleaseTimers.push(timer)
         }
 
-        // Safety: release everything at 90% mark in case timers drift
+        // Safety: release everything at 95% mark
         const safetyTimer = setTimeout(() => {
           releaseAllPending()
-        }, audioDuration * 900)
+        }, audioDuration * 950)
         cardReleaseTimers.push(safetyTimer)
 
         fluidDone = false
@@ -331,6 +405,7 @@ export function useSend({ tts } = {}) {
           // onSpeech — fires when <!--vt:speech ...--> is detected in stream
           (speechText) => {
             speechHandled = true
+            currentSpeechText = speechText
             showBubble(speechText)
 
             if (tts && cfg.ttsEnabled) {
