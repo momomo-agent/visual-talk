@@ -1,5 +1,11 @@
 <template>
   <div class="canvas" :class="{ 'mission-control': galleryMode }" @click="handleBgClick" @dblclick="handleBgDblClick">
+    <!-- Dock zone indicator (left edge) -->
+    <Transition name="dock-zone">
+      <div v-if="showDockZone" class="dock-zone" :class="{ 'dock-zone-active': dockZoneActive }">
+        <span class="dock-zone-label">{{ dockZoneActive ? '松开吸附' : '拖到这里吸附' }}</span>
+      </div>
+    </Transition>
     <!-- All topic canvases -->
     <div
       v-for="topic in allTopics"
@@ -24,7 +30,8 @@
         @toggle-select="(e) => galleryMode ? null : toggleSelect(cardId, e)"
         @toggle-dock="() => galleryMode ? null : onToggleDock(cardId)"
         @update-position="(x, y) => galleryMode ? null : updateCardPosition(cardId, x, y)"
-        @drag-end="(x, y) => galleryMode ? null : onDragEnd(card, x, y)"
+        @drag-move="(cx, cy) => galleryMode ? null : onDragMove(cardId, cx)"
+        @drag-end="(x, y, px) => galleryMode ? null : onDragEnd(card, x, y, cardId, px)"
       />
       <SketchOverlay v-if="topic.id === activeTreeId && !galleryMode" />
     </div>
@@ -436,8 +443,39 @@ function handleBgDblClick(e) {
 
 function onToggleDock(id) { timeline.toggleDock(id) }
 
-function onDragEnd(card, x, y) {
-  if (card._isDocked) return
+// ── Drag-to-dock ──
+const DOCK_THRESHOLD_PX = 60 // pixels from left edge to trigger dock
+const showDockZone = ref(false)
+const dockZoneActive = ref(false)
+let dragMoveCardId = null
+
+function onDragMove(cardId, clientX) {
+  dragMoveCardId = cardId
+  // Show dock zone when dragging any card
+  showDockZone.value = true
+  // Highlight when near left edge
+  dockZoneActive.value = clientX < DOCK_THRESHOLD_PX
+}
+
+function onDragEnd(card, x, y, cardId, clientX) {
+  showDockZone.value = false
+  dockZoneActive.value = false
+
+  if (card._isDocked) {
+    // Dragging a docked card — undock if dragged away from left edge
+    if (clientX != null && clientX > DOCK_THRESHOLD_PX) {
+      timeline.undockCard(cardId)
+    }
+    return
+  }
+
+  // Dock if dropped near left edge
+  if (clientX != null && clientX < DOCK_THRESHOLD_PX) {
+    timeline.dockCard(cardId)
+    return
+  }
+
+  // Normal drag end — save position
   const key = card.data?.key
   if (key) timeline.setUserOverride(key, x, y)
 }
@@ -615,4 +653,42 @@ body:not(.theme-mercury):not(.theme-dot) .gallery-overlay { background: rgba(10,
 body:not(.theme-mercury):not(.theme-dot) .gallery-label { color: rgba(196,168,130,0.45); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-delete { background: rgba(255,255,255,0.1); }
 body:not(.theme-mercury):not(.theme-dot) .gallery-close-btn { background: rgba(255,255,255,0.06); color: rgba(196,168,130,0.3); }
+
+/* ════════════════════════════════════════════
+   Dock Zone — left edge drop target
+   ════════════════════════════════════════════ */
+.dock-zone {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(100, 140, 255, 0.08);
+  border-right: 2px solid rgba(100, 140, 255, 0.15);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+.dock-zone-active {
+  background: rgba(100, 140, 255, 0.2);
+  border-right-color: rgba(100, 140, 255, 0.5);
+  width: 72px;
+}
+.dock-zone-label {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(100, 140, 255, 0.5);
+  user-select: none;
+  transition: color 0.2s;
+}
+.dock-zone-active .dock-zone-label {
+  color: rgba(100, 140, 255, 0.9);
+}
+.dock-zone-enter-active { transition: opacity 0.15s ease; }
+.dock-zone-leave-active { transition: opacity 0.15s ease; }
+.dock-zone-enter-from, .dock-zone-leave-to { opacity: 0; }
 </style>
