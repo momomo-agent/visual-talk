@@ -194,6 +194,7 @@ export function useSend({ tts } = {}) {
       let cardReleaseTimers = []   // setTimeout ids for card release
       let streamingDone = false    // true when LLM streaming is complete
       let latestSpeechSegments = [] // parsed speechSegments from interleaved output
+      let wordTimestamps = null    // [{ word, start, end }] from Whisper
 
       // Flush all pending blocks immediately (fallback / no-TTS path)
       function flushAllPending() {
@@ -244,53 +245,60 @@ export function useSend({ tts } = {}) {
       }
 
       /**
-       * Compute card release times using semantic speech-card association.
+       * Compute card release times using Whisper word-level timestamps.
        * 
-       * speechSegments from parser tells us which cards belong to which speech.
-       * We concatenate all speech texts → TTS plays that as one audio.
-       * Each segment's character position in the concatenated text maps to
-       * a time fraction → cards for that segment appear at that time.
+       * wordTimestamps: [{ word, start, end }, ...] from Whisper
+       * speechSegments: [{ text, blockIndices }, ...] from parser
        * 
-       * Cards appear at the START of their associated speech segment,
-       * so the card shows up as the AI begins saying those words.
+       * Strategy: find where each speech segment starts in the audio
+       * by matching its first few characters against the word timestamps.
+       * Cards for that segment appear at that moment.
        */
-      function computeSemanticTimings(segments, totalCards, audioDuration) {
-        if (!segments || segments.length === 0 || totalCards === 0) {
-          // Fallback: even distribution
-          const timings = []
-          for (let i = 0; i < totalCards; i++) {
-            timings.push(((i + 0.5) / totalCards) * 0.85 * audioDuration * 1000)
-          }
-          return timings
+      function computeTimingsFromWords(wordTimestamps, segments, totalCards, audioDuration) {
+        if (!wordTimestamps?.length || !segments?.length || totalCards === 0) {
+          return evenTimings(totalCards, audioDuration)
         }
 
-        // Build concatenated speech and track segment boundaries
-        let fullText = ''
-        const segBounds = [] // { startChar, endChar, blockIndices }
-        for (const seg of segments) {
-          const start = fullText.length
-          fullText += seg.text
-          segBounds.push({
-            startChar: start,
-            endChar: fullText.length,
-            blockIndices: seg.blockIndices || [],
+        // Build a running text from word timestamps to find segment boundaries
+        // Each word has { word, start, end }
+        let runningText = ''
+        const wordPositions = [] // { charStart, charEnd, startSec, endSec }
+        for (const w of wordTimestamps) {
+          const charStart = runningText.length
+          runningText += w.word
+          wordPositions.push({
+            charStart,
+            charEnd: runningText.length,
+            startSec: w.start,
+            endSec: w.end,
           })
         }
 
-        const totalChars = fullText.length || 1
-
-        // Map each pending block index to a time
-        // blockIndex in pendingBlocks matches the global block index
+        // For each speech segment, find its approximate start time in the audio
+        // by matching the segment text against the running transcript
         const timings = new Array(totalCards).fill(null)
         const assigned = new Set()
 
-        for (const bound of segBounds) {
-          // Time fraction = where this segment starts in the audio
-          const timeFrac = bound.startChar / totalChars
-          const timeMs = Math.max(0.03, Math.min(0.92, timeFrac)) * audioDuration * 1000
+        for (const seg of segments) {
+          if (!seg.blockIndices?.length) continue
 
-          for (const blockIdx of bound.blockIndices) {
-            // Find this block in pendingBlocks
+          // Find where this segment's text starts in the transcript
+          const segText = seg.text.replace(/\s+/g, '')
+          const needle = segText.slice(0, Math.min(6, segText.length)) // first few chars
+          const pos = runningText.indexOf(needle)
+
+          let timeMs
+          if (pos >= 0) {
+            // Find the word that contains this position
+            const wp = wordPositions.find(w => w.charStart <= pos && w.charEnd > pos)
+            timeMs = wp ? wp.startSec * 1000 : 0
+          } else {
+            // Fallback: estimate from segment order
+            const segIdx = segments.indexOf(seg)
+            timeMs = (segIdx / segments.length) * audioDuration * 1000 * 0.85
+          }
+
+          for (const blockIdx of seg.blockIndices) {
             const pendingIdx = pendingBlocks.findIndex(b => b._globalIndex === blockIdx)
             if (pendingIdx >= 0 && pendingIdx < totalCards) {
               timings[pendingIdx] = timeMs
@@ -299,29 +307,39 @@ export function useSend({ tts } = {}) {
           }
         }
 
-        // Any unassigned cards (not associated with any speech) — distribute evenly
-        // in the remaining time after the last assigned card
+        // Unassigned cards: distribute evenly after last assigned
         const unassigned = []
         for (let i = 0; i < totalCards; i++) {
           if (!assigned.has(i)) unassigned.push(i)
         }
         if (unassigned.length > 0) {
-          const lastAssignedTime = Math.max(...timings.filter(t => t !== null), 0)
-          const remainingMs = audioDuration * 1000 * 0.9 - lastAssignedTime
+          const lastTime = Math.max(...timings.filter(t => t !== null), 0)
+          const remaining = audioDuration * 1000 * 0.9 - lastTime
           unassigned.forEach((idx, i) => {
-            timings[idx] = lastAssignedTime + ((i + 1) / (unassigned.length + 1)) * remainingMs
+            timings[idx] = lastTime + ((i + 1) / (unassigned.length + 1)) * remaining
           })
         }
 
+        console.log('[FluidTTS] word-based timings:', timings)
         return timings
       }
 
-      // Schedule card releases synced to TTS using semantic speech-card mapping
+      function evenTimings(totalCards, audioDuration) {
+        const timings = []
+        for (let i = 0; i < totalCards; i++) {
+          timings.push(((i + 0.5) / totalCards) * 0.85 * audioDuration * 1000)
+        }
+        return timings
+      }
+
+      // Schedule card releases synced to TTS using word timestamps
       function scheduleFluidRelease(audioDuration) {
         const total = pendingBlocks.length
         if (total === 0) { fluidDone = true; return }
 
-        const timings = computeSemanticTimings(latestSpeechSegments, total, audioDuration)
+        const timings = wordTimestamps
+          ? computeTimingsFromWords(wordTimestamps, latestSpeechSegments, total, audioDuration)
+          : evenTimings(total, audioDuration)
 
         for (let i = 0; i < total; i++) {
           const delayMs = timings[i] ?? (((i + 1) / (total + 1)) * audioDuration * 1000)
@@ -459,6 +477,13 @@ export function useSend({ tts } = {}) {
             if (!audioBuffer) {
               releaseAllPending()
             } else {
+              // Get word-level timestamps via Whisper, then play
+              const tsResult = await tts.transcribeForTimestamps(audioBuffer.slice(0))
+              if (tsResult?.words) {
+                wordTimestamps = tsResult.words
+                console.log('[FluidTTS] Got word timestamps:', wordTimestamps.length, 'words')
+              }
+
               const info = await tts.playBuffer(audioBuffer)
               if (!info) {
                 releaseAllPending()

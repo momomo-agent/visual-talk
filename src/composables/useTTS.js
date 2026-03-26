@@ -214,9 +214,52 @@ export function useTTS() {
     }
   }
 
+  /**
+   * Transcribe audio buffer via Whisper to get word-level timestamps.
+   * Returns { words: [{ word, start, end }], duration } or null on failure.
+   */
+  async function transcribeForTimestamps(arrayBuffer) {
+    const config = useConfigStore()
+    const baseUrl = cleanUrl(config.ttsBaseUrl)
+    if (!baseUrl || !config.ttsApiKey) return null
+
+    try {
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' })
+      const form = new FormData()
+      form.append('file', blob, 'speech.mp3')
+      form.append('model', 'whisper-1')
+      form.append('response_format', 'verbose_json')
+      form.append('timestamp_granularities[]', 'word')
+      form.append('language', 'zh')
+
+      const res = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${config.ttsApiKey}` },
+        body: form,
+      })
+
+      if (!res.ok) {
+        console.warn('[TTS] Whisper timestamps failed:', res.status)
+        return null
+      }
+
+      const data = await res.json()
+      if (!data.words?.length) return null
+
+      return {
+        words: data.words, // [{ word, start, end }, ...]
+        duration: data.duration,
+      }
+    } catch (err) {
+      console.warn('[TTS] Whisper timestamps error:', err)
+      return null
+    }
+  }
+
   return {
     playTTS,
     fetchTTSAudio,
+    transcribeForTimestamps,
     playBuffer,
     stopTTS,
     unlockAudio,

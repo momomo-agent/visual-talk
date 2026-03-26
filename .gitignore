@@ -27,3 +27,4 @@ package-lock.json
 # Dev HTTPS certs
 .dev-*.pem
 test-results/
+.vercel
