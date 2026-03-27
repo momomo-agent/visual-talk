@@ -191,8 +191,10 @@ export function useSend({ tts } = {}) {
 
       // ── Execute playback queue sequentially ──
       async function executePlaybackQueue(cfg) {
+        console.log('[PlaybackQueue] Executing', playbackQueue.length, 'items')
         for (let qi = 0; qi < playbackQueue.length; qi++) {
           const item = playbackQueue[qi]
+          console.log('[PlaybackQueue] Item', qi, ':', item.type)
 
           if (item.type === 'speech') {
             // Show bubble
@@ -403,6 +405,7 @@ export function useSend({ tts } = {}) {
           // Final rebuild of queue from complete response
           const finalQueue = []
           let blocksCovered = new Set()
+          console.log('[PlaybackQueue] speechSegments:', speechSegments.length, 'blocks:', blocks.length)
           if (speechSegments.length > 0) {
             for (const seg of speechSegments) {
               finalQueue.push({ type: 'speech', text: seg.text })
@@ -426,6 +429,7 @@ export function useSend({ tts } = {}) {
           playbackQueue.length = 0
           playbackQueue.push(...finalQueue)
 
+          console.log('[PlaybackQueue] Final queue:', finalQueue.length, 'items')
           // Execute the queue
           await executePlaybackQueue(cfg)
           
