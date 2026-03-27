@@ -1,23 +1,33 @@
 export function parseResponse(text) {
-  // Extract speech — raw text (not JSON), terminated by -->
-  // Speech content is short natural language, won't contain -->
+  // Extract first speech for backward compat
   const speechMatch = text.match(/<!--vt:speech\s+([\s\S]*?)-->/)
   const speech = speechMatch ? speechMatch[1].trim() : null
+  
   const blocks = []
   const commands = []
   const sketches = []
+  const speechSegments = [] // [{ text, charPos, blockIndices }]
 
-  // Find all <!--vt:xxx markers and extract their JSON payload.
-  // Can't use simple non-greedy regex because JSON values may contain -->
-  // (e.g. HTML comments inside widget code). Instead, find each marker
-  // and use bracket-counting to find where the JSON object ends.
+  // Find all markers in order to track interleaving
   const markerRegex = /<!--vt:(\w+)\s+/g
   let m
   while ((m = markerRegex.exec(text)) !== null) {
     const type = m[1]
     const jsonStart = m.index + m[0].length
 
-    if (type === 'speech') continue
+    if (type === 'speech') {
+      // Extract speech text (not JSON)
+      const endIdx = text.indexOf('-->', jsonStart)
+      if (endIdx > jsonStart) {
+        const speechText = text.substring(jsonStart, endIdx).trim()
+        speechSegments.push({
+          text: speechText,
+          charPos: m.index,
+          blockIndices: [], // will be filled as we parse following blocks
+        })
+      }
+      continue
+    }
 
     // Find the JSON object by counting braces
     const jsonStr = extractJSON(text, jsonStart)
@@ -74,9 +84,15 @@ export function parseResponse(text) {
         continue
       }
       blocks.push({ type: normalizedType, data })
+      
+      // Associate this block with the most recent speech segment
+      if (speechSegments.length > 0) {
+        const lastSeg = speechSegments[speechSegments.length - 1]
+        lastSeg.blockIndices.push(blocks.length - 1)
+      }
     } catch {}
   }
-  return { speech, blocks, commands, sketches }
+  return { speech, blocks, commands, sketches, speechSegments }
 }
 
 // Extract a JSON object starting at `pos` in `text` by counting braces.
