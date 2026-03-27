@@ -428,6 +428,14 @@ export function useSend({ tts } = {}) {
 
           // Execute the queue
           await executePlaybackQueue(cfg)
+          
+          // Render any cards that weren't rendered (no speech to trigger them)
+          for (const item of playbackQueue) {
+            if (item.type === 'card' && !item._rendered) {
+              renderCard(item.block, item.globalIndex, nodeId, timeline, canvas, state)
+              item._rendered = true
+            }
+          }
         } else if (!cfg.ttsEnabled || !tts) {
           // Non-TTS: ensure all blocks are rendered
           if (blocks.length > state.lastBlockCount) {
