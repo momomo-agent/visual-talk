@@ -9,7 +9,7 @@
   <InputBar
     :class="{ 'ui-hidden': isGalleryOpen }"
     ref="inputBar"
-    :recording="stt.state.isRecording"
+    :recording="isRecording"
     :mic-active="spaceDown"
     :voice-enabled="voiceEnabled"
     @send="handleSend"
@@ -32,14 +32,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { createVoice } from 'agentic-voice'
 import CanvasSpace from './components/CanvasSpace.vue'
 import SpeechBubble from './components/SpeechBubble.vue'
 import ThinkingDots from './components/ThinkingDots.vue'
 import InputBar from './components/InputBar.vue'
 import ConfigPanel from './components/ConfigPanel.vue'
 import { useSend } from './composables/useSend.js'
-import { useTTS } from './composables/useTTS.js'
-import { useSTT } from './composables/useSTT.js'
 import { useTimeline } from './composables/useTimeline.js'
 import { useConfigStore } from './stores/config.js'
 import { useSketchStore } from './stores/sketch.js'
@@ -80,77 +79,89 @@ onMounted(async () => {
   })
 })
 
-// Voice enabled: TTS has baseUrl or webSpeech is on
-const voiceEnabled = computed(() => {
-  const cfg = configStore
-  return !!(cfg.ttsEnabled && cfg.ttsBaseUrl?.trim()) || !!cfg.webSpeech
+// Voice enabled
+const voiceEnabled = computed(() => configStore.ttsEnabled && configStore.elevenLabsApiKey)
+
+// Create voice instance
+const voice = ref(null)
+const isRecording = ref(false)
+const isSpeaking = ref(false)
+
+// Initialize voice
+watch([() => configStore.ttsEnabled, () => configStore.elevenLabsApiKey, () => configStore.elevenLabsVoiceId], () => {
+  if (voice.value) voice.value.destroy()
+  if (!configStore.ttsEnabled || !configStore.elevenLabsApiKey) {
+    voice.value = null
+    return
+  }
+  voice.value = createVoice({
+    tts: {
+      provider: 'elevenlabs',
+      apiKey: configStore.elevenLabsApiKey,
+      voice: configStore.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
+      model: 'eleven_turbo_v2_5',
+    },
+    stt: {
+      provider: 'elevenlabs',
+      apiKey: configStore.elevenLabsApiKey,
+      model: 'scribe_v2',
+    }
+  })
+  
+  voice.value.on('transcript', text => {
+    if (text) {
+      lastInputWasVoice = true
+      handleSend(text)
+    }
+  })
+  
+  voice.value.on('error', err => {
+    showBubble(err.message, 3000)
+  })
+  
+  voice.value.on('speaking', speaking => {
+    isSpeaking.value = speaking
+    if (!speaking) dismissBubble(3000)
+  })
+  
+  voice.value.on('listening', listening => {
+    isRecording.value = listening
+    if (listening) showBubble('松开发送...', 0)
+    else dismissBubble()
+  })
+}, { immediate: true })
+
+// Send
+const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismissBubble } = useSend({ 
+  playTTS: async (text) => {
+    if (voice.value && configStore.ttsEnabled) {
+      await voice.value.speak(text)
+    }
+  },
+  stopTTS: () => {
+    if (voice.value) voice.value.stop()
+  },
+  isRecording
 })
 
-// TTS
-const tts = useTTS()
-
-// Send — with TTS integration
-const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismissBubble } = useSend({ tts })
-
-// Wire TTS → bubble dismissal (original behavior: bubble fades 3s after TTS ends)
-tts.onPlaybackEnd(() => {
-  dismissBubble(3000)
-})
-
-const originalSend = send
 async function handleSend(text) {
   if (!configStore.apiKey) {
     configOpen.value = true
     return
   }
-  tts.unlockAudio()
-  originalSend(text)
+  if (voice.value) voice.value.unlock()
+  send(text)
 }
 
-// STT — reactive state, watched below
-const stt = useSTT({ tts })
-
-// Watch STT result → trigger send
-watch(() => stt.state.result, (text) => {
-  if (text) {
-    lastInputWasVoice = true
-    handleSend(text)
-  }
-})
-
-// Watch STT error → show bubble
-watch(() => stt.state.error, (msg) => {
-  if (msg) {
-    showBubble(msg, 3000)
-  }
-})
-
-// Watch STT label → show/clear recording bubble
-watch(() => stt.state.label, (label) => {
-  if (label) {
-    dismissBubble(0)
-    showBubble(label)
-  }
-})
-
-// Watch STT isTranscribing → manage thinking dots
-watch(() => stt.state.isTranscribing, (transcribing) => {
-  if (transcribing) {
-    isThinking.value = true
-  }
-  // isTranscribing=false is handled when result/error fires, or
-  // when no result comes back (error path clears it)
-})
-
-// Wrap start/stop to handle bubble clearing (matches original)
+// Recording
 function startRecording() {
   bubbleVisible.value = false
-  stt.startRecording()
+  if (voice.value) voice.value.startListening()
 }
 
 function stopRecording() {
   bubbleVisible.value = false
-  stt.stopRecording()
+  if (voice.value) voice.value.stopListening()
 }
 
 // Spacebar = push-to-talk (when not typing)
