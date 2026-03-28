@@ -31,8 +31,10 @@ async function loadMermaid() {
   const cellColor = cs.getPropertyValue('--table-cell-color').trim() || '#5a4a38'
   const headerColor = cs.getPropertyValue('--table-header-color').trim() || '#3a2a18'
 
-  // Derive mermaid theme from CSS variables
-  const bgLight = `color-mix(in srgb, ${c1} 15%, white 85%)`
+  // Use solid colors instead of color-mix (Mermaid doesn't support it well)
+  const bgLight = '#f5f1ed'
+  const bgLighter = '#faf8f6'
+  const borderMid = '#d4c4b0'
 
   mermaid.initialize({
     startOnLoad: false,
@@ -41,10 +43,10 @@ async function loadMermaid() {
     primaryColor: bgLight,
     primaryTextColor: headerColor,
     primaryBorderColor: c1,
-    secondaryColor: `color-mix(in srgb, ${c1} 8%, white 92%)`,
+    secondaryColor: bgLighter,
     secondaryTextColor: cellColor,
-    secondaryBorderColor: `color-mix(in srgb, ${c1} 40%, white 60%)`,
-    tertiaryColor: `color-mix(in srgb, ${c2} 12%, white 88%)`,
+    secondaryBorderColor: borderMid,
+    tertiaryColor: bgLighter,
     tertiaryTextColor: headerColor,
     tertiaryBorderColor: c2,
     lineColor: c1,
@@ -52,15 +54,15 @@ async function loadMermaid() {
     fontSize: '13px',
     nodeBorder: c1,
     mainBkg: bgLight,
-    clusterBkg: `color-mix(in srgb, ${c1} 8%, white 92%)`,
-    clusterBorder: `color-mix(in srgb, ${c1} 40%, white 60%)`,
+    clusterBkg: bgLighter,
+    clusterBorder: borderMid,
     actorBorder: c1,
     actorBkg: bgLight,
     actorTextColor: headerColor,
     signalColor: c1,
     signalTextColor: headerColor,
-    labelBoxBkgColor: `color-mix(in srgb, ${c1} 8%, white 92%)`,
-    labelBoxBorderColor: `color-mix(in srgb, ${c1} 40%, white 60%)`,
+    labelBoxBkgColor: bgLighter,
+    labelBoxBorderColor: borderMid,
     labelTextColor: headerColor,
     noteBkgColor: bgLight,
     noteBorderColor: c1,
