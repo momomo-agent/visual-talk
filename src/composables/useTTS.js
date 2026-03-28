@@ -56,36 +56,34 @@ export function useTTS() {
     const gen = ++generation
 
     if (!config.ttsEnabled) return false
-    if (!config.ttsApiKey) return false
-    if (!config.ttsBaseUrl) return false
+    if (!config.elevenLabsApiKey) return false
     if (!text?.trim()) return false
     if (isRecording.value) return false
 
-        // Stop previous
+    // Stop previous
     if (currentAudio) {
       try { currentAudio.pause() } catch {}
       currentAudio = null
     }
 
     try {
-      const baseUrl = cleanUrl(config.ttsBaseUrl)
-      const ttsUrl = `${baseUrl}/v1/audio/speech`
+      const voiceId = config.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB'
+      const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`
       const headers = {
-        'Authorization': `Bearer ${config.ttsApiKey}`,
+        'xi-api-key': config.elevenLabsApiKey,
         'Content-Type': 'application/json',
       }
       const body = JSON.stringify({
-        model: config.ttsModel || 'tts-1',
-        voice: config.ttsVoice || 'nova',
-        input: text,
-        response_format: 'mp3',
+        text,
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
       })
 
       // Fetch with retry
       let res, lastErr
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          res = await fetch(ttsUrl, { method: 'POST', headers, body })
+          res = await fetch(url, { method: 'POST', headers, body })
           break
         } catch (err) {
           lastErr = err

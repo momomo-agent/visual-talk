@@ -78,37 +78,28 @@
         <div class="field row">
           <label class="toggle">
             <input type="checkbox" v-model="config.ttsEnabled" />
-            <span>TTS 语音</span>
-          </label>
-          <label class="toggle">
-            <input type="checkbox" v-model="config.webSpeech" />
-            <span>Web Speech 语音识别</span>
+            <span>ElevenLabs 语音</span>
           </label>
         </div>
         <template v-if="config.ttsEnabled">
           <div class="field">
-            <label>TTS Base URL</label>
-            <input v-model="config.ttsBaseUrl" placeholder="https://yunwu.ai" />
-          </div>
-          <div class="field">
-            <label>TTS API Key</label>
-            <input type="text" v-model="config.ttsApiKey" placeholder="sk-..." />
-          </div>
-          <div class="field">
-            <label>TTS Model</label>
-            <input v-model="config.ttsModel" placeholder="tts-1-hd" />
+            <label>ElevenLabs API Key</label>
+            <input type="text" v-model="config.elevenLabsApiKey" placeholder="sk_..." />
           </div>
           <div class="field">
             <label>Voice</label>
-            <div class="voice-picker">
-              <button
-                v-for="v in voices"
-                :key="v"
-                class="voice-chip"
-                :class="{ active: config.ttsVoice === v, previewing: previewingVoice === v }"
-                @click="selectVoice(v)"
-              >{{ v }}</button>
-            </div>
+            <select v-model="config.elevenLabsVoiceId">
+              <option value="pNInz6obpgDQGcFmaJgB">Adam - warm and friendly</option>
+              <option value="EXAVITQu4vr4xnSDxMaL">Larry - Easygoing Customer Care</option>
+              <option value="IKne3meq5aSn9XLyUdCD">Jerry B - Realistic and Conversational</option>
+              <option value="jBpfuIE2acCO8z3wKNLl">Maya - Friendly and Cheerful</option>
+              <option value="jsCqWAovK2LkecY7zXl4">Lucy - Fresh & Casual</option>
+              <option value="iP95p4xoKVk53GoZ742B">Christopher - Friendly, Kind and Helpful</option>
+              <option value="ThT5KcBeYPX3keUQqHPh">Amy - Friendly, Young and Natural</option>
+              <option value="cgSgspJ2msm6clMCkdW9">Angela - Conversational and Friendly</option>
+              <option value="XrExE9yKIg1WjnnlVkGX">Xavian - Deep, Steady and Resonant</option>
+              <option value="nPczCjzI2devNBz1zQrb">Trung Caha - Clear, Firm and Informative</option>
+            </select>
           </div>
         </template>
       </fieldset>

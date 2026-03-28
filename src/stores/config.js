@@ -12,11 +12,12 @@ export const useConfigStore = defineStore('config', () => {
   const tmdbKey = ref('')
   const showToolCalls = ref(true)
   const ttsEnabled = ref(false)
-  const webSpeech = ref(false)
   const ttsBaseUrl = ref('')
   const ttsApiKey = ref('')
   const ttsModel = ref('')
   const ttsVoice = ref('nova')
+  const elevenLabsApiKey = ref('')
+  const elevenLabsVoiceId = ref('pNInz6obpgDQGcFmaJgB')
   const proxyEnabled = ref(false)
   const proxyUrl = ref('')
   const sketchEnabled = ref(true)
@@ -39,11 +40,12 @@ export const useConfigStore = defineStore('config', () => {
       if (s.tmdbKey) tmdbKey.value = s.tmdbKey
       if (s.showToolCalls != null) showToolCalls.value = !!s.showToolCalls
       if (s.ttsEnabled != null) ttsEnabled.value = !!s.ttsEnabled
-      if (s.webSpeech != null) webSpeech.value = !!s.webSpeech
       if (s.ttsBaseUrl) ttsBaseUrl.value = s.ttsBaseUrl
       if (s.ttsApiKey) ttsApiKey.value = s.ttsApiKey
       if (s.ttsModel) ttsModel.value = s.ttsModel
       if (s.ttsVoice) ttsVoice.value = s.ttsVoice
+      if (s.elevenLabsApiKey) elevenLabsApiKey.value = s.elevenLabsApiKey
+      if (s.elevenLabsVoiceId) elevenLabsVoiceId.value = s.elevenLabsVoiceId
       if (s.proxyEnabled != null) proxyEnabled.value = !!s.proxyEnabled
       if (s.proxyUrl) proxyUrl.value = s.proxyUrl
       if (s.sketchEnabled != null) sketchEnabled.value = !!s.sketchEnabled
@@ -67,11 +69,12 @@ export const useConfigStore = defineStore('config', () => {
       tmdbKey: tmdbKey.value,
       showToolCalls: showToolCalls.value,
       ttsEnabled: ttsEnabled.value,
-      webSpeech: webSpeech.value,
       ttsBaseUrl: ttsBaseUrl.value,
       ttsApiKey: ttsApiKey.value,
       ttsModel: ttsModel.value,
       ttsVoice: ttsVoice.value,
+      elevenLabsApiKey: elevenLabsApiKey.value,
+      elevenLabsVoiceId: elevenLabsVoiceId.value,
       proxyEnabled: proxyEnabled.value,
       proxyUrl: proxyUrl.value,
       sketchEnabled: sketchEnabled.value,
@@ -106,11 +109,12 @@ export const useConfigStore = defineStore('config', () => {
       tmdbKey: tmdbKey.value.trim() || undefined,
       showToolCalls: showToolCalls.value,
       ttsEnabled: ttsEnabled.value,
-      webSpeech: webSpeech.value,
       ttsBaseUrl: cleanBaseUrl(ttsBaseUrl.value),
       ttsApiKey: ttsApiKey.value.trim() || undefined,
       ttsModel: ttsModel.value.trim() || undefined,
       ttsVoice: ttsVoice.value || 'nova',
+      elevenLabsApiKey: elevenLabsApiKey.value.trim() || undefined,
+      elevenLabsVoiceId: elevenLabsVoiceId.value || 'pNInz6obpgDQGcFmaJgB',
       proxyUrl: proxyEnabled.value ? ensureHttps(proxyUrl.value.trim() || 'proxy.link2web.site') : undefined,
       imageBaseUrl: cleanBaseUrl(imageBaseUrl.value) || undefined,
       imageApiKey: imageApiKey.value.trim() || undefined,
@@ -120,7 +124,8 @@ export const useConfigStore = defineStore('config', () => {
 
   // Auto-save on any change
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
-    ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    ttsEnabled, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    elevenLabsApiKey, elevenLabsVoiceId,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel, theme, widgetsEnabled], save)
 
@@ -134,7 +139,8 @@ export const useConfigStore = defineStore('config', () => {
 
   return {
     provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
-    ttsEnabled, webSpeech, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    ttsEnabled, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    elevenLabsApiKey, elevenLabsVoiceId,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel,
     theme,
