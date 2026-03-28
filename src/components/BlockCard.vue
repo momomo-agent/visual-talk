@@ -195,6 +195,8 @@ function onMouseDown(e) {
     if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       isDragging = true
       dragging.value = true
+      // Disable iframe pointer events during drag
+      document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = 'none')
     }
     if (isDragging) {
       const el = blockRef.value
@@ -208,6 +210,8 @@ function onMouseDown(e) {
   const onUp = (e3) => {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
+    // Re-enable iframe pointer events
+    document.querySelectorAll('iframe').forEach(f => f.style.pointerEvents = '')
     if (isDragging) {
       emit('drag-end', props.card.x, props.card.y, e3.clientX)
     }
