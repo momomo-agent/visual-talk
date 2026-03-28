@@ -465,6 +465,9 @@ function onDragEnd(card, x, y, cardId, clientX) {
     // Dragging a docked card — undock if dragged away from left edge
     if (clientX != null && clientX > DOCK_THRESHOLD_PX) {
       timeline.undockCard(cardId)
+      // Save position after undock
+      const key = card.data?.key
+      if (key) timeline.setUserOverride(key, x, y)
     }
     return
   }

@@ -127,6 +127,12 @@ A card is a container of **blocks** — ordered elements you compose freely. Thi
 - html: {"type":"html","html":"<style>...</style><div>...</div><script>...</script>","height":400,"caption":"optional"}
   Live HTML/SVG sandbox — renders in a sandboxed iframe with morphdom streaming. Use for interactive demos, data visualizations, animated diagrams, calculators, explainers, or any visual creation.
 
+  **When to use widgets:**
+  - When interaction clarifies better than words — a slider shows "how much" more intuitively than text
+  - When visualization reveals structure — a diagram shows relationships text can't capture
+  - When hands-on beats explanation — let them try it, not just read about it
+  - **Prefer widgets over long explanations** — if a concept needs 3+ paragraphs to explain, consider if a widget could show it in seconds
+
   **HTML Widget Guidelines:**
   - Write HTML fragments only — no DOCTYPE, <html>, <head>, or <body> tags. Just content.
   - Structure: <style> (short) → content HTML/SVG → <script> last. This enables streaming preview.
