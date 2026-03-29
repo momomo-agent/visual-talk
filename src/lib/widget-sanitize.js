@@ -1,17 +1,44 @@
-// Sanitize HTML during streaming — strip unclosed script tags
-// to prevent JS source code from rendering as visible text.
-//
-// Extracted to a separate .js file because Vue SFC compiler
-// treats '</script>' string literals as tag boundaries, even
-// inside JS expressions.
-
-const TAG_OPEN = '\x3cscript'    // <script (hex escape avoids parser)
-const TAG_CLOSE = '\x3c/script>' // </script>
+// Sanitize HTML during streaming — strip incomplete tags/entities/attributes
+// to prevent broken rendering and visible source code.
 
 export function sanitizeForStreaming(html) {
-  const lastOpen = html.lastIndexOf(TAG_OPEN)
-  if (lastOpen === -1) return html
-  const lastClose = html.lastIndexOf(TAG_CLOSE)
-  if (lastClose > lastOpen) return html
-  return html.substring(0, lastOpen)
+  if (!html) return ''
+  
+  // 1. Strip unclosed <script> tags
+  const scriptOpen = html.lastIndexOf('\x3cscript')
+  const scriptClose = html.lastIndexOf('\x3c/script>')
+  if (scriptOpen !== -1 && scriptClose < scriptOpen) {
+    html = html.substring(0, scriptOpen)
+  }
+  
+  // 2. Strip incomplete HTML entities (&xxx)
+  const lastAmp = html.lastIndexOf('&')
+  if (lastAmp !== -1) {
+    const afterAmp = html.substring(lastAmp)
+    if (!/^&[a-zA-Z0-9#]+;/.test(afterAmp)) {
+      html = html.substring(0, lastAmp)
+    }
+  }
+  
+  // 3. Strip incomplete opening tag (<xxx)
+  const lastLt = html.lastIndexOf('<')
+  if (lastLt !== -1) {
+    const afterLt = html.substring(lastLt)
+    // If no closing >, it's incomplete
+    if (!afterLt.includes('>')) {
+      html = html.substring(0, lastLt)
+    }
+  }
+  
+  // 4. Strip incomplete attribute (attr=")
+  const lastQuote = Math.max(html.lastIndexOf('"'), html.lastIndexOf("'"))
+  if (lastQuote !== -1) {
+    const afterQuote = html.substring(lastQuote + 1)
+    // If quote not closed and contains =, likely incomplete attr
+    if (afterQuote.includes('=') && !afterQuote.includes('"') && !afterQuote.includes("'")) {
+      html = html.substring(0, lastQuote)
+    }
+  }
+  
+  return html
 }
