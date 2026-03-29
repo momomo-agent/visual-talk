@@ -170,32 +170,38 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function toggleSelect(id, opts) {
     const multi = opts?.multi ?? false
+    const card = cards.get(id)
+    if (!card) return
+    
+    const wasSelected = card.selected
+    
     if (!multi) {
       clearSelection()
     }
-    const card = cards.get(id)
-    if (!card) return
-    if (card.selected) {
-      card.selected = false
-      selectedIds.value.delete(id)
-      // Restore to depth-based state, but only if depth is defined
-      if (card.depth != null) {
-        let maxDepth = 0
-        cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
-        const d = maxDepth - (card.depth || 0)
-        applyDepth(card, d)
-      } else {
-        // No depth info — just restore normal appearance
-        card.z = card.intraZ || 0
-        card.scale = 1
-        card.opacity = 1
-        card.zIndex = 100
-        card.blur = 0
+    
+    if (wasSelected) {
+      // Was already selected — deselect (clearSelection already handled it if !multi)
+      if (multi) {
+        card.selected = false
+        selectedIds.value.delete(id)
+        if (card.depth != null) {
+          let maxDepth = 0
+          cards.forEach(c => { if (c.depth > maxDepth) maxDepth = c.depth })
+          const d = maxDepth - (card.depth || 0)
+          applyDepth(card, d)
+        } else {
+          card.z = card.intraZ || 0
+          card.scale = 1
+          card.opacity = 1
+          card.zIndex = 100
+          card.blur = 0
+        }
       }
+      // If !multi, clearSelection already restored everything
     } else {
       card.selected = true
       selectedIds.value.add(id)
-      card.z = Z_SELECTED       // absolute z — guaranteed on top
+      card.z = Z_SELECTED
       card.scale = 1.02
       card.opacity = 1
       card.zIndex = 999

@@ -65,6 +65,7 @@ export function parseResponse(text) {
         'diagram', 'audio', 'quote', 'profile',
       ])
       if (!CARD_TYPES.has(type)) continue
+      console.log('[parser] Parsed card:', type, data)
       const normalizedType = type === 'data' ? 'metric' : type === 'quote' ? 'callout' : type
       if (Array.isArray(data.items) && normalizedType !== 'steps' && normalizedType !== 'chart') {
         data.items = data.items.map(it =>
@@ -81,6 +82,7 @@ export function parseResponse(text) {
         })
       }
       if (normalizedType === 'card' && !data.title && !data.sub && !data.image && (!data.items || data.items.length === 0) && (!data.blocks || data.blocks.length === 0)) {
+        console.log('[parser] Skipping empty card:', data)
         continue
       }
       blocks.push({ type: normalizedType, data })

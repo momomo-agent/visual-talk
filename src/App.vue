@@ -27,7 +27,7 @@
   <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" style="right: 72px" @click="newTopic" title="新话题">+</button>
   <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" style="right: 40px" @click="toggleGallery" title="话题">☰</button>
   <button :class="{ 'ui-hidden': isGalleryOpen }" class="gear-btn" @click="configOpen = true">⚙</button>
-  <ConfigPanel v-model:open="configOpen" />
+  <ConfigPanel v-model:open="configOpen" @preview-voice="previewVoice" />
 </template>
 
 <script setup>
@@ -80,7 +80,11 @@ onMounted(async () => {
 })
 
 // Voice enabled
-const voiceEnabled = computed(() => configStore.ttsEnabled && configStore.elevenLabsApiKey)
+const voiceEnabled = computed(() => {
+  if (!configStore.ttsEnabled) return false
+  if (configStore.ttsProvider === 'elevenlabs') return !!configStore.elevenLabsApiKey
+  return !!configStore.ttsApiKey
+})
 
 // Create voice instance
 const voice = ref(null)
@@ -88,25 +92,48 @@ const isRecording = ref(false)
 const isSpeaking = ref(false)
 
 // Initialize voice
-watch([() => configStore.ttsEnabled, () => configStore.elevenLabsApiKey, () => configStore.elevenLabsVoiceId], () => {
+watch([
+  () => configStore.ttsEnabled,
+  () => configStore.ttsProvider, () => configStore.ttsApiKey, () => configStore.ttsBaseUrl, () => configStore.ttsModel, () => configStore.ttsVoice,
+  () => configStore.elevenLabsApiKey, () => configStore.elevenLabsVoiceId,
+  () => configStore.sttProvider, () => configStore.sttApiKey, () => configStore.sttBaseUrl, () => configStore.sttModel,
+  () => configStore.elevenLabsSttApiKey, () => configStore.elevenLabsSttModel
+], () => {
   if (voice.value) voice.value.destroy()
-  if (!configStore.ttsEnabled || !configStore.elevenLabsApiKey) {
+  if (!configStore.ttsEnabled) {
     voice.value = null
     return
   }
-  voice.value = createVoice({
-    tts: {
-      provider: 'elevenlabs',
-      apiKey: configStore.elevenLabsApiKey,
-      voice: configStore.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
-      model: 'eleven_turbo_v2_5',
-    },
-    stt: {
-      provider: 'elevenlabs',
-      apiKey: configStore.elevenLabsApiKey,
-      model: 'scribe_v2',
-    }
-  })
+
+  // Build TTS config
+  const ttsConfig = configStore.ttsProvider === 'elevenlabs' ? {
+    provider: 'elevenlabs',
+    apiKey: configStore.elevenLabsApiKey,
+    voice: configStore.elevenLabsVoiceId || 'pNInz6obpgDQGcFmaJgB',
+    model: 'eleven_turbo_v2_5',
+  } : {
+    provider: 'openai',
+    apiKey: configStore.ttsApiKey,
+    baseUrl: configStore.ttsBaseUrl,
+    model: configStore.ttsModel || 'tts-1',
+    voice: configStore.ttsVoice || 'nova',
+  }
+
+  // Build STT config
+  const sttConfig = configStore.sttProvider === 'elevenlabs' ? {
+    provider: 'elevenlabs',
+    mode: 'whisper',
+    apiKey: configStore.elevenLabsSttApiKey || configStore.elevenLabsApiKey,
+    model: configStore.elevenLabsSttModel || 'scribe_v2',
+  } : {
+    provider: 'openai',
+    mode: 'whisper',
+    apiKey: configStore.sttApiKey,
+    baseUrl: configStore.sttBaseUrl,
+    model: configStore.sttModel || 'whisper-1',
+  }
+
+  voice.value = createVoice({ tts: ttsConfig, stt: sttConfig })
   
   voice.value.on('transcript', text => {
     if (text) {
@@ -143,6 +170,13 @@ const { send, isThinking, bubbleText, bubbleVisible, toolLogs, showBubble, dismi
   },
   isRecording
 })
+
+function previewVoice(text) {
+  if (voice.value) {
+    voice.value.stop()
+    voice.value.speak(text)
+  }
+}
 
 async function handleSend(text) {
   if (!configStore.apiKey) {
@@ -202,15 +236,14 @@ const timelineBubbleText = computed(() => {
 })
 const timelineBubbleVisible = computed(() => isScrollingTimeline.value && !!timelineBubbleText.value)
 
-// Wire TTS into speech — watch bubbleText changes to trigger TTS
+// Wire TTS into speech — watch bubbleText changes to auto-dismiss
 watch(bubbleText, async (text) => {
-  if (text && !isScrollingTimeline.value && !stt.state.isRecording) {
-    const played = await tts.playTTS(text)
-    // If TTS didn't play (disabled or error), auto-dismiss after 3s
-    if (!played) {
+  if (text && !isScrollingTimeline.value && !voice.value?.isListening) {
+    // TTS is already triggered by useSend's playTTS callback
+    // Only auto-dismiss if voice is not enabled
+    if (!voice.value) {
       dismissBubble(3000)
     }
-    // If TTS played, onPlaybackEnd will dismissBubble
   }
 })
 

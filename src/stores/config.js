@@ -11,13 +11,25 @@ export const useConfigStore = defineStore('config', () => {
   const tavilyKey = ref('')
   const tmdbKey = ref('')
   const showToolCalls = ref(true)
+  
+  // TTS config
   const ttsEnabled = ref(false)
+  const ttsProvider = ref('elevenlabs') // 'openai' | 'elevenlabs'
   const ttsBaseUrl = ref('')
   const ttsApiKey = ref('')
   const ttsModel = ref('')
   const ttsVoice = ref('nova')
   const elevenLabsApiKey = ref('')
-  const elevenLabsVoiceId = ref('pNInz6obpgDQGcFmaJgB')
+  const elevenLabsVoiceId = ref('9lHjugDhwqoxA5MhX0az')
+  
+  // STT config
+  const sttProvider = ref('elevenlabs') // 'openai' | 'elevenlabs'
+  const sttBaseUrl = ref('')
+  const sttApiKey = ref('')
+  const sttModel = ref('')
+  const elevenLabsSttApiKey = ref('')
+  const elevenLabsSttModel = ref('scribe_v2')
+  
   const proxyEnabled = ref(false)
   const proxyUrl = ref('')
   const sketchEnabled = ref(true)
@@ -40,12 +52,19 @@ export const useConfigStore = defineStore('config', () => {
       if (s.tmdbKey) tmdbKey.value = s.tmdbKey
       if (s.showToolCalls != null) showToolCalls.value = !!s.showToolCalls
       if (s.ttsEnabled != null) ttsEnabled.value = !!s.ttsEnabled
+      if (s.ttsProvider) ttsProvider.value = s.ttsProvider
       if (s.ttsBaseUrl) ttsBaseUrl.value = s.ttsBaseUrl
       if (s.ttsApiKey) ttsApiKey.value = s.ttsApiKey
       if (s.ttsModel) ttsModel.value = s.ttsModel
       if (s.ttsVoice) ttsVoice.value = s.ttsVoice
       if (s.elevenLabsApiKey) elevenLabsApiKey.value = s.elevenLabsApiKey
       if (s.elevenLabsVoiceId) elevenLabsVoiceId.value = s.elevenLabsVoiceId
+      if (s.sttProvider) sttProvider.value = s.sttProvider
+      if (s.sttBaseUrl) sttBaseUrl.value = s.sttBaseUrl
+      if (s.sttApiKey) sttApiKey.value = s.sttApiKey
+      if (s.sttModel) sttModel.value = s.sttModel
+      if (s.elevenLabsSttApiKey) elevenLabsSttApiKey.value = s.elevenLabsSttApiKey
+      if (s.elevenLabsSttModel) elevenLabsSttModel.value = s.elevenLabsSttModel
       if (s.proxyEnabled != null) proxyEnabled.value = !!s.proxyEnabled
       if (s.proxyUrl) proxyUrl.value = s.proxyUrl
       if (s.sketchEnabled != null) sketchEnabled.value = !!s.sketchEnabled
@@ -69,12 +88,19 @@ export const useConfigStore = defineStore('config', () => {
       tmdbKey: tmdbKey.value,
       showToolCalls: showToolCalls.value,
       ttsEnabled: ttsEnabled.value,
+      ttsProvider: ttsProvider.value,
       ttsBaseUrl: ttsBaseUrl.value,
       ttsApiKey: ttsApiKey.value,
       ttsModel: ttsModel.value,
       ttsVoice: ttsVoice.value,
       elevenLabsApiKey: elevenLabsApiKey.value,
       elevenLabsVoiceId: elevenLabsVoiceId.value,
+      sttProvider: sttProvider.value,
+      sttBaseUrl: sttBaseUrl.value,
+      sttApiKey: sttApiKey.value,
+      sttModel: sttModel.value,
+      elevenLabsSttApiKey: elevenLabsSttApiKey.value,
+      elevenLabsSttModel: elevenLabsSttModel.value,
       proxyEnabled: proxyEnabled.value,
       proxyUrl: proxyUrl.value,
       sketchEnabled: sketchEnabled.value,
@@ -124,8 +150,9 @@ export const useConfigStore = defineStore('config', () => {
 
   // Auto-save on any change
   watch([provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
-    ttsEnabled, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    ttsEnabled, ttsProvider, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     elevenLabsApiKey, elevenLabsVoiceId,
+    sttProvider, sttBaseUrl, sttApiKey, sttModel, elevenLabsSttApiKey, elevenLabsSttModel,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel, theme, widgetsEnabled], save)
 
@@ -139,8 +166,9 @@ export const useConfigStore = defineStore('config', () => {
 
   return {
     provider, apiKey, baseUrl, model, tavilyKey, tmdbKey, showToolCalls,
-    ttsEnabled, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
+    ttsEnabled, ttsProvider, ttsBaseUrl, ttsApiKey, ttsModel, ttsVoice,
     elevenLabsApiKey, elevenLabsVoiceId,
+    sttProvider, sttBaseUrl, sttApiKey, sttModel, elevenLabsSttApiKey, elevenLabsSttModel,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel,
     theme,

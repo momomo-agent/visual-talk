@@ -121,12 +121,15 @@ export class CanvasState {
     })
     const intraZ = Math.max(llmZ, maxGroupZ + Z_INTRA_STEP, groupCount * Z_INTRA_STEP)
 
+    const defaultX = 50 + (Math.random() - 0.5) * 20  // 40-60 随机
+    const defaultY = 30 + (Math.random() - 0.5) * 20  // 20-40 随机
+    
     this.cards.set(c.id, {
       id: c.id,
       type: c.type,
       data: { ...data },
-      x: c.x ?? (data.x != null ? 5 + (data.x / 100) * 90 : 50),
-      y: c.y ?? (data.y != null ? 5 + (data.y / 100) * 75 : 30),
+      x: c.x ?? (data.x != null ? 5 + (data.x / 100) * 90 : defaultX),
+      y: c.y ?? (data.y != null ? 5 + (data.y / 100) * 75 : defaultY),
       z: intraZ,
       w: c.w ?? data.w ?? 25,
       depth: this.depthLevel,

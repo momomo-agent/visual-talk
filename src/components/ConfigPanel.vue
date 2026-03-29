@@ -78,29 +78,89 @@
         <div class="field row">
           <label class="toggle">
             <input type="checkbox" v-model="config.ttsEnabled" />
-            <span>ElevenLabs 语音</span>
+            <span>启用语音</span>
           </label>
         </div>
         <template v-if="config.ttsEnabled">
           <div class="field">
-            <label>ElevenLabs API Key</label>
-            <input type="text" v-model="config.elevenLabsApiKey" placeholder="sk_..." />
-          </div>
-          <div class="field">
-            <label>Voice</label>
-            <select v-model="config.elevenLabsVoiceId">
-              <option value="pNInz6obpgDQGcFmaJgB">Adam - warm and friendly</option>
-              <option value="EXAVITQu4vr4xnSDxMaL">Larry - Easygoing Customer Care</option>
-              <option value="IKne3meq5aSn9XLyUdCD">Jerry B - Realistic and Conversational</option>
-              <option value="jBpfuIE2acCO8z3wKNLl">Maya - Friendly and Cheerful</option>
-              <option value="jsCqWAovK2LkecY7zXl4">Lucy - Fresh & Casual</option>
-              <option value="iP95p4xoKVk53GoZ742B">Christopher - Friendly, Kind and Helpful</option>
-              <option value="ThT5KcBeYPX3keUQqHPh">Amy - Friendly, Young and Natural</option>
-              <option value="cgSgspJ2msm6clMCkdW9">Angela - Conversational and Friendly</option>
-              <option value="XrExE9yKIg1WjnnlVkGX">Xavian - Deep, Steady and Resonant</option>
-              <option value="nPczCjzI2devNBz1zQrb">Trung Caha - Clear, Firm and Informative</option>
+            <label>TTS Provider</label>
+            <select v-model="config.ttsProvider">
+              <option value="openai">OpenAI</option>
+              <option value="elevenlabs">ElevenLabs</option>
             </select>
           </div>
+          <template v-if="config.ttsProvider === 'openai'">
+            <div class="field">
+              <label>Base URL</label>
+              <input v-model="config.ttsBaseUrl" placeholder="https://api.openai.com" />
+            </div>
+            <div class="field">
+              <label>API Key</label>
+              <input type="text" v-model="config.ttsApiKey" placeholder="sk-..." />
+            </div>
+            <div class="field">
+              <label>Model</label>
+              <input v-model="config.ttsModel" placeholder="tts-1" />
+            </div>
+            <div class="field">
+              <label>Voice</label>
+              <select v-model="config.ttsVoice">
+                <option value="alloy">Alloy</option>
+                <option value="echo">Echo</option>
+                <option value="fable">Fable</option>
+                <option value="onyx">Onyx</option>
+                <option value="nova">Nova</option>
+                <option value="shimmer">Shimmer</option>
+              </select>
+            </div>
+          </template>
+          <template v-else>
+            <div class="field">
+              <label>API Key</label>
+              <input type="text" v-model="config.elevenLabsApiKey" placeholder="sk_..." />
+            </div>
+            <div class="field">
+              <label>Voice</label>
+              <select v-model="config.elevenLabsVoiceId" @change="previewVoice">
+                <option value="93nuHbke4dTER9x2pDwE">Adam</option>
+                <option value="9lHjugDhwqoxA5MhX0az">Anna Su</option>
+                <option value="bhJUNIXWQQ94l8eI2VUf">Amy</option>
+                <option value="rAmra0SCIYOxYmRNDSm3">Lana Weiss</option>
+                <option value="dCnu06FiOZma2KVNUoPZ">Mila</option>
+              </select>
+            </div>
+          </template>
+          <div class="field">
+            <label>STT Provider</label>
+            <select v-model="config.sttProvider">
+              <option value="openai">OpenAI</option>
+              <option value="elevenlabs">ElevenLabs</option>
+            </select>
+          </div>
+          <template v-if="config.sttProvider === 'openai'">
+            <div class="field">
+              <label>Base URL</label>
+              <input v-model="config.sttBaseUrl" placeholder="https://api.openai.com" />
+            </div>
+            <div class="field">
+              <label>API Key</label>
+              <input type="text" v-model="config.sttApiKey" placeholder="sk-..." />
+            </div>
+            <div class="field">
+              <label>Model</label>
+              <input v-model="config.sttModel" placeholder="whisper-1" />
+            </div>
+          </template>
+          <template v-else>
+            <div class="field">
+              <label>API Key</label>
+              <input type="text" v-model="config.elevenLabsSttApiKey" placeholder="sk_..." />
+            </div>
+            <div class="field">
+              <label>Model</label>
+              <input v-model="config.elevenLabsSttModel" placeholder="scribe_v2" />
+            </div>
+          </template>
         </template>
       </fieldset>
 
@@ -168,17 +228,15 @@
 import { ref } from 'vue'
 import { useConfigStore } from '../stores/config.js'
 import { useForestStore } from '../stores/forest.js'
-import { useTTS } from '../composables/useTTS.js'
 import { SYSTEM } from '../lib/system-prompt.js'
 
 defineProps({
   open: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:open'])
+const emit = defineEmits(['update:open', 'preview-voice'])
 
 const config = useConfigStore()
 const forest = useForestStore()
-const tts = useTTS()
 const voices = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer']
 const themes = [
   { id: 'basic', label: 'Basic' },
@@ -202,6 +260,18 @@ function selectVoice(v) {
   config.ttsVoice = v
   previewingVoice.value = v
   setTimeout(() => { previewingVoice.value = '' }, 600)
-  tts.playTTS('Hello, this is ' + v)
+  emit('preview-voice', 'Hello, this is ' + v)
+}
+
+function previewVoice() {
+  const voiceNames = {
+    '93nuHbke4dTER9x2pDwE': 'Adam',
+    '9lHjugDhwqoxA5MhX0az': 'Anna Su',
+    'bhJUNIXWQQ94l8eI2VUf': 'Amy',
+    'rAmra0SCIYOxYmRNDSm3': 'Lana Weiss',
+    'dCnu06FiOZma2KVNUoPZ': 'Mila'
+  }
+  const name = voiceNames[config.elevenLabsVoiceId] || 'Visual Talk'
+  emit('preview-voice', `这里是Visual Talk，我是${name}`)
 }
 </script>
