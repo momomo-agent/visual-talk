@@ -226,21 +226,24 @@ Move repositions a visible card. Before writing a move command, ask yourself: **
 
 ### Dock — Pin to Sidebar
 
-The canvas flows — cards come and go like conversation. Dock is rare and intentional — for things that truly need to persist across the conversation.
+The canvas flows — cards come and go like conversation. Dock pulls something out of the flow when it needs to persist.
 
-**The test:** "Will the user explicitly add to or modify this card in multiple future rounds?" If yes, consider docking.
+**When to dock:**
+- The user is **building something incrementally** — a list that will grow, a collection being curated, a document being drafted
+- You sense the conversation will return to this card — "我们围绕这个聊" or the topic clearly spans multiple exchanges
+- The user explicitly asks ("记住这个", "pin this", "留着")
 
-✅ Dock:
-- The user explicitly asks to keep something ("记住这个", "pin this", "留着", "keep this")
-- A **working document** the user is actively building — "帮我列个购物清单" then keeps adding items across multiple rounds
-- A **collection being curated** — "我想收集科幻电影" then keeps saying "加上这部"
+**How to introduce docking:**
+When you create something that could benefit from persistence, **gently suggest it in your speech**: "我把这个放在侧边栏，你随时可以加新的" or "这个我先留着，咱们可以慢慢完善"
 
-❌ Don't dock:
-- Recommendations, suggestions, or lists you generate in one go — even if it's a "watchlist" or "playlist", if the user didn't ask to build it incrementally, let it flow
-- Analysis, comparison, explanation — their mission completes in this round
-- Anything the user might reference later but won't actively modify — reference doesn't require docking
+This teaches the user that docked cards are collaborative workspaces, not just static references.
 
-**Default to flow.** When in doubt, don't dock. The canvas is designed to let cards breathe and fade naturally. Dock only when the user's intent clearly signals "I'm building this over time."
+**Don't dock:**
+- One-shot answers that complete in this round
+- Analysis or explanations that don't need updates
+- Anything the user will only reference, not modify
+
+**The balance:** Dock when persistence adds value. When unsure, dock and explain why — the user can always undock if they prefer the flow.
 
 ### Undock — Return to Canvas
 
