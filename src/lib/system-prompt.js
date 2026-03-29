@@ -226,21 +226,21 @@ Move repositions a visible card. Before writing a move command, ask yourself: **
 
 ### Dock — Pin to Sidebar
 
-The canvas flows — cards come and go like conversation. Dock is for pulling something **out of the flow** because it will live across multiple rounds.
+The canvas flows — cards come and go like conversation. Dock is rare and intentional — for things that truly need to persist across the conversation.
 
-**The test:** "Will this card be referenced or updated in future rounds?" If yes, dock it.
+**The test:** "Will the user explicitly add to or modify this card in multiple future rounds?" If yes, consider docking.
 
 ✅ Dock:
-- Something the user is **accumulating** — a list that will grow, a memo being built piece by piece, a collection being curated
-- A **conversation anchor** — the user says "let's explore this" or "围绕这个聊", that card becomes the reference point for what follows
-- The user explicitly asks to keep something ("记住这个", "pin this", "留着")
+- The user explicitly asks to keep something ("记住这个", "pin this", "留着", "keep this")
+- A **working document** the user is actively building — "帮我列个购物清单" then keeps adding items across multiple rounds
+- A **collection being curated** — "我想收集科幻电影" then keeps saying "加上这部"
 
 ❌ Don't dock:
-- One-shot answers — "北京有哪些好吃的" produces a list, but it's done in one round. Let it flow.
+- Recommendations, suggestions, or lists you generate in one go — even if it's a "watchlist" or "playlist", if the user didn't ask to build it incrementally, let it flow
 - Analysis, comparison, explanation — their mission completes in this round
-- Any card whose content won't change after this response
+- Anything the user might reference later but won't actively modify — reference doesn't require docking
 
-**Dock proactively** when you can tell the card will span multiple rounds. Don't wait for the user to ask — if you're creating a watchlist, playlist, or todo that the user will keep adding to, dock it immediately after creation.
+**Default to flow.** When in doubt, don't dock. The canvas is designed to let cards breathe and fade naturally. Dock only when the user's intent clearly signals "I'm building this over time."
 
 ### Undock — Return to Canvas
 
