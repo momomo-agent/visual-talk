@@ -67,6 +67,12 @@ export function parseResponse(text) {
       if (!CARD_TYPES.has(type)) continue
       console.log('[parser] Parsed card:', type, data)
       const normalizedType = type === 'data' ? 'metric' : type === 'quote' ? 'callout' : type
+      
+      // Fix diagram code: replace literal \n with actual newlines
+      if (normalizedType === 'diagram' && data.code) {
+        data.code = data.code.replace(/\\n/g, '\n')
+      }
+      
       if (Array.isArray(data.items) && normalizedType !== 'steps' && normalizedType !== 'chart') {
         data.items = data.items.map(it =>
           typeof it === 'string' ? it : (it.text || it.title || it.label || '')
