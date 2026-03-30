@@ -32,7 +32,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { createVoice } from 'agentic-voice'
+import { createVoice } from './lib/agentic-voice.js'
 import CanvasSpace from './components/CanvasSpace.vue'
 import SpeechBubble from './components/SpeechBubble.vue'
 import ThinkingDots from './components/ThinkingDots.vue'
