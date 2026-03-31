@@ -91,6 +91,7 @@ export function useLLM() {
       stream: true,
       persist: 'localStorage',
       tools: buildTools(SKILLS, cfg),
+      parallel: true,
     })
     clawConfigKey = key
     return claw
