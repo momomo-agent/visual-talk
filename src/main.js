@@ -8,6 +8,10 @@ import './styles/blocks-renderer.css'
 import './styles/themes/mercury.css'
 import './styles/themes/dot.css'
 import './styles/themes/sunny.css'
+import './styles/themes/rainy.css'
+import './styles/themes/moonlight.css'
+import './styles/themes/snowy.css'
+import './styles/themes/golden.css'
 
 const app = createApp(App)
 const pinia = createPinia()
