@@ -242,6 +242,7 @@ const themes = [
   { id: 'basic', label: 'Basic' },
   { id: 'mercury', label: 'Mercury' },
   { id: 'dot', label: 'Dot' },
+  { id: 'sunny', label: '☀ Sunny' },
 ]
 const previewingVoice = ref('')
 const defaultPrompt = SYSTEM
