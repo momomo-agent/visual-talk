@@ -1,19 +1,13 @@
-/* ── Rainy Theme ──
-   Misty blue-grey palette + rain streaks + fog gradient overlay. */
+/* ── Weather: Rainy ──
+   Rain streaks + fog overlay — works on any theme. */
 
-body.theme-rainy {
-  background: linear-gradient(180deg, #2a3040 0%, #1e2530 40%, #1a2028 100%);
-  color: #8a9ab0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-
-/* ── Rain streaks overlay ── */
-body.theme-rainy::before {
+/* Rain streaks */
+body.weather-rainy::before {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9998;
   background-image:
-    linear-gradient(180deg, rgba(150,170,200,0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(150,170,200,0.06) 0%, transparent 60%),
     repeating-linear-gradient(
       100deg,
       transparent 0px, transparent 3px,
@@ -23,16 +17,15 @@ body.theme-rainy::before {
   animation: rain-fall 0.8s linear infinite;
 }
 
-body.theme-rainy::after {
+/* Fog banks */
+body.weather-rainy::after {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9997;
   background:
-    /* Fog banks */
     radial-gradient(ellipse 400px 150px at 20% 80%, rgba(150,170,200,0.08) 0%, transparent 70%),
     radial-gradient(ellipse 500px 120px at 70% 90%, rgba(140,160,190,0.06) 0%, transparent 70%),
     radial-gradient(ellipse 300px 100px at 50% 85%, rgba(160,180,210,0.05) 0%, transparent 70%),
-    /* Top mist */
     linear-gradient(180deg, rgba(150,170,200,0.06) 0%, transparent 30%);
   animation: fog-drift 25s ease-in-out infinite;
 }
@@ -46,106 +39,3 @@ body.theme-rainy::after {
   0%, 100% { transform: translateX(0); opacity: 1; }
   50% { transform: translateX(20px); opacity: 0.7; }
 }
-
-/* ── Canvas ── */
-.theme-rainy .canvas {
-  background: linear-gradient(180deg, #2a3040 0%, #1e2530 40%, #1a2028 100%);
-}
-.theme-rainy .greeting {
-  color: rgba(150,170,200,0.15);
-  letter-spacing: 8px;
-  font-weight: 300;
-}
-
-/* ── Cards — frosted dark glass ── */
-.theme-rainy .v-block {
-  background: rgba(30,40,55,0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(100,120,150,0.1);
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 0 1px rgba(100,140,200,0.1);
-}
-.theme-rainy .v-block:hover {
-  border-color: rgba(100,140,200,0.15);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 1px rgba(100,140,200,0.15);
-}
-
-/* Text */
-.theme-rainy .v-block h2 { color: #c0d0e0; font-weight: 600; }
-.theme-rainy .v-block h3 { color: #7a8a9a; }
-.theme-rainy .v-block .sub { color: #5a6a7a; }
-.theme-rainy .v-block .md-body { color: #8a9ab0; }
-.theme-rainy .v-block .md-body h1,
-.theme-rainy .v-block .md-body h2,
-.theme-rainy .v-block .md-body h3 { color: #c0d0e0; }
-.theme-rainy .v-block .md-body a { color: #6a9fd8; }
-.theme-rainy .v-block .md-body code { background: rgba(100,140,200,0.1); color: #8ab0d8; }
-
-/* Bubble */
-.theme-rainy .bubble { color: rgba(150,170,200,0.3); }
-.theme-rainy .thinking-dot { background: rgba(100,140,200,0.3); }
-
-/* Input */
-.theme-rainy .input-bar input {
-  background: rgba(30,40,55,0.7);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(100,120,150,0.15);
-  border-radius: 14px;
-  color: #b0c0d0;
-}
-.theme-rainy .input-bar input::placeholder { color: rgba(150,170,200,0.25); }
-.theme-rainy .input-bar input:focus { border-color: rgba(100,140,200,0.3); }
-
-/* Config */
-.theme-rainy .gear-btn { color: rgba(150,170,200,0.2); }
-.theme-rainy .gear-btn:hover { color: rgba(150,170,200,0.4); }
-.theme-rainy .config-overlay { background: rgba(20,28,40,0.7); backdrop-filter: blur(8px); }
-.theme-rainy .config-box { background: rgba(30,40,55,0.95); border-color: rgba(100,120,150,0.15); }
-.theme-rainy .config-box label { color: rgba(150,170,200,0.4); }
-.theme-rainy .config-box input, .theme-rainy .config-box select {
-  background: rgba(20,28,40,0.6); border-color: rgba(100,120,150,0.15); color: #b0c0d0;
-}
-.theme-rainy .config-section { border-color: rgba(100,120,150,0.1); }
-.theme-rainy .config-section legend { color: rgba(150,170,200,0.35); }
-.theme-rainy .config-close { background: rgba(20,28,40,0.6); border-color: rgba(100,120,150,0.15); color: #8a9ab0; }
-.theme-rainy .voice-chip { background: rgba(20,28,40,0.6); border-color: rgba(100,120,150,0.15); color: #6a7a8a; }
-.theme-rainy .voice-chip.active { background: rgba(100,140,200,0.12); border-color: rgba(100,140,200,0.25); color: #6a9fd8; }
-.theme-rainy .theme-chip { background: rgba(20,28,40,0.6); border-color: rgba(100,120,150,0.15); color: #6a7a8a; }
-.theme-rainy .theme-chip.active { background: rgba(100,140,200,0.12); border-color: rgba(100,140,200,0.25); color: #6a9fd8; }
-
-/* Chart tokens */
-.theme-rainy {
-  --chart-color-1: #6a9fd8;
-  --chart-color-2: #5a8ab8;
-  --chart-color-3: #8ab0d8;
-  --chart-color-4: #5a9a8a;
-  --chart-color-5: #7a8ab0;
-  --chart-label: #6a7a8a;
-  --chart-value: #5a6a7a;
-  --chart-bar-bg: rgba(100,140,200,0.08);
-  --chart-bar-gradient: linear-gradient(180deg, #6a9fd8, #5a8ab8);
-  --chart-bar-h-gradient: linear-gradient(90deg, #6a9fd8, #5a8ab8);
-  --chart-axis: rgba(100,140,200,0.15);
-  --table-header-border: rgba(100,120,150,0.15);
-  --table-header-color: #c0d0e0;
-  --table-cell-border: rgba(100,120,150,0.08);
-  --table-cell-color: #8a9ab0;
-}
-
-/* Mic button */
-.theme-rainy .mic-btn {
-  background: rgba(30,40,55,0.7); border: 1px solid rgba(100,120,150,0.15);
-  border-radius: 14px; color: rgba(150,170,200,0.3);
-}
-.theme-rainy .mic-btn:hover { border-color: rgba(100,140,200,0.25); color: rgba(150,170,200,0.5); }
-.theme-rainy .mic-btn.recording { background: rgba(100,140,200,0.1); border-color: rgba(100,140,200,0.3); color: #6a9fd8; }
-
-/* Blocks renderer */
-.theme-rainy .br-heading { color: #c0d0e0; }
-.theme-rainy h3.br-heading { color: #6a7a8a; }
-.theme-rainy .br-text { color: #8a9ab0; }
-.theme-rainy .br-tag { background: rgba(100,140,200,0.1); color: #6a9fd8; }
-.theme-rainy .br-quote { border-left-color: #5a8ab8; color: #7a8a9a; }
-.theme-rainy .br-code { background: rgba(100,140,200,0.06); }
-.theme-rainy .br-divider { border-top-color: rgba(100,120,150,0.12); }

@@ -1,25 +1,13 @@
-/* ── Sunny Theme ──
-   Based on Dot's warm palette + Dappled Light overlay.
-   Simulates sunlight through leaves using CSS mix-blend-mode. */
+/* ── Weather: Sunny ──
+   Dappled light overlay — works on any theme. */
 
-/* Inherit Dot's palette — Sunny IS Dot + dappled light */
-@import url('./dot.css');
-
-/* Override body class — Sunny uses its own selector */
-body.theme-sunny {
-  background: linear-gradient(160deg, #faf5f0 0%, #f3e8e0 25%, #e8d8d0 50%, #d8c8c0 100%);
-  color: #444;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-
-/* ── Dappled Light Overlay ── */
-body.theme-sunny::before {
+/* Two-layer radial gradient shadows */
+body.weather-sunny::before {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9998;
   mix-blend-mode: multiply;
   background:
-    /* Large soft elliptical shadows */
     radial-gradient(ellipse 180px 220px at 15% 20%, rgba(0,0,0,0.08) 0%, transparent 70%),
     radial-gradient(ellipse 250px 180px at 60% 15%, rgba(0,0,0,0.06) 0%, transparent 70%),
     radial-gradient(ellipse 200px 250px at 85% 35%, rgba(0,0,0,0.07) 0%, transparent 70%),
@@ -28,137 +16,31 @@ body.theme-sunny::before {
     radial-gradient(ellipse 180px 240px at 20% 80%, rgba(0,0,0,0.07) 0%, transparent 70%),
     radial-gradient(ellipse 200px 180px at 50% 85%, rgba(0,0,0,0.05) 0%, transparent 70%),
     radial-gradient(ellipse 240px 200px at 90% 75%, rgba(0,0,0,0.06) 0%, transparent 70%);
-  animation: dappled-sway 20s ease-in-out infinite;
+  animation: sunny-sway 20s ease-in-out infinite;
 }
 
-body.theme-sunny::after {
+body.weather-sunny::after {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9997;
   mix-blend-mode: multiply;
   background:
-    /* Second layer — offset for depth */
     radial-gradient(ellipse 300px 200px at 25% 30%, rgba(0,0,0,0.04) 0%, transparent 70%),
     radial-gradient(ellipse 200px 300px at 75% 25%, rgba(0,0,0,0.05) 0%, transparent 70%),
     radial-gradient(ellipse 250px 200px at 45% 70%, rgba(0,0,0,0.04) 0%, transparent 70%),
     radial-gradient(ellipse 200px 250px at 80% 60%, rgba(0,0,0,0.03) 0%, transparent 70%);
-  animation: dappled-sway-2 25s ease-in-out infinite;
+  animation: sunny-sway-2 25s ease-in-out infinite;
 }
 
-@keyframes dappled-sway {
+@keyframes sunny-sway {
   0%, 100% { transform: translate(0, 0) scale(1); }
   25% { transform: translate(12px, 8px) scale(1.02); }
   50% { transform: translate(-8px, 15px) scale(0.98); }
   75% { transform: translate(6px, -5px) scale(1.01); }
 }
 
-@keyframes dappled-sway-2 {
+@keyframes sunny-sway-2 {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
   33% { transform: translate(-10px, 12px) rotate(0.5deg); }
   66% { transform: translate(8px, -8px) rotate(-0.3deg); }
-}
-
-/* ── Subtle warm light spots ── */
-body.theme-sunny .canvas::after {
-  content: '';
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 0;
-  background:
-    radial-gradient(ellipse 300px 250px at 40% 30%, rgba(255,248,220,0.3) 0%, transparent 70%),
-    radial-gradient(ellipse 250px 300px at 70% 60%, rgba(255,245,210,0.25) 0%, transparent 70%),
-    radial-gradient(ellipse 200px 200px at 20% 70%, rgba(255,250,230,0.2) 0%, transparent 70%);
-  animation: light-drift 30s ease-in-out infinite;
-}
-
-@keyframes light-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(20px, 10px); }
-}
-
-/* ── Apply all Dot styles with .theme-sunny selector ──
-   Since @import of dot.css uses .theme-dot, we need to duplicate key selectors.
-   More efficient: make Sunny extend Dot at the component level. */
-
-/* Canvas */
-.theme-sunny .canvas {
-  background: linear-gradient(160deg, #faf5f0 0%, #f3e8e0 25%, #e8d8d0 50%, #d8c8c0 100%);
-}
-.theme-sunny .greeting {
-  color: rgba(255,255,255,0.35);
-  letter-spacing: 10px;
-  font-family: 'Lora', 'Georgia', serif;
-  font-weight: 400;
-  font-style: italic;
-}
-
-/* Cards — same as Dot */
-.theme-sunny .v-block {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: none;
-  border-radius: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
-}
-.theme-sunny .v-block:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
-}
-
-/* Text colors */
-.theme-sunny .v-block h2 {
-  color: #1a1a1a;
-  font-family: 'Lora', 'Georgia', serif;
-  font-weight: 600;
-}
-.theme-sunny .v-block h3 { color: #555; font-family: 'Lora', 'Georgia', serif; }
-.theme-sunny .v-block .sub { color: #888; }
-.theme-sunny .v-block .md-body { color: #444; }
-.theme-sunny .v-block .md-body h1,
-.theme-sunny .v-block .md-body h2,
-.theme-sunny .v-block .md-body h3 { color: #1a1a1a; font-family: 'Lora', 'Georgia', serif; }
-.theme-sunny .v-block .md-body a { color: #c4956a; }
-.theme-sunny .v-block .md-body code { background: rgba(196,149,106,0.06); color: #6a5040; }
-
-/* Bubble */
-.theme-sunny .bubble {
-  color: rgba(0,0,0,0.3);
-  font-family: 'Lora', 'Georgia', serif;
-  font-style: italic;
-}
-.theme-sunny .thinking-dot { background: rgba(196,149,106,0.3); }
-
-/* Input */
-.theme-sunny .input-bar input {
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(20px);
-  border: none;
-  border-radius: 16px;
-  color: #333;
-  font-family: 'Lora', 'Georgia', serif;
-}
-.theme-sunny .input-bar input::placeholder { color: rgba(0,0,0,0.15); font-style: italic; }
-
-/* Gear & config */
-.theme-sunny .gear-btn { color: rgba(0,0,0,0.12); }
-.theme-sunny .gear-btn:hover { color: rgba(0,0,0,0.3); }
-.theme-sunny .config-overlay { background: rgba(232,216,208,0.6); backdrop-filter: blur(8px); }
-.theme-sunny .config-box { background: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.5); }
-
-/* Chart tokens — same as Dot */
-.theme-sunny {
-  --chart-color-1: #c4956a;
-  --chart-color-2: #a08870;
-  --chart-color-3: #d4826a;
-  --chart-color-4: #7ab89a;
-  --chart-color-5: #8aa8c4;
-  --chart-label: #888;
-  --chart-value: #aaa;
-  --chart-bar-bg: rgba(196,149,106,0.08);
-  --chart-bar-gradient: linear-gradient(180deg, #c4956a, #a08870);
-  --chart-bar-h-gradient: linear-gradient(90deg, #c4956a, #a08870);
-  --chart-axis: rgba(196,149,106,0.2);
-  --table-header-border: rgba(0,0,0,0.08);
-  --table-header-color: #1a1a1a;
-  --table-cell-border: rgba(0,0,0,0.04);
-  --table-cell-color: #444;
 }

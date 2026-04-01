@@ -17,6 +17,20 @@
         </div>
       </fieldset>
 
+      <!-- ═══ Weather Effect ═══ -->
+      <fieldset class="config-section">
+        <legend>🌤 天气效果</legend>
+        <div class="voice-picker">
+          <button
+            v-for="w in weathers"
+            :key="w.id"
+            class="voice-chip theme-chip"
+            :class="{ active: config.weather === w.id }"
+            @click="config.weather = w.id"
+          >{{ w.label }}</button>
+        </div>
+      </fieldset>
+
       <!-- ═══ LLM ═══ -->
       <fieldset class="config-section">
         <legend>🧠 语言模型</legend>
@@ -242,6 +256,9 @@ const themes = [
   { id: 'basic', label: 'Basic' },
   { id: 'mercury', label: 'Mercury' },
   { id: 'dot', label: 'Dot' },
+]
+const weathers = [
+  { id: 'none', label: 'None' },
   { id: 'sunny', label: '☀ Sunny' },
   { id: 'rainy', label: '🌧 Rainy' },
   { id: 'moonlight', label: '🌙 Moonlight' },

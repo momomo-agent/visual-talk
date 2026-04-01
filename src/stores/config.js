@@ -39,6 +39,7 @@ export const useConfigStore = defineStore('config', () => {
   const imageApiKey = ref('')
   const imageModel = ref('')
   const theme = ref('mercury')
+  const weather = ref('none')
   const widgetsEnabled = ref(false)
 
   function load() {
@@ -74,6 +75,7 @@ export const useConfigStore = defineStore('config', () => {
       if (s.imageApiKey) imageApiKey.value = s.imageApiKey
       if (s.imageModel) imageModel.value = s.imageModel
       if (s.theme) theme.value = s.theme
+      if (s.weather) weather.value = s.weather
       if (s.widgetsEnabled != null) widgetsEnabled.value = !!s.widgetsEnabled
     } catch {}
   }
@@ -110,6 +112,7 @@ export const useConfigStore = defineStore('config', () => {
       imageApiKey: imageApiKey.value,
       imageModel: imageModel.value,
       theme: theme.value,
+      weather: weather.value,
       widgetsEnabled: widgetsEnabled.value,
     }))
   }
@@ -154,11 +157,14 @@ export const useConfigStore = defineStore('config', () => {
     elevenLabsApiKey, elevenLabsVoiceId,
     sttProvider, sttBaseUrl, sttApiKey, sttModel, elevenLabsSttApiKey, elevenLabsSttModel,
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
-    imageBaseUrl, imageApiKey, imageModel, theme, widgetsEnabled], save)
+    imageBaseUrl, imageApiKey, imageModel, theme, weather, widgetsEnabled], save)
 
-  // Apply theme class to body
-  watch(theme, (t) => {
-    document.body.className = t === 'basic' ? '' : `theme-${t}`
+  // Apply theme + weather classes to body
+  watch([theme, weather], ([t, w]) => {
+    const classes = []
+    if (t !== 'basic') classes.push(`theme-${t}`)
+    if (w && w !== 'none') classes.push(`weather-${w}`)
+    document.body.className = classes.join(' ')
   }, { immediate: true })
 
   // Load on creation
@@ -172,6 +178,7 @@ export const useConfigStore = defineStore('config', () => {
     proxyEnabled, proxyUrl, sketchEnabled, sketchFont, customSystemPrompt,
     imageBaseUrl, imageApiKey, imageModel,
     theme,
+    weather,
     widgetsEnabled,
     load, save, getConfig,
   }

@@ -1,14 +1,8 @@
-/* ── Snowy Theme ──
-   Cool white palette + gentle falling snow particles + frost edges. */
+/* ── Weather: Snowy ──
+   Dual-layer snowfall particles — works on any theme. */
 
-body.theme-snowy {
-  background: linear-gradient(180deg, #e8eef5 0%, #dde5f0 30%, #d0d8e5 70%, #c8d0e0 100%);
-  color: #4a5565;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-}
-
-/* ── Snowfall layer 1 — large flakes ── */
-body.theme-snowy::before {
+/* Large flakes */
+body.weather-snowy::before {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9998;
@@ -21,12 +15,11 @@ body.theme-snowy::before {
     radial-gradient(2px 2px at 70% 70%, rgba(255,255,255,0.4) 50%, transparent 50%),
     radial-gradient(3px 3px at 85% 15%, rgba(255,255,255,0.6) 50%, transparent 50%),
     radial-gradient(2px 2px at 90% 55%, rgba(255,255,255,0.5) 50%, transparent 50%);
-  background-size: 100% 100%;
   animation: snow-fall-1 12s linear infinite;
 }
 
-/* ── Snowfall layer 2 — small flakes, slower ── */
-body.theme-snowy::after {
+/* Small flakes — slower */
+body.weather-snowy::after {
   content: '';
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 9997;
@@ -39,7 +32,6 @@ body.theme-snowy::after {
     radial-gradient(1px 1px at 65% 40%, rgba(255,255,255,0.3) 50%, transparent 50%),
     radial-gradient(1.5px 1.5px at 80% 75%, rgba(255,255,255,0.35) 50%, transparent 50%),
     radial-gradient(1px 1px at 95% 20%, rgba(255,255,255,0.3) 50%, transparent 50%);
-  background-size: 100% 100%;
   animation: snow-fall-2 18s linear infinite;
 }
 
@@ -51,107 +43,4 @@ body.theme-snowy::after {
 @keyframes snow-fall-2 {
   0% { transform: translateY(-100vh) translateX(0); }
   100% { transform: translateY(100vh) translateX(-20px); }
-}
-
-/* Canvas */
-.theme-snowy .canvas {
-  background: linear-gradient(180deg, #e8eef5 0%, #dde5f0 30%, #d0d8e5 70%, #c8d0e0 100%);
-}
-.theme-snowy .greeting {
-  color: rgba(100,120,150,0.15);
-  letter-spacing: 10px;
-  font-weight: 300;
-}
-
-/* Cards — frosted white with icy border */
-.theme-snowy .v-block {
-  background: rgba(255,255,255,0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(180,200,230,0.3);
-  border-radius: 18px;
-  box-shadow: 0 2px 8px rgba(100,120,160,0.06), 0 0 0 0.5px rgba(200,220,250,0.2);
-}
-.theme-snowy .v-block:hover {
-  border-color: rgba(140,170,220,0.3);
-  box-shadow: 0 4px 16px rgba(100,120,160,0.08), 0 0 0 0.5px rgba(180,200,240,0.3);
-}
-
-/* Text */
-.theme-snowy .v-block h2 { color: #2a3545; font-weight: 600; }
-.theme-snowy .v-block h3 { color: #5a6a80; }
-.theme-snowy .v-block .sub { color: #7a8a9a; }
-.theme-snowy .v-block .md-body { color: #4a5565; line-height: 1.8; }
-.theme-snowy .v-block .md-body h1,
-.theme-snowy .v-block .md-body h2,
-.theme-snowy .v-block .md-body h3 { color: #2a3545; }
-.theme-snowy .v-block .md-body a { color: #5080b8; }
-.theme-snowy .v-block .md-body code { background: rgba(80,128,184,0.08); color: #4070a0; }
-
-/* Bubble */
-.theme-snowy .bubble { color: rgba(80,100,130,0.3); }
-.theme-snowy .thinking-dot { background: rgba(80,130,200,0.25); }
-
-/* Input */
-.theme-snowy .input-bar input {
-  background: rgba(255,255,255,0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(180,200,230,0.25);
-  border-radius: 16px;
-  color: #3a4555;
-}
-.theme-snowy .input-bar input::placeholder { color: rgba(80,100,130,0.25); }
-.theme-snowy .input-bar input:focus { border-color: rgba(80,130,200,0.3); }
-
-/* Config */
-.theme-snowy .gear-btn { color: rgba(80,100,130,0.15); }
-.theme-snowy .gear-btn:hover { color: rgba(80,100,130,0.35); }
-.theme-snowy .config-overlay { background: rgba(200,210,225,0.5); backdrop-filter: blur(8px); }
-.theme-snowy .config-box { background: rgba(255,255,255,0.92); border-color: rgba(180,200,230,0.3); }
-.theme-snowy .config-box label { color: rgba(80,100,130,0.4); }
-.theme-snowy .config-box input, .theme-snowy .config-box select {
-  background: rgba(235,240,248,0.8); border-color: rgba(180,200,230,0.25); color: #3a4555;
-}
-.theme-snowy .config-section { border-color: rgba(180,200,230,0.2); }
-.theme-snowy .config-section legend { color: rgba(80,100,130,0.35); }
-.theme-snowy .config-close { background: rgba(235,240,248,0.8); border-color: rgba(180,200,230,0.25); color: #5a6a80; }
-.theme-snowy .voice-chip { background: rgba(235,240,248,0.8); border-color: rgba(180,200,230,0.2); color: #7a8a9a; }
-.theme-snowy .voice-chip.active { background: rgba(80,130,200,0.08); border-color: rgba(80,130,200,0.2); color: #5080b8; }
-.theme-snowy .theme-chip { background: rgba(235,240,248,0.8); border-color: rgba(180,200,230,0.2); color: #7a8a9a; }
-.theme-snowy .theme-chip.active { background: rgba(80,130,200,0.08); border-color: rgba(80,130,200,0.2); color: #5080b8; }
-
-/* Mic */
-.theme-snowy .mic-btn {
-  background: rgba(255,255,255,0.6); border: 1px solid rgba(180,200,230,0.25);
-  border-radius: 16px; color: rgba(80,100,130,0.3);
-}
-.theme-snowy .mic-btn:hover { border-color: rgba(80,130,200,0.25); color: rgba(80,100,130,0.5); }
-.theme-snowy .mic-btn.recording { background: rgba(80,130,200,0.08); border-color: rgba(80,130,200,0.3); color: #5080b8; }
-
-/* Blocks renderer */
-.theme-snowy .br-heading { color: #2a3545; }
-.theme-snowy h3.br-heading { color: #7a8a9a; }
-.theme-snowy .br-text { color: #4a5565; }
-.theme-snowy .br-tag { background: rgba(80,130,200,0.06); color: #5080b8; }
-.theme-snowy .br-quote { border-left-color: #80a0c8; color: #5a6a80; }
-.theme-snowy .br-code { background: rgba(80,130,200,0.04); }
-.theme-snowy .br-divider { border-top-color: rgba(180,200,230,0.3); }
-
-/* Chart tokens */
-.theme-snowy {
-  --chart-color-1: #5080b8;
-  --chart-color-2: #6890c0;
-  --chart-color-3: #80a0c8;
-  --chart-color-4: #5a9a88;
-  --chart-color-5: #8080b0;
-  --chart-label: #7a8a9a;
-  --chart-value: #8a9aaa;
-  --chart-bar-bg: rgba(80,130,200,0.06);
-  --chart-bar-gradient: linear-gradient(180deg, #5080b8, #6890c0);
-  --chart-bar-h-gradient: linear-gradient(90deg, #5080b8, #6890c0);
-  --chart-axis: rgba(80,130,200,0.15);
-  --table-header-border: rgba(180,200,230,0.25);
-  --table-header-color: #2a3545;
-  --table-cell-border: rgba(180,200,230,0.12);
-  --table-cell-color: #4a5565;
 }
