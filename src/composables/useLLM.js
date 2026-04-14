@@ -94,6 +94,13 @@ export function useLLM() {
       parallel: true,
     })
     clawConfigKey = key
+
+    // Fire-and-forget warmup: pre-heat connection + prompt cache
+    claw.warmup().then(r => {
+      if (r.ok) console.log(`[warmup] ${r.provider} ${r.ms}ms — cache_created: ${r.cacheCreated ?? 'n/a'}, cache_hit: ${r.cacheHit ?? 'n/a'}`)
+      else console.warn('[warmup]', r.reason || r.error)
+    }).catch(e => console.warn('[warmup] failed:', e.message))
+
     return claw
   }
 
