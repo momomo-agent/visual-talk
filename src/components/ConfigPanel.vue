@@ -138,7 +138,7 @@
               <select v-model="config.elevenLabsVoiceId" @change="previewVoice">
                 <option value="93nuHbke4dTER9x2pDwE">Adam</option>
                 <option value="9lHjugDhwqoxA5MhX0az">Anna Su</option>
-                <option value="bhJUNIXWQQ94l8eI2VUf">Amy</option>
+                <option value="bhJUNIXWQQ94l8eI2VUf">Stella Gu</option>
                 <option value="rAmra0SCIYOxYmRNDSm3">Lana Weiss</option>
                 <option value="dCnu06FiOZma2KVNUoPZ">Mila</option>
               </select>
@@ -289,7 +289,7 @@ function previewVoice() {
   const voiceNames = {
     '93nuHbke4dTER9x2pDwE': 'Adam',
     '9lHjugDhwqoxA5MhX0az': 'Anna Su',
-    'bhJUNIXWQQ94l8eI2VUf': 'Amy',
+    'bhJUNIXWQQ94l8eI2VUf': 'Stella Gu',
     'rAmra0SCIYOxYmRNDSm3': 'Lana Weiss',
     'dCnu06FiOZma2KVNUoPZ': 'Mila'
   }
