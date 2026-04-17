@@ -141,6 +141,7 @@
                 <option value="bhJUNIXWQQ94l8eI2VUf">Stella Gu</option>
                 <option value="rAmra0SCIYOxYmRNDSm3">Lana Weiss</option>
                 <option value="dCnu06FiOZma2KVNUoPZ">Mila</option>
+                <option value="0Aj540a9UWvQPWdx9Zq4">Jane</option>
               </select>
             </div>
           </template>
@@ -291,7 +292,8 @@ function previewVoice() {
     '9lHjugDhwqoxA5MhX0az': 'Anna Su',
     'bhJUNIXWQQ94l8eI2VUf': 'Stella Gu',
     'rAmra0SCIYOxYmRNDSm3': 'Lana Weiss',
-    'dCnu06FiOZma2KVNUoPZ': 'Mila'
+    'dCnu06FiOZma2KVNUoPZ': 'Mila',
+    '0Aj540a9UWvQPWdx9Zq4': 'Jane'
   }
   const name = voiceNames[config.elevenLabsVoiceId] || 'Visual Talk'
   emit('preview-voice', `这里是Visual Talk，我是${name}`)
