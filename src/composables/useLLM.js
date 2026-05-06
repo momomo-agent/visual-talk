@@ -96,10 +96,13 @@ export function useLLM() {
     clawConfigKey = key
 
     // Fire-and-forget warmup: pre-heat connection + prompt cache
-    claw.warmup().then(r => {
-      if (r.ok) console.log(`[warmup] ${r.provider} ${r.ms}ms — cache_created: ${r.cacheCreated ?? 'n/a'}, cache_hit: ${r.cacheHit ?? 'n/a'}`)
-      else console.warn('[warmup]', r.reason || r.error)
-    }).catch(e => console.warn('[warmup] failed:', e.message))
+    const { warmup } = window.AgenticCore || {}
+    if (typeof warmup === 'function') {
+      warmup({ apiKey: cfg.apiKey, provider: cfg.provider, baseUrl: cfg.baseUrl, model: cfg.model }).then(r => {
+        if (r.ok) console.log(`[warmup] ${r.provider} ${r.ms}ms — cache_created: ${r.cacheCreated ?? 'n/a'}, cache_hit: ${r.cacheHit ?? 'n/a'}`)
+        else console.warn('[warmup]', r.reason || r.error)
+      }).catch(e => console.warn('[warmup] failed:', e.message))
+    }
 
     return claw
   }
